@@ -14,6 +14,14 @@ class AppColors {
   static const Color mutedText = Color(0xFF667085);
   static const Color border = Color(0xFFE4E7EC);
 
+  // Status Colors (added for Dashboard)
+  static const Color statusPendingBg = Color(0xFFFEF0C7);
+  static const Color statusPendingText = Color(0xFFDC6803);
+  static const Color statusSentBg = primarySoft;
+  static const Color statusSentText = primaryBlue;
+  static const Color statusApprovedBg = Color(0xFFD1FADF);
+  static const Color statusApprovedText = Color(0xFF027A48);
+
   // Legacy mappings for locked screens
   static const Color primaryText = charcoal;
   static const Color secondaryText = mutedText;
