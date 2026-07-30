@@ -7,6 +7,8 @@ class Product {
   final double sellingPrice;
   final int stockQuantity;
   final String? imagePath;
+  final String? description;
+  final Map<String, String>? specifications;
 
   const Product({
     required this.id,
@@ -17,5 +19,7 @@ class Product {
     required this.sellingPrice,
     required this.stockQuantity,
     this.imagePath,
+    this.description,
+    this.specifications,
   });
 }

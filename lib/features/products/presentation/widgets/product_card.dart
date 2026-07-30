@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../app/routes/app_routes.dart';
 import '../../domain/product.dart';
-import '../../../../app/theme/app_colors.dart';
+import '../../../../../app/theme/app_colors.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -165,14 +166,9 @@ class ProductCard extends StatelessWidget {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
-                          // Details placeholder
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Product details will be added later',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.productDetails,
+                            arguments: product,
                           );
                         },
                         style: OutlinedButton.styleFrom(
@@ -235,10 +231,17 @@ class ProductCard extends StatelessWidget {
 
   Widget _buildProductImage() {
     if (product.imagePath != null && product.imagePath!.isNotEmpty) {
-      return const Icon(
-        Icons.inventory_2_outlined,
-        color: AppColors.mutedText,
-        size: 24,
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          product.imagePath!,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => const Icon(
+            Icons.inventory_2_outlined,
+            color: AppColors.mutedText,
+            size: 24,
+          ),
+        ),
       );
     }
     return const Icon(
