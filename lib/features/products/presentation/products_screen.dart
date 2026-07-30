@@ -17,12 +17,45 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
+  String _searchQuery = '';
   String _selectedCategory = 'All';
   bool _inStockOnly = false;
   bool _lowStockOnly = false;
 
+  int _scoreProduct(Product p, String q) {
+    final n = p.name.toLowerCase();
+    final b = p.brand.toLowerCase();
+    final c = p.productCode.toLowerCase();
+
+    final namePrefix = n.startsWith(q);
+    final namePartial = n.contains(q) && !namePrefix;
+
+    final inStock = p.stockQuantity > 5;
+    final lowStock = p.stockQuantity > 0 && p.stockQuantity <= 5;
+    final outOfStock = p.stockQuantity <= 0;
+
+    if (namePrefix || namePartial) {
+      if (outOfStock) return 5;
+
+      if (inStock) {
+        if (namePrefix) return 1;
+        return 2;
+      }
+
+      if (lowStock) {
+        if (namePrefix) return 3;
+        return 4;
+      }
+    }
+
+    if (b.contains(q)) return 6;
+    if (c.contains(q)) return 7;
+
+    return 99;
+  }
+
   List<Product> get _filteredProducts {
-    return sampleProducts.where((product) {
+    var list = sampleProducts.where((product) {
       // Category filter
       if (_selectedCategory != 'All' && product.category != _selectedCategory) {
         return false;
@@ -39,6 +72,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
       return true;
     }).toList();
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery;
+      list = list.where((product) {
+        final n = product.name.toLowerCase();
+        final c = product.productCode.toLowerCase();
+        final b = product.brand.toLowerCase();
+        return n.contains(q) || c.contains(q) || b.contains(q);
+      }).toList();
+
+      list.sort((a, b) {
+        final scoreA = _scoreProduct(a, q);
+        final scoreB = _scoreProduct(b, q);
+        if (scoreA == scoreB) {
+          return a.name.compareTo(b.name);
+        }
+        return scoreA.compareTo(scoreB);
+      });
+    }
+
+    return list;
   }
 
   @override
@@ -60,7 +114,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     delegate: SliverChildListDelegate([
                       _buildHeader(),
                       const SizedBox(height: 24),
-                      const ProductSearchField(),
+                      ProductSearchField(
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val.trim().toLowerCase();
+                          });
+                        },
+                      ),
                       const SizedBox(height: 20),
                       ProductCategoryChips(
                         selectedCategory: _selectedCategory,

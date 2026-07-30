@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 
 class ProductSearchField extends StatelessWidget {
-  const ProductSearchField({super.key});
+  final ValueChanged<String>? onChanged;
+
+  const ProductSearchField({super.key, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -15,8 +17,9 @@ class ProductSearchField extends StatelessWidget {
           BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
-      child: const TextField(
-        decoration: InputDecoration(
+      child: TextField(
+        onChanged: onChanged,
+        decoration: const InputDecoration(
           hintText: 'Search by name or code...',
           hintStyle: TextStyle(color: AppColors.mutedText),
           prefixIcon: Icon(Icons.search, color: AppColors.mutedText),
