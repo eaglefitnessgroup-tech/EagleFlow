@@ -1,24 +1,28 @@
 class QuotationLineItem {
   final String id;
-  final String productId;
-  final String productCode;
+  final String? productId;
+  final String? productCode;
   final String name;
   final String brand;
   final double unitPrice;
   final int quantity;
   final double discount;
   final String? imagePath;
+  final String? description;
+  final bool isCustom;
 
   const QuotationLineItem({
     required this.id,
-    required this.productId,
-    required this.productCode,
+    this.productId,
+    this.productCode,
     required this.name,
     required this.brand,
     required this.unitPrice,
     required this.quantity,
     this.discount = 0.0,
     this.imagePath,
+    this.description,
+    this.isCustom = false,
   });
 
   QuotationLineItem copyWith({
@@ -31,6 +35,8 @@ class QuotationLineItem {
     int? quantity,
     double? discount,
     String? imagePath,
+    String? description,
+    bool? isCustom,
   }) {
     return QuotationLineItem(
       id: id ?? this.id,
@@ -42,6 +48,8 @@ class QuotationLineItem {
       quantity: quantity ?? this.quantity,
       discount: discount ?? this.discount,
       imagePath: imagePath ?? this.imagePath,
+      description: description ?? this.description,
+      isCustom: isCustom ?? this.isCustom,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../domain/quotation.dart';
 import '../domain/quotation_line_item.dart';
 import '../domain/quotation_charges.dart';
+import '../../products/domain/product.dart';
 
 class QuotationController extends ChangeNotifier {
   Quotation _quotation;
@@ -80,6 +81,96 @@ class QuotationController extends ChangeNotifier {
     newItems[index] = updater(newItems[index]);
 
     _quotation = _quotation.copyWith(lineItems: newItems);
+    notifyListeners();
+  }
+
+  bool containsProduct(String productId) {
+    return _quotation.lineItems.any((item) => item.productId == productId);
+  }
+
+  void incrementExistingProduct(String productId, {int by = 1}) {
+    final index = _quotation.lineItems.indexWhere(
+      (i) => i.productId == productId,
+    );
+    if (index == -1) return;
+
+    final newQty = math.max<int>(
+      1,
+      _quotation.lineItems[index].quantity + math.max<int>(1, by),
+    );
+    _updateLineItem(
+      _quotation.lineItems[index].id,
+      (item) => item.copyWith(quantity: newQty),
+    );
+  }
+
+  void addProduct(Product product, {int quantity = 1}) {
+    if (containsProduct(product.id)) {
+      incrementExistingProduct(product.id, by: quantity);
+      return;
+    }
+
+    final String uniqueId =
+        '${DateTime.now().millisecondsSinceEpoch}_${product.id}';
+    final int safeQty = math.max<int>(1, quantity);
+
+    final newItem = QuotationLineItem(
+      id: uniqueId,
+      productId: product.id,
+      productCode: product.productCode,
+      name: product.name,
+      brand: product.brand,
+      unitPrice: product.sellingPrice,
+      quantity: safeQty,
+      discount: 0.0,
+      imagePath: product.imagePath,
+      description: product.description,
+      isCustom: false,
+    );
+
+    _quotation = _quotation.copyWith(
+      lineItems: [..._quotation.lineItems, newItem],
+    );
+    notifyListeners();
+  }
+
+  void addProducts(List<Product> products, {int quantity = 1}) {
+    if (products.isEmpty) return;
+
+    final newItemsList = List<QuotationLineItem>.from(_quotation.lineItems);
+    final safeQty = math.max<int>(1, quantity);
+
+    for (final product in products) {
+      final index = newItemsList.indexWhere((i) => i.productId == product.id);
+
+      if (index != -1) {
+        // Increment duplicate
+        final existingItem = newItemsList[index];
+        newItemsList[index] = existingItem.copyWith(
+          quantity: existingItem.quantity + safeQty,
+        );
+      } else {
+        // Create new
+        final String uniqueId =
+            '${DateTime.now().millisecondsSinceEpoch}_${product.id}';
+        final newItem = QuotationLineItem(
+          id: uniqueId,
+          productId: product.id,
+          productCode: product.productCode,
+          name: product.name,
+          brand: product.brand,
+          unitPrice: product.sellingPrice,
+          quantity: safeQty,
+          discount: 0.0,
+          imagePath: product.imagePath,
+          description: product.description,
+          isCustom: false,
+        );
+        newItemsList.add(newItem);
+      }
+    }
+
+    _quotation = _quotation.copyWith(lineItems: newItemsList);
     notifyListeners();
   }
 }

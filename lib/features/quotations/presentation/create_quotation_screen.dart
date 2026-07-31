@@ -159,6 +159,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                       onUnitPriceChanged: _controller.updateUnitPrice,
                       onDiscountChanged: _controller.updateLineDiscount,
                       onRemove: _controller.removeItem,
+                      onProductsAdded: _controller.addProducts,
                     ),
                     const SizedBox(height: 20),
                     const QuotationNotesCard(),
@@ -234,6 +235,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
             onUnitPriceChanged: _controller.updateUnitPrice,
             onDiscountChanged: _controller.updateLineDiscount,
             onRemove: _controller.removeItem,
+            onProductsAdded: _controller.addProducts,
           ),
           const SizedBox(height: 20),
           AdditionalChargesCard(

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
+import '../../../../products/domain/product.dart';
 import '../../../domain/quotation_line_item.dart';
 import 'quotation_product_tile.dart';
+import 'product_picker.dart';
 
-class SelectedProductsSection extends StatelessWidget {
+class SelectedProductsSection extends StatefulWidget {
   final List<QuotationLineItem> items;
   final void Function(String, int) onQuantityChanged;
   final void Function(String, double) onUnitPriceChanged;
   final void Function(String, double) onDiscountChanged;
   final void Function(String) onRemove;
+  final void Function(List<Product>) onProductsAdded;
 
   const SelectedProductsSection({
     super.key,
@@ -17,7 +20,30 @@ class SelectedProductsSection extends StatelessWidget {
     required this.onUnitPriceChanged,
     required this.onDiscountChanged,
     required this.onRemove,
+    required this.onProductsAdded,
   });
+
+  @override
+  State<SelectedProductsSection> createState() =>
+      _SelectedProductsSectionState();
+}
+
+class _SelectedProductsSectionState extends State<SelectedProductsSection> {
+  bool _isPickerOpen = false;
+
+  Future<void> _openProductPicker(BuildContext context) async {
+    if (_isPickerOpen) return;
+    _isPickerOpen = true;
+    try {
+      final products = await ProductPicker.show(context);
+      if (!context.mounted) return;
+      if (products != null && products.isNotEmpty) {
+        widget.onProductsAdded(products);
+      }
+    } finally {
+      _isPickerOpen = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +83,7 @@ class SelectedProductsSection extends StatelessWidget {
                     Row(
                       children: [
                         TextButton.icon(
-                          onPressed: () {},
+                          onPressed: () => _openProductPicker(context),
                           icon: const Icon(Icons.add, size: 20),
                           label: const Text('Add Product'),
                         ),
@@ -77,18 +103,19 @@ class SelectedProductsSection extends StatelessWidget {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: items.length,
+                itemCount: widget.items.length,
                 itemBuilder: (context, index) {
-                  final item = items[index];
+                  final item = widget.items[index];
                   return QuotationProductTile(
                     key: ValueKey(item.id),
                     item: item,
-                    onQuantityChanged: (qty) => onQuantityChanged(item.id, qty),
+                    onQuantityChanged: (qty) =>
+                        widget.onQuantityChanged(item.id, qty),
                     onUnitPriceChanged: (price) =>
-                        onUnitPriceChanged(item.id, price),
+                        widget.onUnitPriceChanged(item.id, price),
                     onDiscountChanged: (disc) =>
-                        onDiscountChanged(item.id, disc),
-                    onRemove: () => onRemove(item.id),
+                        widget.onDiscountChanged(item.id, disc),
+                    onRemove: () => widget.onRemove(item.id),
                   );
                 },
               ),
@@ -97,7 +124,7 @@ class SelectedProductsSection extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _openProductPicker(context),
                     icon: const Icon(Icons.add, size: 20),
                     label: const Text('Add Product'),
                     style: OutlinedButton.styleFrom(
