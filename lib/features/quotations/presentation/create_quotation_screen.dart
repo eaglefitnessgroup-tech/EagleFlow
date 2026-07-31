@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
-import '../../products/data/sample_products.dart';
 import '../domain/quotation_defaults.dart';
-import '../domain/quotation_line_item.dart';
+
 import '../application/quotation_calculator.dart';
 import '../application/quotation_controller.dart';
 import '../application/quotation_validator.dart';
@@ -30,21 +29,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
   void initState() {
     super.initState();
     final draft = QuotationDefaults.createEmptyDraft();
-    final mockLineItems = sampleProducts.map((p) {
-      return QuotationLineItem(
-        id: 'li_${p.id}',
-        productId: p.id,
-        productCode: p.productCode,
-        name: p.name,
-        brand: p.brand,
-        unitPrice: p.sellingPrice,
-        quantity: 1,
-        discount: 0.0,
-        imagePath: p.imagePath,
-      );
-    }).toList();
-
-    _controller = QuotationController(draft.copyWith(lineItems: mockLineItems));
+    _controller = QuotationController(draft);
   }
 
   @override
@@ -110,7 +95,16 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                 final canPreview = QuotationValidator.canPreview(
                   _controller.quotation,
                 );
-                return QuotationBottomActionBar(canPreview: canPreview);
+                return QuotationBottomActionBar(
+                  canPreview: canPreview,
+                  onPreview: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/quotation-preview',
+                      arguments: _controller,
+                    );
+                  },
+                );
               },
             ),
           ],
@@ -142,7 +136,20 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                   children: [
                     CustomerInformationCard(
                       initialName: quotation.customerInfo.name,
+                      initialCompany: quotation.customerInfo.company,
+                      initialPhone: quotation.customerInfo.phone,
+                      initialEmail: quotation.customerInfo.email,
+                      initialProjectLocation:
+                          quotation.customerInfo.projectLocation,
                       onNameChanged: _controller.updateCustomerName,
+                      onCompanyChanged: (val) =>
+                          _controller.updateCustomerDetails(company: val),
+                      onPhoneChanged: (val) =>
+                          _controller.updateCustomerDetails(phone: val),
+                      onEmailChanged: (val) =>
+                          _controller.updateCustomerDetails(email: val),
+                      onProjectLocationChanged: (val) => _controller
+                          .updateCustomerDetails(projectLocation: val),
                     ),
                     const SizedBox(height: 20),
                     QuotationInformationCard(
@@ -218,7 +225,19 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
           const SizedBox(height: 20),
           CustomerInformationCard(
             initialName: quotation.customerInfo.name,
+            initialCompany: quotation.customerInfo.company,
+            initialPhone: quotation.customerInfo.phone,
+            initialEmail: quotation.customerInfo.email,
+            initialProjectLocation: quotation.customerInfo.projectLocation,
             onNameChanged: _controller.updateCustomerName,
+            onCompanyChanged: (val) =>
+                _controller.updateCustomerDetails(company: val),
+            onPhoneChanged: (val) =>
+                _controller.updateCustomerDetails(phone: val),
+            onEmailChanged: (val) =>
+                _controller.updateCustomerDetails(email: val),
+            onProjectLocationChanged: (val) =>
+                _controller.updateCustomerDetails(projectLocation: val),
           ),
           const SizedBox(height: 20),
           QuotationInformationCard(

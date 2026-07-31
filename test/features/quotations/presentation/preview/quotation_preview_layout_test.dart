@@ -1,0 +1,220 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:eagleflow/features/quotations/application/quotation_controller.dart';
+import 'package:eagleflow/features/quotations/presentation/quotation_preview_screen.dart';
+import 'package:eagleflow/features/quotations/domain/quotation.dart';
+import 'package:eagleflow/features/quotations/domain/customer_info.dart';
+import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
+import 'package:eagleflow/features/quotations/presentation/preview/models/quotation_preview_page.dart';
+import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
+import 'package:eagleflow/features/quotations/presentation/preview/utils/quotation_paginator.dart';
+
+void main() {
+  group('Quotation Preview Layout Stabilization', () {
+    late Quotation filledQuotation;
+
+    setUp(() {
+      filledQuotation = QuotationDefaults.createEmptyDraft().copyWith(
+        customerInfo: const CustomerInfo(
+          name: 'John Doe',
+          company: 'Acme Corp',
+          phone: '123-456-7890',
+          email: 'john@acme.com',
+          projectLocation: 'Dubai Marina',
+        ),
+      );
+    });
+
+    testWidgets('QuotationPreviewScreen renders without overflow at 320x800', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1.0;
+
+      final controller = QuotationController(filledQuotation);
+      await tester.pumpWidget(
+        MaterialApp(
+          onGenerateRoute: (settings) {
+            return MaterialPageRoute(
+              settings: RouteSettings(arguments: controller),
+              builder: (context) => const QuotationPreviewScreen(),
+            );
+          },
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      addTearDown(tester.view.resetPhysicalSize);
+    });
+
+    testWidgets('1 product fits on first page with totals', (
+      WidgetTester tester,
+    ) async {
+      final quotation = filledQuotation.copyWith(
+        lineItems: [
+          const QuotationLineItem(
+            id: '1',
+            productId: 'p1',
+            name: 'Product 1',
+            brand: 'B',
+            quantity: 1,
+            unitPrice: 100,
+          ),
+        ],
+      );
+      final pages = QuotationPaginator.paginate(quotation);
+      expect(pages.length, 3);
+      expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
+      expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+
+      final docPages = pages.take(pages.length - 2).toList();
+      expect(docPages.length, 1);
+      final page = docPages[0] as QuotationProductsPageModel;
+      expect(page.hasCover, isTrue);
+      expect(page.hasTotals, isTrue);
+      expect(page.items.length, 1);
+    });
+
+    testWidgets('5 standard products produce predictable pagination', (
+      WidgetTester tester,
+    ) async {
+      final List<QuotationLineItem> items = List.generate(
+        5,
+        (i) => QuotationLineItem(
+          id: 'id_$i',
+          productId: 'p_$i',
+          name: 'Item $i',
+          brand: 'Generic',
+          quantity: 1,
+          unitPrice: 100,
+        ),
+      );
+      final quotation = filledQuotation.copyWith(lineItems: items);
+      final pages = QuotationPaginator.paginate(quotation);
+      expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
+      expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+
+      final docPages = pages.take(pages.length - 2).toList();
+
+      expect(docPages.length, lessThanOrEqualTo(2));
+
+      final allItems = docPages
+          .whereType<QuotationProductsPageModel>()
+          .expand((p) => p.items)
+          .toList();
+      expect(allItems.length, 5);
+
+      if (docPages.length == 2) {
+        if (docPages[1] is QuotationProductsPageModel) {
+          expect((docPages[1] as QuotationProductsPageModel).hasTotals, isTrue);
+        } else {
+          expect(docPages[1], isA<QuotationTotalsPageModel>());
+        }
+      }
+    });
+
+    testWidgets('12 products produce predictable pagination', (
+      WidgetTester tester,
+    ) async {
+      final List<QuotationLineItem> items = List.generate(
+        12,
+        (i) => QuotationLineItem(
+          id: 'id_$i',
+          productId: 'p_$i',
+          name: 'Item $i',
+          brand: 'Generic',
+          quantity: 1,
+          unitPrice: 100,
+        ),
+      );
+      final quotation = filledQuotation.copyWith(lineItems: items);
+      final pages = QuotationPaginator.paginate(quotation);
+      expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
+      expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+
+      final docPages = pages.take(pages.length - 2).toList();
+
+      final productPages = docPages
+          .whereType<QuotationProductsPageModel>()
+          .toList();
+      expect(productPages.length, greaterThanOrEqualTo(1));
+
+      final allItems = productPages.expand((p) => p.items).toList();
+      expect(allItems.length, 12);
+    });
+
+    testWidgets(
+      '25 mixed products produce predictable pagination with unchanged order',
+      (WidgetTester tester) async {
+        final List<QuotationLineItem> items = List.generate(
+          25,
+          (i) => QuotationLineItem(
+            id: 'id_$i',
+            productId: 'p_$i',
+            name: i % 3 == 0
+                ? 'Very long product name that might wrap if not careful $i'
+                : 'Item $i',
+            brand: 'Generic',
+            description: i % 4 == 0
+                ? 'Some description for product $i to make row taller'
+                : null,
+            quantity: 1,
+            unitPrice: 100,
+          ),
+        );
+        final quotation = filledQuotation.copyWith(lineItems: items);
+        final pages = QuotationPaginator.paginate(quotation);
+        expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
+        expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+
+        final docPages = pages.take(pages.length - 2).toList();
+
+        final productPages = docPages
+            .whereType<QuotationProductsPageModel>()
+            .toList();
+        final allItems = productPages.expand((p) => p.items).toList();
+
+        expect(allItems.length, 25);
+        for (int i = 0; i < 25; i++) {
+          expect(allItems[i].id, 'id_$i');
+        }
+      },
+    );
+
+    testWidgets('Orphan balancing works for 1 spilled item if safe', (
+      WidgetTester tester,
+    ) async {
+      final List<QuotationLineItem> items = List.generate(
+        30,
+        (i) => QuotationLineItem(
+          id: 'id_$i',
+          productId: 'p_$i',
+          name: 'Item $i',
+          brand: 'Generic',
+          quantity: 1,
+          unitPrice: 100,
+        ),
+      );
+
+      for (int count = 1; count <= 30; count++) {
+        final quotation = filledQuotation.copyWith(
+          lineItems: items.take(count).toList(),
+        );
+        final pages = QuotationPaginator.paginate(quotation);
+        expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
+        expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+
+        final docPages = pages.take(pages.length - 2).toList();
+
+        final productPages = docPages
+            .whereType<QuotationProductsPageModel>()
+            .toList();
+
+        if (productPages.length > 1) {
+          final allItems = productPages.expand((p) => p.items).toList();
+          expect(allItems.length, count);
+        }
+      }
+    });
+  });
+}

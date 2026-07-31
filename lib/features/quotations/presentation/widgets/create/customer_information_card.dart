@@ -3,12 +3,28 @@ import '../../../../../../app/theme/app_colors.dart';
 
 class CustomerInformationCard extends StatefulWidget {
   final String initialName;
+  final String initialCompany;
+  final String initialPhone;
+  final String initialEmail;
+  final String initialProjectLocation;
   final ValueChanged<String>? onNameChanged;
+  final ValueChanged<String>? onCompanyChanged;
+  final ValueChanged<String>? onPhoneChanged;
+  final ValueChanged<String>? onEmailChanged;
+  final ValueChanged<String>? onProjectLocationChanged;
 
   const CustomerInformationCard({
     super.key,
     this.initialName = '',
+    this.initialCompany = '',
+    this.initialPhone = '',
+    this.initialEmail = '',
+    this.initialProjectLocation = '',
     this.onNameChanged,
+    this.onCompanyChanged,
+    this.onPhoneChanged,
+    this.onEmailChanged,
+    this.onProjectLocationChanged,
   });
 
   @override
@@ -27,10 +43,12 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
-    _companyController = TextEditingController();
-    _phoneController = TextEditingController();
-    _emailController = TextEditingController();
-    _projectController = TextEditingController();
+    _companyController = TextEditingController(text: widget.initialCompany);
+    _phoneController = TextEditingController(text: widget.initialPhone);
+    _emailController = TextEditingController(text: widget.initialEmail);
+    _projectController = TextEditingController(
+      text: widget.initialProjectLocation,
+    );
   }
 
   @override
@@ -39,6 +57,22 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
     if (oldWidget.initialName != widget.initialName &&
         _nameController.text != widget.initialName) {
       _nameController.text = widget.initialName;
+    }
+    if (oldWidget.initialCompany != widget.initialCompany &&
+        _companyController.text != widget.initialCompany) {
+      _companyController.text = widget.initialCompany;
+    }
+    if (oldWidget.initialPhone != widget.initialPhone &&
+        _phoneController.text != widget.initialPhone) {
+      _phoneController.text = widget.initialPhone;
+    }
+    if (oldWidget.initialEmail != widget.initialEmail &&
+        _emailController.text != widget.initialEmail) {
+      _emailController.text = widget.initialEmail;
+    }
+    if (oldWidget.initialProjectLocation != widget.initialProjectLocation &&
+        _projectController.text != widget.initialProjectLocation) {
+      _projectController.text = widget.initialProjectLocation;
     }
   }
 
@@ -75,17 +109,29 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildTextField('Company', _companyController),
+                  child: _buildTextField(
+                    'Company',
+                    _companyController,
+                    widget.onCompanyChanged,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildTextField('Phone', _phoneController),
+                  child: _buildTextField(
+                    'Phone',
+                    _phoneController,
+                    widget.onPhoneChanged,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildTextField('Email', _emailController),
+                  child: _buildTextField(
+                    'Email',
+                    _emailController,
+                    widget.onEmailChanged,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -93,6 +139,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                   child: _buildTextField(
                     'Project / Location',
                     _projectController,
+                    widget.onProjectLocationChanged,
                   ),
                 ),
               ] else ...[
@@ -107,20 +154,40 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildTextField('Company', _companyController),
+                      child: _buildTextField(
+                        'Company',
+                        _companyController,
+                        widget.onCompanyChanged,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildTextField('Phone', _phoneController)),
+                    Expanded(
+                      child: _buildTextField(
+                        'Phone',
+                        _phoneController,
+                        widget.onPhoneChanged,
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildTextField('Email', _emailController)),
+                    Expanded(
+                      child: _buildTextField(
+                        'Email',
+                        _emailController,
+                        widget.onEmailChanged,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildTextField('Project / Location', _projectController),
+                _buildTextField(
+                  'Project / Location',
+                  _projectController,
+                  widget.onProjectLocationChanged,
+                ),
               ],
             ],
           ),

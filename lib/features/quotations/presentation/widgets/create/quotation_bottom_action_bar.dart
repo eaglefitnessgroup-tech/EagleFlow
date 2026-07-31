@@ -3,8 +3,13 @@ import '../../../../../../app/theme/app_colors.dart';
 
 class QuotationBottomActionBar extends StatelessWidget {
   final bool canPreview;
+  final VoidCallback onPreview;
 
-  const QuotationBottomActionBar({super.key, required this.canPreview});
+  const QuotationBottomActionBar({
+    super.key,
+    required this.canPreview,
+    required this.onPreview,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +68,7 @@ class QuotationBottomActionBar extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: canPreview ? () {} : null,
+                    onPressed: canPreview ? onPreview : null,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: AppColors.primaryBlue,
