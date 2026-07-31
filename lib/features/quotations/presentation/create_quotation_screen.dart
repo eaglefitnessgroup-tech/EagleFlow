@@ -4,6 +4,8 @@ import '../../products/data/sample_products.dart';
 import '../domain/quotation_defaults.dart';
 import '../domain/quotation_line_item.dart';
 import '../application/quotation_calculator.dart';
+import '../application/quotation_controller.dart';
+import '../application/quotation_validator.dart';
 import 'widgets/create/quotation_page_header.dart';
 import 'widgets/create/customer_information_card.dart';
 import 'widgets/create/quotation_information_card.dart';
@@ -14,12 +16,19 @@ import 'widgets/create/quotation_notes_card.dart';
 import 'widgets/create/quotation_status_strip.dart';
 import 'widgets/create/quotation_bottom_action_bar.dart';
 
-class CreateQuotationScreen extends StatelessWidget {
+class CreateQuotationScreen extends StatefulWidget {
   const CreateQuotationScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // 1. Mock Data Setup (from defaults and existing product list)
+  State<CreateQuotationScreen> createState() => _CreateQuotationScreenState();
+}
+
+class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
+  late final QuotationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
     final draft = QuotationDefaults.createEmptyDraft();
     final mockLineItems = sampleProducts.map((p) {
       return QuotationLineItem(
@@ -35,14 +44,17 @@ class CreateQuotationScreen extends StatelessWidget {
       );
     }).toList();
 
-    // 2. Calculations
-    final subtotal = QuotationCalculator.calculateSubtotal(mockLineItems);
-    final vat = QuotationCalculator.calculateVAT(subtotal, draft.charges);
-    final grandTotal = QuotationCalculator.calculateGrandTotal(
-      subtotal,
-      draft.charges,
-    );
+    _controller = QuotationController(draft.copyWith(lineItems: mockLineItems));
+  }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -51,41 +63,56 @@ class CreateQuotationScreen extends StatelessWidget {
           children: [
             const QuotationStatusStrip(),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final bool isDesktop = constraints.maxWidth >= 1024;
+              child: ListenableBuilder(
+                listenable: _controller,
+                builder: (context, _) {
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final bool isDesktop = constraints.maxWidth >= 1024;
+                      final quotation = _controller.quotation;
 
-                  if (isDesktop) {
-                    return _buildDesktopLayout(
-                      context,
-                      draft.quotationNumber,
-                      draft.salespersonId,
-                      draft.createdDate,
-                      draft.validUntil,
-                      draft.expectedDelivery,
-                      mockLineItems,
-                      subtotal,
-                      vat,
-                      grandTotal,
-                    );
-                  }
+                      final subtotal = QuotationCalculator.calculateSubtotal(
+                        quotation.lineItems,
+                      );
+                      final vat = QuotationCalculator.calculateVAT(
+                        subtotal,
+                        quotation.charges,
+                      );
+                      final grandTotal =
+                          QuotationCalculator.calculateGrandTotal(
+                            subtotal,
+                            quotation.charges,
+                          );
 
-                  return _buildMobileTabletLayout(
-                    context,
-                    draft.quotationNumber,
-                    draft.salespersonId,
-                    draft.createdDate,
-                    draft.validUntil,
-                    draft.expectedDelivery,
-                    mockLineItems,
-                    subtotal,
-                    vat,
-                    grandTotal,
+                      if (isDesktop) {
+                        return _buildDesktopLayout(
+                          context,
+                          subtotal,
+                          vat,
+                          grandTotal,
+                        );
+                      }
+
+                      return _buildMobileTabletLayout(
+                        context,
+                        subtotal,
+                        vat,
+                        grandTotal,
+                      );
+                    },
                   );
                 },
               ),
             ),
-            const QuotationBottomActionBar(),
+            ListenableBuilder(
+              listenable: _controller,
+              builder: (context, _) {
+                final canPreview = QuotationValidator.canPreview(
+                  _controller.quotation,
+                );
+                return QuotationBottomActionBar(canPreview: canPreview);
+              },
+            ),
           ],
         ),
       ),
@@ -94,22 +121,17 @@ class CreateQuotationScreen extends StatelessWidget {
 
   Widget _buildDesktopLayout(
     BuildContext context,
-    String quotationNumber,
-    String salespersonId,
-    DateTime createdDate,
-    DateTime validUntil,
-    DateTime expectedDelivery,
-    List<QuotationLineItem> items,
     double subtotal,
     double vat,
     double grandTotal,
   ) {
+    final quotation = _controller.quotation;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          QuotationPageHeader(quotationNumber: quotationNumber),
+          QuotationPageHeader(quotationNumber: quotation.quotationNumber),
           const SizedBox(height: 20),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,17 +140,26 @@ class CreateQuotationScreen extends StatelessWidget {
                 flex: 2,
                 child: Column(
                   children: [
-                    const CustomerInformationCard(),
-                    const SizedBox(height: 20),
-                    QuotationInformationCard(
-                      quotationNumber: quotationNumber,
-                      salesperson: salespersonId,
-                      date: createdDate,
-                      validUntil: validUntil,
-                      expectedDelivery: expectedDelivery,
+                    CustomerInformationCard(
+                      initialName: quotation.customerInfo.name,
+                      onNameChanged: _controller.updateCustomerName,
                     ),
                     const SizedBox(height: 20),
-                    SelectedProductsSection(items: items),
+                    QuotationInformationCard(
+                      quotationNumber: quotation.quotationNumber,
+                      salesperson: quotation.salespersonId,
+                      date: quotation.createdDate,
+                      validUntil: quotation.validUntil,
+                      expectedDelivery: quotation.expectedDelivery,
+                    ),
+                    const SizedBox(height: 20),
+                    SelectedProductsSection(
+                      items: quotation.lineItems,
+                      onQuantityChanged: _controller.updateQuantity,
+                      onUnitPriceChanged: _controller.updateUnitPrice,
+                      onDiscountChanged: _controller.updateLineDiscount,
+                      onRemove: _controller.removeItem,
+                    ),
                     const SizedBox(height: 20),
                     const QuotationNotesCard(),
                   ],
@@ -139,16 +170,25 @@ class CreateQuotationScreen extends StatelessWidget {
                 flex: 1,
                 child: Column(
                   children: [
-                    const AdditionalChargesCard(),
+                    AdditionalChargesCard(
+                      initialDelivery: quotation.charges.deliveryCharges,
+                      initialInstallation:
+                          quotation.charges.installationCharges,
+                      initialOther: quotation.charges.otherCharges,
+                      initialDiscount: quotation.charges.overallDiscount,
+                      initialVat: quotation.charges.vatPercentage,
+                      onUpdateCharges: _controller.updateCharges,
+                    ),
                     const SizedBox(height: 20),
                     QuotationSummaryCard(
-                      totalQuantity: items.fold(
+                      totalQuantity: quotation.lineItems.fold(
                         0,
                         (sum, i) => sum + i.quantity,
                       ),
                       subtotal: subtotal,
-                      overallDiscount: 0.0,
+                      overallDiscount: quotation.charges.overallDiscount,
                       vat: vat,
+                      vatPercent: quotation.charges.vatPercentage,
                       grandTotal: grandTotal,
                     ),
                   ],
@@ -163,42 +203,57 @@ class CreateQuotationScreen extends StatelessWidget {
 
   Widget _buildMobileTabletLayout(
     BuildContext context,
-    String quotationNumber,
-    String salespersonId,
-    DateTime createdDate,
-    DateTime validUntil,
-    DateTime expectedDelivery,
-    List<QuotationLineItem> items,
     double subtotal,
     double vat,
     double grandTotal,
   ) {
+    final quotation = _controller.quotation;
     return SingleChildScrollView(
       padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          QuotationPageHeader(quotationNumber: quotationNumber),
+          QuotationPageHeader(quotationNumber: quotation.quotationNumber),
           const SizedBox(height: 20),
-          const CustomerInformationCard(),
-          const SizedBox(height: 20),
-          QuotationInformationCard(
-            quotationNumber: quotationNumber,
-            salesperson: salespersonId,
-            date: createdDate,
-            validUntil: validUntil,
-            expectedDelivery: expectedDelivery,
+          CustomerInformationCard(
+            initialName: quotation.customerInfo.name,
+            onNameChanged: _controller.updateCustomerName,
           ),
           const SizedBox(height: 20),
-          SelectedProductsSection(items: items),
+          QuotationInformationCard(
+            quotationNumber: quotation.quotationNumber,
+            salesperson: quotation.salespersonId,
+            date: quotation.createdDate,
+            validUntil: quotation.validUntil,
+            expectedDelivery: quotation.expectedDelivery,
+          ),
           const SizedBox(height: 20),
-          const AdditionalChargesCard(),
+          SelectedProductsSection(
+            items: quotation.lineItems,
+            onQuantityChanged: _controller.updateQuantity,
+            onUnitPriceChanged: _controller.updateUnitPrice,
+            onDiscountChanged: _controller.updateLineDiscount,
+            onRemove: _controller.removeItem,
+          ),
+          const SizedBox(height: 20),
+          AdditionalChargesCard(
+            initialDelivery: quotation.charges.deliveryCharges,
+            initialInstallation: quotation.charges.installationCharges,
+            initialOther: quotation.charges.otherCharges,
+            initialDiscount: quotation.charges.overallDiscount,
+            initialVat: quotation.charges.vatPercentage,
+            onUpdateCharges: _controller.updateCharges,
+          ),
           const SizedBox(height: 20),
           QuotationSummaryCard(
-            totalQuantity: items.fold(0, (sum, i) => sum + i.quantity),
+            totalQuantity: quotation.lineItems.fold(
+              0,
+              (sum, i) => sum + i.quantity,
+            ),
             subtotal: subtotal,
-            overallDiscount: 0.0,
+            overallDiscount: quotation.charges.overallDiscount,
             vat: vat,
+            vatPercent: quotation.charges.vatPercentage,
             grandTotal: grandTotal,
           ),
           const SizedBox(height: 20),

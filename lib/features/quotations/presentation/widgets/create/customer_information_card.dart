@@ -1,8 +1,56 @@
 import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
 
-class CustomerInformationCard extends StatelessWidget {
-  const CustomerInformationCard({super.key});
+class CustomerInformationCard extends StatefulWidget {
+  final String initialName;
+  final ValueChanged<String>? onNameChanged;
+
+  const CustomerInformationCard({
+    super.key,
+    this.initialName = '',
+    this.onNameChanged,
+  });
+
+  @override
+  State<CustomerInformationCard> createState() =>
+      _CustomerInformationCardState();
+}
+
+class _CustomerInformationCardState extends State<CustomerInformationCard> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _companyController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _projectController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.initialName);
+    _companyController = TextEditingController();
+    _phoneController = TextEditingController();
+    _emailController = TextEditingController();
+    _projectController = TextEditingController();
+  }
+
+  @override
+  void didUpdateWidget(CustomerInformationCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialName != widget.initialName &&
+        _nameController.text != widget.initialName) {
+      _nameController.text = widget.initialName;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _companyController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _projectController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,46 +66,61 @@ class CustomerInformationCard extends StatelessWidget {
               if (isMobile) ...[
                 SizedBox(
                   width: double.infinity,
-                  child: _buildTextField('Customer Name'),
+                  child: _buildTextField(
+                    'Customer Name',
+                    _nameController,
+                    widget.onNameChanged,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildTextField('Company'),
+                  child: _buildTextField('Company', _companyController),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildTextField('Phone'),
+                  child: _buildTextField('Phone', _phoneController),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildTextField('Email'),
+                  child: _buildTextField('Email', _emailController),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildTextField('Project / Location'),
+                  child: _buildTextField(
+                    'Project / Location',
+                    _projectController,
+                  ),
                 ),
               ] else ...[
                 Row(
                   children: [
-                    Expanded(child: _buildTextField('Customer Name')),
+                    Expanded(
+                      child: _buildTextField(
+                        'Customer Name',
+                        _nameController,
+                        widget.onNameChanged,
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildTextField('Company')),
+                    Expanded(
+                      child: _buildTextField('Company', _companyController),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildTextField('Phone')),
+                    Expanded(child: _buildTextField('Phone', _phoneController)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildTextField('Email')),
+                    Expanded(child: _buildTextField('Email', _emailController)),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildTextField('Project / Location'),
+                _buildTextField('Project / Location', _projectController),
               ],
             ],
           ),
@@ -103,8 +166,14 @@ class CustomerInformationCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(String label) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, [
+    ValueChanged<String>? onChanged,
+  ]) {
     return TextField(
+      controller: controller,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: AppColors.mutedText),

@@ -3,15 +3,110 @@ import '../../../../../../app/theme/app_colors.dart';
 import '../../../domain/quotation_line_item.dart';
 import '../../../application/quotation_calculator.dart';
 
-class QuotationProductTile extends StatelessWidget {
+class QuotationProductTile extends StatefulWidget {
   final QuotationLineItem item;
   final VoidCallback onRemove;
+  final ValueChanged<int> onQuantityChanged;
+  final ValueChanged<double> onUnitPriceChanged;
+  final ValueChanged<double> onDiscountChanged;
 
   const QuotationProductTile({
     super.key,
     required this.item,
     required this.onRemove,
+    required this.onQuantityChanged,
+    required this.onUnitPriceChanged,
+    required this.onDiscountChanged,
   });
+
+  @override
+  State<QuotationProductTile> createState() => _QuotationProductTileState();
+}
+
+class _QuotationProductTileState extends State<QuotationProductTile> {
+  late TextEditingController _qtyController;
+  late TextEditingController _priceController;
+  late TextEditingController _discountController;
+
+  final FocusNode _qtyFocus = FocusNode();
+  final FocusNode _priceFocus = FocusNode();
+  final FocusNode _discountFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _qtyController = TextEditingController(
+      text: widget.item.quantity.toString(),
+    );
+    _priceController = TextEditingController(
+      text: widget.item.unitPrice.toStringAsFixed(2),
+    );
+    _discountController = TextEditingController(
+      text: widget.item.discount.toStringAsFixed(2),
+    );
+
+    _qtyFocus.addListener(_onQtyFocusChange);
+    _priceFocus.addListener(_onPriceFocusChange);
+    _discountFocus.addListener(_onDiscountFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(QuotationProductTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_qtyFocus.hasFocus &&
+        oldWidget.item.quantity != widget.item.quantity) {
+      _qtyController.text = widget.item.quantity.toString();
+    }
+    if (!_priceFocus.hasFocus &&
+        oldWidget.item.unitPrice != widget.item.unitPrice) {
+      _priceController.text = widget.item.unitPrice.toStringAsFixed(2);
+    }
+    if (!_discountFocus.hasFocus &&
+        oldWidget.item.discount != widget.item.discount) {
+      _discountController.text = widget.item.discount.toStringAsFixed(2);
+    }
+  }
+
+  @override
+  void dispose() {
+    _qtyFocus.removeListener(_onQtyFocusChange);
+    _priceFocus.removeListener(_onPriceFocusChange);
+    _discountFocus.removeListener(_onDiscountFocusChange);
+    _qtyFocus.dispose();
+    _priceFocus.dispose();
+    _discountFocus.dispose();
+    _qtyController.dispose();
+    _priceController.dispose();
+    _discountController.dispose();
+    super.dispose();
+  }
+
+  void _onQtyFocusChange() {
+    if (!_qtyFocus.hasFocus) {
+      final val = int.tryParse(_qtyController.text) ?? 1;
+      final clamped = val < 1 ? 1 : val;
+      _qtyController.text = clamped.toString();
+      widget.onQuantityChanged(clamped);
+    }
+  }
+
+  void _onPriceFocusChange() {
+    if (!_priceFocus.hasFocus) {
+      final val = double.tryParse(_priceController.text) ?? 0.0;
+      final clamped = val < 0 ? 0.0 : val;
+      _priceController.text = clamped.toStringAsFixed(2);
+      widget.onUnitPriceChanged(clamped);
+    }
+  }
+
+  void _onDiscountFocusChange() {
+    if (!_discountFocus.hasFocus) {
+      final val = double.tryParse(_discountController.text) ?? 0.0;
+      final clamped = val.clamp(0.0, 100.0);
+      _discountController.text = clamped.toStringAsFixed(2);
+      widget.onDiscountChanged(clamped);
+    }
+  }
 
   String _formatCurrency(double amount) {
     String priceStr = amount.toStringAsFixed(2);
@@ -34,9 +129,9 @@ class QuotationProductTile extends StatelessWidget {
 
   Widget _buildMobileCard() {
     final double lineTotal = QuotationCalculator.calculateLineTotal(
-      item.unitPrice,
-      item.quantity,
-      item.discount,
+      widget.item.unitPrice,
+      widget.item.quantity,
+      widget.item.discount,
     );
 
     return Container(
@@ -60,7 +155,7 @@ class QuotationProductTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.name,
+                      widget.item.name,
                       maxLines: 2,
                       softWrap: true,
                       style: const TextStyle(
@@ -72,7 +167,7 @@ class QuotationProductTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${item.brand} • ${item.productCode}',
+                      '${widget.item.brand} • ${widget.item.productCode}',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.mutedText,
@@ -102,7 +197,7 @@ class QuotationProductTile extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.black38, size: 20),
-                onPressed: onRemove,
+                onPressed: widget.onRemove,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -112,13 +207,20 @@ class QuotationProductTile extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildEditableField('Qty', item.quantity.toString()),
+                child: _buildEditableField(
+                  'Qty',
+                  _qtyController,
+                  _qtyFocus,
+                  TextInputType.number,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: _buildEditableField(
-                  'Discount (AED)',
-                  item.discount.toStringAsFixed(2),
+                  'Discount (%)',
+                  _discountController,
+                  _discountFocus,
+                  const TextInputType.numberWithOptions(decimal: true),
                 ),
               ),
             ],
@@ -141,12 +243,28 @@ class QuotationProductTile extends StatelessWidget {
                         color: AppColors.mutedText,
                       ),
                     ),
-                    Text(
-                      'AED ${_formatCurrency(item.unitPrice)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.charcoal,
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 32,
+                      width: 100,
+                      child: TextField(
+                        controller: _priceController,
+                        focusNode: _priceFocus,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.charcoal,
+                        ),
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 0,
+                          ),
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                     ),
                   ],
@@ -182,7 +300,12 @@ class QuotationProductTile extends StatelessWidget {
     );
   }
 
-  Widget _buildEditableField(String label, String value) {
+  Widget _buildEditableField(
+    String label,
+    TextEditingController controller,
+    FocusNode focusNode,
+    TextInputType keyboardType,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -191,18 +314,30 @@ class QuotationProductTile extends StatelessWidget {
           style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
         ),
         const SizedBox(height: 6),
-        Container(
+        SizedBox(
           height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            value,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: keyboardType,
             style: const TextStyle(fontSize: 14, color: AppColors.charcoal),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.primaryBlue),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
           ),
         ),
       ],
@@ -211,9 +346,9 @@ class QuotationProductTile extends StatelessWidget {
 
   Widget _buildDesktopRow() {
     final double lineTotal = QuotationCalculator.calculateLineTotal(
-      item.unitPrice,
-      item.quantity,
-      item.discount,
+      widget.item.unitPrice,
+      widget.item.quantity,
+      widget.item.discount,
     );
 
     return Container(
@@ -231,14 +366,14 @@ class QuotationProductTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.name,
+                  widget.item.name,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     color: AppColors.charcoal,
                   ),
                 ),
                 Text(
-                  '${item.brand} • ${item.productCode}',
+                  '${widget.item.brand} • ${widget.item.productCode}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.mutedText,
@@ -248,23 +383,60 @@ class QuotationProductTile extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
-              'AED ${_formatCurrency(item.unitPrice)}',
-              style: const TextStyle(color: AppColors.charcoal),
+            child: TextField(
+              controller: _priceController,
+              focusNode: _priceFocus,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: const TextStyle(color: AppColors.charcoal, fontSize: 14),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+                border: OutlineInputBorder(),
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              item.quantity.toString(),
-              style: const TextStyle(color: AppColors.charcoal),
+            child: TextField(
+              controller: _qtyController,
+              focusNode: _qtyFocus,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: AppColors.charcoal, fontSize: 14),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+                border: OutlineInputBorder(),
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              'AED ${_formatCurrency(item.discount)}',
-              style: const TextStyle(color: AppColors.charcoal),
+            child: TextField(
+              controller: _discountController,
+              focusNode: _discountFocus,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: const TextStyle(color: AppColors.charcoal, fontSize: 14),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+                border: OutlineInputBorder(),
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               'AED ${_formatCurrency(lineTotal)}',
@@ -276,7 +448,7 @@ class QuotationProductTile extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.close, color: Colors.red),
-            onPressed: onRemove,
+            onPressed: widget.onRemove,
           ),
         ],
       ),
@@ -292,11 +464,11 @@ class QuotationProductTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
-      child: item.imagePath != null
+      child: widget.item.imagePath != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                item.imagePath!,
+                widget.item.imagePath!,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.inventory_2_outlined,

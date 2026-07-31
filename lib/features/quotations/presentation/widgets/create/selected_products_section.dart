@@ -5,8 +5,19 @@ import 'quotation_product_tile.dart';
 
 class SelectedProductsSection extends StatelessWidget {
   final List<QuotationLineItem> items;
+  final void Function(String, int) onQuantityChanged;
+  final void Function(String, double) onUnitPriceChanged;
+  final void Function(String, double) onDiscountChanged;
+  final void Function(String) onRemove;
 
-  const SelectedProductsSection({super.key, required this.items});
+  const SelectedProductsSection({
+    super.key,
+    required this.items,
+    required this.onQuantityChanged,
+    required this.onUnitPriceChanged,
+    required this.onDiscountChanged,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -68,9 +79,16 @@ class SelectedProductsSection extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
                 itemBuilder: (context, index) {
+                  final item = items[index];
                   return QuotationProductTile(
-                    item: items[index],
-                    onRemove: () {},
+                    key: ValueKey(item.id),
+                    item: item,
+                    onQuantityChanged: (qty) => onQuantityChanged(item.id, qty),
+                    onUnitPriceChanged: (price) =>
+                        onUnitPriceChanged(item.id, price),
+                    onDiscountChanged: (disc) =>
+                        onDiscountChanged(item.id, disc),
+                    onRemove: () => onRemove(item.id),
                   );
                 },
               ),
@@ -162,7 +180,7 @@ class SelectedProductsSection extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  'Discount',
+                  'Discount (%)',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: AppColors.mutedText,

@@ -6,6 +6,7 @@ class QuotationSummaryCard extends StatelessWidget {
   final double subtotal;
   final double overallDiscount;
   final double vat;
+  final double vatPercent;
   final double grandTotal;
 
   const QuotationSummaryCard({
@@ -14,6 +15,7 @@ class QuotationSummaryCard extends StatelessWidget {
     required this.subtotal,
     required this.overallDiscount,
     required this.vat,
+    required this.vatPercent,
     required this.grandTotal,
   });
 
@@ -65,7 +67,10 @@ class QuotationSummaryCard extends StatelessWidget {
                 color: Colors.green,
               ),
               const SizedBox(height: 12),
-              _buildSummaryRow('VAT (5%)', 'AED ${_formatCurrency(vat)}'),
+              _buildSummaryRow(
+                'VAT (${vatPercent.toStringAsFixed(0)}%)',
+                'AED ${_formatCurrency(vat)}',
+              ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Divider(color: AppColors.border),

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import '../domain/quotation_charges.dart';
 import '../domain/quotation_line_item.dart';
 
@@ -7,9 +8,11 @@ class QuotationCalculator {
   static double calculateLineTotal(
     double unitPrice,
     int quantity,
-    double discount,
+    double discountPercent,
   ) {
-    return (unitPrice * quantity) - discount;
+    final lineBase = unitPrice * quantity;
+    final lineDiscountAmount = lineBase * (discountPercent / 100.0);
+    return lineBase - lineDiscountAmount;
   }
 
   static double calculateSubtotal(List<QuotationLineItem> items) {
@@ -22,25 +25,26 @@ class QuotationCalculator {
   }
 
   static double calculateVAT(double subtotal, QuotationCharges charges) {
-    final taxableAmount =
+    final adjustedSubtotal =
         subtotal +
         charges.deliveryCharges +
         charges.installationCharges +
         charges.otherCharges -
         charges.overallDiscount;
 
-    return taxableAmount > 0
-        ? taxableAmount * (charges.vatPercentage / 100)
-        : 0.0;
+    final taxableAmount = math.max(adjustedSubtotal, 0.0);
+    return taxableAmount * (charges.vatPercentage / 100.0);
   }
 
   static double calculateGrandTotal(double subtotal, QuotationCharges charges) {
-    final vat = calculateVAT(subtotal, charges);
-    return subtotal +
+    final adjustedSubtotal =
+        subtotal +
         charges.deliveryCharges +
         charges.installationCharges +
         charges.otherCharges -
-        charges.overallDiscount +
-        vat;
+        charges.overallDiscount;
+
+    final vat = calculateVAT(subtotal, charges);
+    return math.max(adjustedSubtotal + vat, 0.0);
   }
 }

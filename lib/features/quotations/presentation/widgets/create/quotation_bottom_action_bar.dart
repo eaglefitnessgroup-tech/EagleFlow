@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
 
 class QuotationBottomActionBar extends StatelessWidget {
-  const QuotationBottomActionBar({super.key});
+  final bool canPreview;
+
+  const QuotationBottomActionBar({super.key, required this.canPreview});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +36,15 @@ class QuotationBottomActionBar extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Draft persistence is not yet implemented.',
+                          ),
+                        ),
+                      );
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: const BorderSide(color: AppColors.border),
@@ -53,10 +63,13 @@ class QuotationBottomActionBar extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: canPreview ? () {} : null,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: AppColors.primaryBlue,
+                      disabledBackgroundColor: AppColors.primaryBlue.withValues(
+                        alpha: 0.5,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
