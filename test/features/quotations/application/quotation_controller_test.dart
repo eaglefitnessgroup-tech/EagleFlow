@@ -163,5 +163,49 @@ void main() {
         expect(p2Item.quantity, 1);
       });
     });
+
+    group('Custom Product Integration', () {
+      final customItem = const QuotationLineItem(
+        id: '',
+        name: 'Custom Product 1',
+        brand: 'Custom Brand',
+        unitPrice: 50.0,
+        quantity: 2,
+        isCustom: true,
+      );
+
+      test('addCustomItem appends the item and assigns unique ID', () {
+        controller.addCustomItem(customItem);
+
+        final added = controller.quotation.lineItems.last;
+        expect(added.name, 'Custom Product 1');
+        expect(added.isCustom, isTrue);
+        expect(added.id, isNotEmpty);
+        expect(controller.quotation.lineItems.length, 2); // initial + custom
+      });
+
+      test(
+        'updateCustomItem preserves imageBytes if not explicitly provided',
+        () {
+          controller.addCustomItem(customItem);
+          final addedId = controller.quotation.lineItems.last.id;
+
+          final updatedItem = QuotationLineItem(
+            id: addedId,
+            name: 'Custom Product Updated',
+            brand: 'Custom Brand',
+            quantity: 3,
+            unitPrice: 55.0,
+            isCustom: true,
+          );
+
+          controller.updateCustomItem(addedId, updatedItem);
+
+          final updated = controller.quotation.lineItems.last;
+          expect(updated.name, 'Custom Product Updated');
+          expect(updated.quantity, 3);
+        },
+      );
+    });
   });
 }

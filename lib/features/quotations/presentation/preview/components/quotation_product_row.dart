@@ -42,26 +42,7 @@ class QuotationProductRow extends StatelessWidget {
 
           Expanded(
             flex: QuotationLayoutSpec.columnFlex['photo']!,
-            child: Center(
-              child: item.imagePath != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.asset(
-                        item.imagePath!,
-                        width: QuotationLayoutSpec.productImageSize,
-                        height: QuotationLayoutSpec.productImageSize,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.medium,
-                        errorBuilder: (_, error, stackTrace) {
-                          debugPrint(
-                            'Product image failed: ${item.imagePath} — $error',
-                          );
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
+            child: Center(child: _buildProductImage(item)),
           ),
 
           Expanded(
@@ -155,5 +136,40 @@ class QuotationProductRow extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildProductImage(QuotationLineItem item) {
+    if (item.imageBytes != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.memory(
+          item.imageBytes!,
+          width: QuotationLayoutSpec.productImageSize,
+          height: QuotationLayoutSpec.productImageSize,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, error, stackTrace) {
+            debugPrint('Product image bytes failed: $error');
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+    } else if (item.imagePath != null && item.imagePath!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.asset(
+          item.imagePath!,
+          width: QuotationLayoutSpec.productImageSize,
+          height: QuotationLayoutSpec.productImageSize,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, error, stackTrace) {
+            debugPrint('Product image failed: ${item.imagePath} — $error');
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }

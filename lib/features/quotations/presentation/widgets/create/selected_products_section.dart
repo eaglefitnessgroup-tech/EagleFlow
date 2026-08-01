@@ -4,6 +4,7 @@ import '../../../../products/domain/product.dart';
 import '../../../domain/quotation_line_item.dart';
 import 'quotation_product_tile.dart';
 import 'product_picker.dart';
+import 'custom_product_form.dart';
 
 class SelectedProductsSection extends StatefulWidget {
   final List<QuotationLineItem> items;
@@ -12,6 +13,8 @@ class SelectedProductsSection extends StatefulWidget {
   final void Function(String, double) onDiscountChanged;
   final void Function(String) onRemove;
   final void Function(List<Product>) onProductsAdded;
+  final void Function(QuotationLineItem) onCustomItemAdded;
+  final void Function(String, QuotationLineItem) onCustomItemUpdated;
 
   const SelectedProductsSection({
     super.key,
@@ -21,6 +24,8 @@ class SelectedProductsSection extends StatefulWidget {
     required this.onDiscountChanged,
     required this.onRemove,
     required this.onProductsAdded,
+    required this.onCustomItemAdded,
+    required this.onCustomItemUpdated,
   });
 
   @override
@@ -42,6 +47,23 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
       }
     } finally {
       _isPickerOpen = false;
+    }
+  }
+
+  Future<void> _openCustomProductForm(
+    BuildContext context, {
+    QuotationLineItem? initialItem,
+  }) async {
+    final newItem = await CustomProductForm.show(
+      context,
+      initialItem: initialItem,
+    );
+    if (!context.mounted || newItem == null) return;
+
+    if (initialItem == null) {
+      widget.onCustomItemAdded(newItem);
+    } else {
+      widget.onCustomItemUpdated(initialItem.id, newItem);
     }
   }
 
@@ -89,7 +111,7 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
                         ),
                         const SizedBox(width: 12),
                         TextButton.icon(
-                          onPressed: () {},
+                          onPressed: () => _openCustomProductForm(context),
                           icon: const Icon(Icons.add, size: 20),
                           label: const Text('Add Custom Item'),
                         ),
@@ -116,6 +138,10 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
                     onDiscountChanged: (disc) =>
                         widget.onDiscountChanged(item.id, disc),
                     onRemove: () => widget.onRemove(item.id),
+                    onEdit: item.isCustom
+                        ? () =>
+                              _openCustomProductForm(context, initialItem: item)
+                        : null,
                   );
                 },
               ),
@@ -141,7 +167,7 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _openCustomProductForm(context),
                     icon: const Icon(Icons.add_box_outlined, size: 20),
                     label: const Text('Add Custom Item'),
                     style: OutlinedButton.styleFrom(

@@ -6,6 +6,7 @@ import '../../../application/quotation_calculator.dart';
 class QuotationProductTile extends StatefulWidget {
   final QuotationLineItem item;
   final VoidCallback onRemove;
+  final VoidCallback? onEdit;
   final ValueChanged<int> onQuantityChanged;
   final ValueChanged<double> onUnitPriceChanged;
   final ValueChanged<double> onDiscountChanged;
@@ -14,6 +15,7 @@ class QuotationProductTile extends StatefulWidget {
     super.key,
     required this.item,
     required this.onRemove,
+    this.onEdit,
     required this.onQuantityChanged,
     required this.onUnitPriceChanged,
     required this.onDiscountChanged,
@@ -195,11 +197,32 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.black38, size: 20),
-                onPressed: widget.onRemove,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.onEdit != null)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.primaryBlue,
+                        size: 20,
+                      ),
+                      onPressed: widget.onEdit,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  if (widget.onEdit != null) const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.black38,
+                      size: 20,
+                    ),
+                    onPressed: widget.onRemove,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
               ),
             ],
           ),
@@ -446,9 +469,22 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.red),
-            onPressed: widget.onRemove,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.onEdit != null)
+                IconButton(
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.primaryBlue,
+                  ),
+                  onPressed: widget.onEdit,
+                ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.red),
+                onPressed: widget.onRemove,
+              ),
+            ],
           ),
         ],
       ),
@@ -464,12 +500,24 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
-      child: widget.item.imagePath != null
+      child: widget.item.imageBytes != null
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                widget.item.imageBytes!,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('Product image bytes failed: $error');
+                  return const SizedBox.shrink();
+                },
+              ),
+            )
+          : widget.item.imagePath != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 widget.item.imagePath!,
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   debugPrint(
                     'Product image failed: ${widget.item.imagePath} — $error',

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 class QuotationLineItem {
   final String id;
   final String? productId;
@@ -8,6 +10,7 @@ class QuotationLineItem {
   final int quantity;
   final double discount;
   final String? imagePath;
+  final Uint8List? imageBytes;
   final String? description;
   final bool isCustom;
 
@@ -21,6 +24,7 @@ class QuotationLineItem {
     required this.quantity,
     this.discount = 0.0,
     this.imagePath,
+    this.imageBytes,
     this.description,
     this.isCustom = false,
   });
@@ -35,6 +39,7 @@ class QuotationLineItem {
     int? quantity,
     double? discount,
     String? imagePath,
+    Uint8List? imageBytes,
     String? description,
     bool? isCustom,
   }) {
@@ -48,6 +53,7 @@ class QuotationLineItem {
       quantity: quantity ?? this.quantity,
       discount: discount ?? this.discount,
       imagePath: imagePath ?? this.imagePath,
+      imageBytes: imageBytes ?? this.imageBytes,
       description: description ?? this.description,
       isCustom: isCustom ?? this.isCustom,
     );

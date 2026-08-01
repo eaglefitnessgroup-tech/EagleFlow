@@ -151,6 +151,29 @@ class QuotationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addCustomItem(QuotationLineItem item) {
+    // Generate a unique ID if not provided, or just append the item
+    final String uniqueId = item.id.isNotEmpty
+        ? item.id
+        : '${DateTime.now().millisecondsSinceEpoch}_custom';
+
+    final newItem = item.copyWith(id: uniqueId, isCustom: true);
+
+    _quotation = _quotation.copyWith(
+      lineItems: [..._quotation.lineItems, newItem],
+    );
+    notifyListeners();
+  }
+
+  void updateCustomItem(String itemId, QuotationLineItem updatedItem) {
+    _updateLineItem(itemId, (existing) {
+      // Preserve imageBytes if the updated item does not specify a new one
+      // Wait, if the user explicitly removed the image, we need a way to clear it.
+      // We will assume the updatedItem has the exact intended state.
+      return updatedItem;
+    });
+  }
+
   void addProducts(List<Product> products, {int quantity = 1}) {
     if (products.isEmpty) return;
 
