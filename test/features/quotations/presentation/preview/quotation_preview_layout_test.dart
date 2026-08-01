@@ -44,6 +44,34 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
+
+      // Verify layout specifics
+
+      // Website
+      expect(find.text('eaglefitnessgroup.com'), findsOneWidget);
+
+      // Company Details
+      expect(find.textContaining('982901'), findsOneWidget);
+      expect(
+        find.textContaining('MAX EAGLE FITNESS SPORT EQUIPMENT TRADING LLC'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('SH03, INDUSTRIAL AREA 18'), findsOneWidget);
+      expect(find.textContaining('+971 56 507 7088'), findsOneWidget);
+      expect(find.textContaining('100456705100003'), findsOneWidget);
+
+      // Customer Info labels
+      expect(find.text('QUOTATION TO'), findsOneWidget);
+      expect(find.text('John Doe'), findsOneWidget);
+      expect(find.text('Dubai Marina'), findsOneWidget);
+      expect(find.text('123-456-7890'), findsOneWidget);
+
+      // Document Info
+      expect(
+        find.text('QUOTATION'),
+        findsNothing,
+      ); // Removed from bottom right block
+
       addTearDown(tester.view.resetPhysicalSize);
     });
 

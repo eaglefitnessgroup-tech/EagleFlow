@@ -322,16 +322,15 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                       child: Image.asset(
                         product.imagePath!,
                         fit: BoxFit.cover,
-                        errorBuilder: (ctx, err, stack) => const Icon(
-                          Icons.inventory_2_outlined,
-                          color: AppColors.mutedText,
-                        ),
+                        errorBuilder: (ctx, error, stackTrace) {
+                          debugPrint(
+                            'Product image failed: ${product.imagePath} — $error',
+                          );
+                          return const SizedBox.shrink();
+                        },
                       ),
                     )
-                  : const Icon(
-                      Icons.image_outlined,
-                      color: AppColors.mutedText,
-                    ),
+                  : const SizedBox.shrink(),
             ),
             const SizedBox(width: 16),
             // Details

@@ -17,9 +17,9 @@ class QuotationCoverSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const QuotationDocumentHeader(rightTitle: 'QUOTATION'),
+        const QuotationDocumentHeader(),
 
-        // QUOTATION & COMPANY INFO
+        // COMPANY DETAILS
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -28,143 +28,147 @@ class QuotationCoverSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'TL Name:',
-                    style: QuotationDocumentTheme.smallBold.copyWith(
-                      color: QuotationDocumentTheme.gold,
-                    ),
+                  _buildCompanyRow('LICENSE NO', profile.licenseNumber),
+                  _buildCompanyRow('LICENSE NAME', profile.legalName),
+                  _buildCompanyRow(
+                    'ADDRESS',
+                    '${profile.addressLine1}\n${profile.addressLine2}',
+                    maxLines: 2,
                   ),
-                  Text(profile.name, style: QuotationDocumentTheme.body),
-                  const SizedBox(height: 4),
-
-                  Text(
-                    'TL / License No.:',
-                    style: QuotationDocumentTheme.smallBold.copyWith(
-                      color: QuotationDocumentTheme.gold,
-                    ),
-                  ),
-                  Text(profile.licenseNo, style: QuotationDocumentTheme.body),
-                  const SizedBox(height: 4),
-
-                  Text(
-                    'TRN:',
-                    style: QuotationDocumentTheme.smallBold.copyWith(
-                      color: QuotationDocumentTheme.gold,
-                    ),
-                  ),
-                  Text(profile.trn, style: QuotationDocumentTheme.body),
-                  const SizedBox(height: 4),
-
-                  Text(
-                    'Address:',
-                    style: QuotationDocumentTheme.smallBold.copyWith(
-                      color: QuotationDocumentTheme.gold,
-                    ),
-                  ),
-                  Text(
-                    profile.address,
-                    style: QuotationDocumentTheme.body,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-
-                  Text(
-                    'Email:',
-                    style: QuotationDocumentTheme.smallBold.copyWith(
-                      color: QuotationDocumentTheme.gold,
-                    ),
-                  ),
-                  Text(profile.email, style: QuotationDocumentTheme.body),
-                  const SizedBox(height: 4),
-
-                  Text(
-                    'Telephone:',
-                    style: QuotationDocumentTheme.smallBold.copyWith(
-                      color: QuotationDocumentTheme.gold,
-                    ),
-                  ),
-                  Text(profile.mobile, style: QuotationDocumentTheme.body),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'DOCUMENT INFO',
-                    style: QuotationDocumentTheme.smallBold.copyWith(
-                      color: QuotationDocumentTheme.gold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Date: ${QuotationDocumentFormatters.formatDate(quotation.createdDate)}',
-                    style: QuotationDocumentTheme.body,
-                  ),
-                  Text(
-                    'Valid Until: ${QuotationDocumentFormatters.formatDate(quotation.validUntil)}',
-                    style: QuotationDocumentTheme.body,
-                  ),
-                  Text(
-                    'Ref No: ${quotation.quotationNumber.isNotEmpty ? quotation.quotationNumber : "—"}',
-                    style: QuotationDocumentTheme.body,
-                  ),
+                  _buildCompanyRow('MOBILE', profile.mobile),
+                  _buildCompanyRow('TELEPHONE', profile.telephone),
+                  _buildCompanyRow('TRN', profile.trn),
                 ],
               ),
             ),
           ],
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 32),
 
-        // CUSTOMER INFO
-        Text(
-          'PREPARED FOR',
-          style: QuotationDocumentTheme.smallBold.copyWith(
-            color: QuotationDocumentTheme.gold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          quotation.customerInfo.name.isNotEmpty
-              ? quotation.customerInfo.name
-              : '—',
-          style: QuotationDocumentTheme.h2,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Company: ${quotation.customerInfo.company.isNotEmpty ? quotation.customerInfo.company : "—"}',
-          style: QuotationDocumentTheme.body,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        Text(
-          'Contact: ${quotation.customerInfo.phone.isNotEmpty ? quotation.customerInfo.phone : "—"}',
-          style: QuotationDocumentTheme.body,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        Text(
-          'Email: ${quotation.customerInfo.email.isNotEmpty ? quotation.customerInfo.email : "—"}',
-          style: QuotationDocumentTheme.body,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        Text(
-          'Project / Location: ${quotation.customerInfo.projectLocation.isNotEmpty ? quotation.customerInfo.projectLocation : "—"}',
-          style: QuotationDocumentTheme.body,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+        // CUSTOMER & DOCUMENT INFO
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('QUOTATION TO', style: QuotationDocumentTheme.smallBold),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: 130,
+                    height: 1.5,
+                    color: QuotationDocumentTheme.navy,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCustomerRow(
+                    'CUSTOMER',
+                    quotation.customerInfo.name.isNotEmpty
+                        ? quotation.customerInfo.name
+                        : '—',
+                  ),
+                  _buildCustomerRow(
+                    'LOCATION',
+                    quotation.customerInfo.projectLocation.isNotEmpty
+                        ? quotation.customerInfo.projectLocation
+                        : '—',
+                  ),
+                  _buildCustomerRow(
+                    'CONTACT',
+                    quotation.customerInfo.phone.isNotEmpty
+                        ? quotation.customerInfo.phone
+                        : '—',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 32),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('', style: QuotationDocumentTheme.smallBold),
+                  const SizedBox(height: 4),
+                  const SizedBox(
+                    height: 1.5,
+                  ), // Matches the 1.5px container on the left
+                  const SizedBox(height: 8),
+                  _buildCustomerRow(
+                    'DATE',
+                    QuotationDocumentFormatters.formatDate(
+                      quotation.createdDate,
+                    ),
+                  ),
+                  _buildCustomerRow(
+                    'QT NO',
+                    quotation.quotationNumber.isNotEmpty
+                        ? quotation.quotationNumber
+                        : '—',
+                  ),
+                  _buildCustomerRow(
+                    'EXPIRED',
+                    QuotationDocumentFormatters.formatDate(
+                      quotation.validUntil,
+                    ),
+                  ),
+                  _buildCustomerRow('SALESMAN', '—'),
+                ],
+              ),
+            ),
+          ],
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
       ],
+    );
+  }
+
+  Widget _buildCompanyRow(String label, String value, {int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label, style: QuotationDocumentTheme.small),
+          ),
+          const Text(' : ', style: QuotationDocumentTheme.small),
+          Expanded(
+            child: Text(
+              value,
+              style: QuotationDocumentTheme.small,
+              maxLines: maxLines,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(label, style: QuotationDocumentTheme.small),
+          ),
+          const Text(' : ', style: QuotationDocumentTheme.small),
+          Expanded(
+            child: Text(
+              value,
+              style: QuotationDocumentTheme.smallBold,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

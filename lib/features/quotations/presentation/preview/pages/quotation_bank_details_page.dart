@@ -11,7 +11,7 @@ class QuotationBankDetailsPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const QuotationDocumentHeader(rightTitle: 'BANK DETAILS'),
+        const QuotationDocumentHeader(),
 
         Expanded(
           child: Column(
@@ -25,7 +25,7 @@ class QuotationBankDetailsPage extends StatelessWidget {
 
               _buildBankCard(
                 bankName: 'Mashreq Bank',
-                accountName: CompanyProfile.defaultProfile.name,
+                accountName: CompanyProfile.defaultProfile.legalName,
                 accountNumber: '014529018440',
                 iban: 'AE82 0330 0014 5290 1844 0',
                 swift: 'MASHAEAD',
@@ -35,7 +35,7 @@ class QuotationBankDetailsPage extends StatelessWidget {
 
               _buildBankCard(
                 bankName: 'FAB / First Abu Dhabi Bank',
-                accountName: CompanyProfile.defaultProfile.name,
+                accountName: CompanyProfile.defaultProfile.legalName,
                 accountNumber: '1103948839201',
                 iban: 'AE12 0240 0011 0394 8839 201',
                 swift: 'NBADAEAD',

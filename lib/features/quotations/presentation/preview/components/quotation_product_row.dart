@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../../app/theme/app_colors.dart';
+
 import '../../../application/quotation_calculator.dart';
 import '../../../domain/quotation_line_item.dart';
 import '../quotation_document_theme.dart';
@@ -50,12 +50,17 @@ class QuotationProductRow extends StatelessWidget {
                         item.imagePath!,
                         width: QuotationLayoutSpec.productImageSize,
                         height: QuotationLayoutSpec.productImageSize,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildPlaceholder(),
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.medium,
+                        errorBuilder: (_, error, stackTrace) {
+                          debugPrint(
+                            'Product image failed: ${item.imagePath} — $error',
+                          );
+                          return const SizedBox.shrink();
+                        },
                       ),
                     )
-                  : _buildPlaceholder(),
+                  : const SizedBox.shrink(),
             ),
           ),
 
@@ -118,23 +123,6 @@ class QuotationProductRow extends StatelessWidget {
             bold: true,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      width: QuotationLayoutSpec.productImageSize,
-      height: QuotationLayoutSpec.productImageSize,
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: const Icon(
-        Icons.image_not_supported,
-        size: 16,
-        color: AppColors.mutedText,
       ),
     );
   }

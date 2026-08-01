@@ -15,172 +15,142 @@ class QuotationCoverSectionMeasurer {
 
     double totalHeight = 0;
 
-    // 1. HEADER
-    // Logo is 48px height. Text is ~30px. Wrap will put them on one line (595 width is enough).
-    // Height of this row is determined by the logo.
-    totalHeight += 48.0;
-
-    // 2. DIVIDER
+    // 1. HEADER (QuotationDocumentHeader)
+    // Logo image is exactly 42px height.
+    // Row crossAxisAlignment is end.
+    totalHeight += 42.0; // Logo / title row
     totalHeight += 8.0; // SizedBox
     totalHeight += 1.0; // Divider
     totalHeight += 8.0; // SizedBox
 
-    // 3. QUOTATION & COMPANY INFO
-    // Two columns in a Wrap. Will fit on one line.
-    // Calculate Column 1 (Company Details)
-    final companyTitleHeight = _measureText(
-      'TL Name:',
-      QuotationDocumentTheme.smallBold,
-      contentWidth / 2,
+    // 2. COMPANY DETAILS
+    // Full width column of 6 rows
+    final double companyLabelWidth = 100.0;
+    final double companySeparatorWidth = _measureText(
+      ' : ',
+      QuotationDocumentTheme.small,
+      100,
     );
-    final nameHeight = _measureText(
-      profile.name,
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-    );
-    final licenseTitleHeight = _measureText(
-      'TL / License No.:',
-      QuotationDocumentTheme.smallBold,
-      contentWidth / 2,
-    );
-    final licenseHeight = _measureText(
-      profile.licenseNo,
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-    );
-    final trnTitleHeight = _measureText(
-      'TRN:',
-      QuotationDocumentTheme.smallBold,
-      contentWidth / 2,
-    );
-    final trnHeight = _measureText(
-      profile.trn,
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-    );
-    final addressTitleHeight = _measureText(
-      'Address:',
-      QuotationDocumentTheme.smallBold,
-      contentWidth / 2,
-    );
-    final addressHeight = _measureText(
-      profile.address,
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-      maxLines: 3,
-    );
-    final emailTitleHeight = _measureText(
-      'Email:',
-      QuotationDocumentTheme.smallBold,
-      contentWidth / 2,
-    );
-    final emailHeight = _measureText(
-      profile.email,
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-    );
-    final mobileTitleHeight = _measureText(
-      'Telephone:',
-      QuotationDocumentTheme.smallBold,
-      contentWidth / 2,
-    );
-    final mobileHeight = _measureText(
-      profile.mobile,
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-    );
+    final double companyValueWidth =
+        contentWidth - companyLabelWidth - companySeparatorWidth;
 
-    final col1Height =
-        companyTitleHeight +
-        nameHeight +
-        4.0 +
-        licenseTitleHeight +
-        licenseHeight +
-        4.0 +
-        trnTitleHeight +
-        trnHeight +
-        4.0 +
-        addressTitleHeight +
-        addressHeight +
-        4.0 +
-        emailTitleHeight +
-        emailHeight +
-        4.0 +
-        mobileTitleHeight +
-        mobileHeight;
+    totalHeight += _measureCompanyRow(profile.licenseNumber, companyValueWidth);
+    totalHeight += _measureCompanyRow(profile.legalName, companyValueWidth);
+    totalHeight += _measureCompanyRow(
+      '${profile.addressLine1}\n${profile.addressLine2}',
+      companyValueWidth,
+      maxLines: 2,
+    );
+    totalHeight += _measureCompanyRow(profile.mobile, companyValueWidth);
+    totalHeight += _measureCompanyRow(profile.telephone, companyValueWidth);
+    totalHeight += _measureCompanyRow(profile.trn, companyValueWidth);
 
-    // Calculate Column 2 (Document Info)
-    final docTitleHeight = _measureText(
-      'DOCUMENT INFO',
+    totalHeight += 32.0; // SizedBox
+
+    // 3. CUSTOMER & DOCUMENT INFO
+    // Two columns taking Expanded (half width each), with a 32px gap.
+    final double columnWidth = (contentWidth - 32.0) / 2.0;
+
+    // Calculate Left Column (Customer)
+    double leftHeight = 0;
+    leftHeight += _measureText(
+      'QUOTATION TO',
       QuotationDocumentTheme.smallBold,
-      contentWidth / 2,
+      columnWidth,
     );
-    final dateHeight = _measureText(
-      'Date: 01 Jan 2026',
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-    ); // Approximate text length
-    final validHeight = _measureText(
-      'Valid Until: 01 Jan 2026',
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-    );
-    final refHeight = _measureText(
-      'Ref No: ${quotation.quotationNumber.isNotEmpty ? quotation.quotationNumber : "—"}',
-      QuotationDocumentTheme.body,
-      contentWidth / 2,
-    );
-    final col2Height =
-        docTitleHeight + 8.0 + dateHeight + validHeight + refHeight;
+    leftHeight += 4.0; // SizedBox
+    leftHeight += 1.5; // Container height
+    leftHeight += 8.0; // SizedBox
 
-    totalHeight += math.max(col1Height, col2Height);
+    final double customerLabelWidth = 70.0;
+    final double customerSeparatorWidth = companySeparatorWidth;
+    final double customerValueWidth =
+        columnWidth - customerLabelWidth - customerSeparatorWidth;
 
-    totalHeight += 8.0; // SizedBox
-
-    // 4. CUSTOMER INFO
-    totalHeight += _measureText(
-      'PREPARED FOR',
-      QuotationDocumentTheme.smallBold,
-      contentWidth,
-    );
-    totalHeight += 8.0; // SizedBox
-    totalHeight += _measureText(
+    leftHeight += _measureCustomerRow(
       quotation.customerInfo.name.isNotEmpty
           ? quotation.customerInfo.name
           : '—',
-      QuotationDocumentTheme.h2,
-      contentWidth,
-      maxLines: 2,
+      customerValueWidth,
     );
-    totalHeight += 4.0; // SizedBox
-    totalHeight += _measureText(
-      'Company: ${quotation.customerInfo.company.isNotEmpty ? quotation.customerInfo.company : "—"}',
-      QuotationDocumentTheme.body,
-      contentWidth,
-      maxLines: 2,
+    leftHeight += _measureCustomerRow(
+      quotation.customerInfo.projectLocation.isNotEmpty
+          ? quotation.customerInfo.projectLocation
+          : '—',
+      customerValueWidth,
     );
-    totalHeight += _measureText(
-      'Contact: ${quotation.customerInfo.phone.isNotEmpty ? quotation.customerInfo.phone : "—"}',
-      QuotationDocumentTheme.body,
-      contentWidth,
-      maxLines: 1,
-    );
-    totalHeight += _measureText(
-      'Email: ${quotation.customerInfo.email.isNotEmpty ? quotation.customerInfo.email : "—"}',
-      QuotationDocumentTheme.body,
-      contentWidth,
-      maxLines: 1,
-    );
-    totalHeight += _measureText(
-      'Project / Location: ${quotation.customerInfo.projectLocation.isNotEmpty ? quotation.customerInfo.projectLocation : "—"}',
-      QuotationDocumentTheme.body,
-      contentWidth,
-      maxLines: 2,
+    leftHeight += _measureCustomerRow(
+      quotation.customerInfo.phone.isNotEmpty
+          ? quotation.customerInfo.phone
+          : '—',
+      customerValueWidth,
     );
 
-    totalHeight += 8.0; // SizedBox before products
+    // Calculate Right Column (Document)
+    double rightHeight = 0;
+
+    // Invisible spacer to match left column's title & line
+    rightHeight += _measureText(
+      '',
+      QuotationDocumentTheme.smallBold,
+      columnWidth,
+    );
+    rightHeight += 4.0; // SizedBox
+    rightHeight += 1.5; // Matches the 1.5px container on the left
+    rightHeight += 8.0; // SizedBox
+
+    rightHeight += _measureCustomerRow(
+      '01 Jan 2026',
+      customerValueWidth,
+    ); // Temp date string for height
+    rightHeight += _measureCustomerRow(
+      quotation.quotationNumber.isNotEmpty ? quotation.quotationNumber : '—',
+      customerValueWidth,
+    );
+    rightHeight += _measureCustomerRow(
+      '01 Jan 2026',
+      customerValueWidth,
+    ); // Temp date string
+    rightHeight += _measureCustomerRow('—', customerValueWidth); // Salesman
+
+    totalHeight += math.max(leftHeight, rightHeight);
+
+    totalHeight += 16.0; // SizedBox before products
 
     return totalHeight;
+  }
+
+  static double _measureCompanyRow(
+    String value,
+    double valueWidth, {
+    int maxLines = 1,
+  }) {
+    // The height of the row is dominated by the value text, plus 2.0 padding bottom.
+    // The label is always 1 line.
+    final valueHeight = _measureText(
+      value,
+      QuotationDocumentTheme.small,
+      valueWidth,
+      maxLines: maxLines,
+    );
+    final labelHeight = _measureText(
+      'LABEL',
+      QuotationDocumentTheme.small,
+      100,
+    );
+    return math.max(labelHeight, valueHeight) + 2.0;
+  }
+
+  static double _measureCustomerRow(String value, double valueWidth) {
+    // Value text style is smallBold, max 2 lines
+    final valueHeight = _measureText(
+      value,
+      QuotationDocumentTheme.smallBold,
+      valueWidth,
+      maxLines: 2,
+    );
+    final labelHeight = _measureText('LABEL', QuotationDocumentTheme.small, 70);
+    return math.max(labelHeight, valueHeight) + 2.0;
   }
 
   static double _measureText(

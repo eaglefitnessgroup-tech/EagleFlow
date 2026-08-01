@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../../core/models/company_profile.dart';
 import '../quotation_document_theme.dart';
 
 class QuotationDocumentHeader extends StatelessWidget {
-  final String rightTitle;
-
-  const QuotationDocumentHeader({super.key, required this.rightTitle});
+  const QuotationDocumentHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -20,43 +17,26 @@ class QuotationDocumentHeader extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Expanded(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SvgPicture.asset(
-                    'assets/logos/eagleflow_logo.svg',
-                    height: 48,
-                    placeholderBuilder: (context) => Text(
-                      profile.brandName,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: QuotationDocumentTheme.navy,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Flexible(
-                    child: Text(
-                      profile.brandName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: QuotationDocumentTheme.navy,
-                        letterSpacing: 1.0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+            Image.asset(
+              'assets/logos/logo_head_cropped.png',
+              width: 180,
+              height: 42,
+              fit: BoxFit.contain,
+              alignment: Alignment.centerLeft,
+              filterQuality: FilterQuality.high,
+              errorBuilder: (_, error, stackTrace) {
+                debugPrint('Header logo failed: $error');
+                return const SizedBox(width: 180, height: 42);
+              },
             ),
             const SizedBox(width: 16),
-            Text(rightTitle, style: QuotationDocumentTheme.h1),
+            Text(
+              profile.website,
+              style: QuotationDocumentTheme.small.copyWith(
+                color: QuotationDocumentTheme.textMuted,
+              ),
+              textAlign: TextAlign.right,
+            ),
           ],
         ),
         const SizedBox(height: 8),

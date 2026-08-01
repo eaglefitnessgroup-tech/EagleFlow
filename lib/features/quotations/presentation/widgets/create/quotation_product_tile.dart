@@ -470,18 +470,15 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
               child: Image.asset(
                 widget.item.imagePath!,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.inventory_2_outlined,
-                  color: AppColors.mutedText,
-                  size: 24,
-                ),
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint(
+                    'Product image failed: ${widget.item.imagePath} — $error',
+                  );
+                  return const SizedBox.shrink();
+                },
               ),
             )
-          : const Icon(
-              Icons.image_outlined,
-              color: AppColors.mutedText,
-              size: 24,
-            ),
+          : const SizedBox.shrink(),
     );
   }
 }

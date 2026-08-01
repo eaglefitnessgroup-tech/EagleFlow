@@ -10,7 +10,7 @@ class QuotationTermsPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const QuotationDocumentHeader(rightTitle: 'TERMS & CONDITIONS'),
+        const QuotationDocumentHeader(),
 
         Expanded(
           child: Column(
