@@ -24,7 +24,7 @@ class QuotationProductsPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (model.hasCover) QuotationCoverSection(quotation: quotation),
-        const QuotationProductTableHeader(),
+        if (model.items.isNotEmpty) const QuotationProductTableHeader(),
         ...model.items.asMap().entries.map((entry) {
           final itemIndex = startIndex + entry.key + 1;
           return QuotationProductRow(

@@ -42,35 +42,42 @@ class QuotationTotalsBlock extends StatelessWidget {
             ),
           _buildRow('VAT (${quotation.charges.vatPercentage}%)', vat),
           const SizedBox(height: 4),
-          const Divider(color: QuotationDocumentTheme.border, thickness: 1),
+          const Divider(
+            color: QuotationDocumentTheme.border,
+            thickness: 1,
+            height: 1,
+          ),
           const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                'Grand Total',
-                style: QuotationDocumentTheme.h3,
-                textAlign: TextAlign.right,
-              ),
-              const SizedBox(width: 16),
-              SizedBox(
-                width: 140,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    QuotationDocumentFormatters.formatCurrency(grandTotal),
-                    style: QuotationDocumentTheme.h2.copyWith(
-                      color: QuotationDocumentTheme.navy,
+          SizedBox(
+            height: 31,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  'Grand Total',
+                  style: QuotationDocumentTheme.h3,
+                  textAlign: TextAlign.right,
+                ),
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 140,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      QuotationDocumentFormatters.formatCurrency(grandTotal),
+                      style: QuotationDocumentTheme.h2.copyWith(
+                        color: QuotationDocumentTheme.navy,
+                      ),
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
                     ),
-                    textAlign: TextAlign.right,
-                    maxLines: 1,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -78,8 +85,8 @@ class QuotationTotalsBlock extends StatelessWidget {
   }
 
   Widget _buildRow(String label, double amount, {bool isDiscount = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
+    return SizedBox(
+      height: 20,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [

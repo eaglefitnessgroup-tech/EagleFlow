@@ -30,7 +30,7 @@ class QuotationProductRow extends StatelessWidget {
           bottom: BorderSide(color: QuotationDocumentTheme.border, width: 0.5),
         ),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -77,7 +77,7 @@ class QuotationProductRow extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     'Code: ${item.productCode ?? "—"} | Brand: ${item.brand.isNotEmpty ? item.brand : "—"}',
                     style: QuotationDocumentTheme.small,
@@ -86,11 +86,12 @@ class QuotationProductRow extends StatelessWidget {
                   ),
                   if (item.description != null && item.description!.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         item.description!,
                         style: QuotationDocumentTheme.small.copyWith(
                           color: QuotationDocumentTheme.textMain,
+                          height: 1.3,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

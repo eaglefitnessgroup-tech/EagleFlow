@@ -29,7 +29,8 @@ class QuotationPaginator {
     final double availablePageHeight =
         QuotationLayoutSpec.a4LogicalHeight -
         pageMarginTotal -
-        QuotationLayoutSpec.footerHeight;
+        QuotationLayoutSpec.footerHeight -
+        4.0; // Safety tolerance above footer
 
     // Calculate Product Column width to measure text wrapping
     final double contentWidth =
@@ -50,8 +51,8 @@ class QuotationPaginator {
     if (quotation.charges.installationCharges > 0) chargeRows++;
     if (quotation.charges.otherCharges > 0) chargeRows++;
     if (quotation.charges.overallDiscount > 0) chargeRows++;
-    // New tighter totals height: 24 padding + rows(20) + 9 divider + 40 grand total
-    final double totalsHeight = 24.0 + (chargeRows * 20.0) + 49.0;
+    // Explicit totals height: 24 padding + rows(20) + 40 bottom block (4+1+4+31)
+    final double totalsHeight = 24.0 + (chargeRows * 20.0) + 40.0;
 
     List<QuotationProductsPageModel> productPages = [];
     List<QuotationLineItem> currentChunk = [];
@@ -83,21 +84,35 @@ class QuotationPaginator {
         final TextPainter descPainter = TextPainter(
           text: TextSpan(
             text: item.description,
-            style: QuotationDocumentTheme.small,
+            style: QuotationDocumentTheme.small.copyWith(
+              color: QuotationDocumentTheme.textMain,
+              height: 1.3,
+            ),
           ),
           textDirection: TextDirection.ltr,
           maxLines: 2,
         )..layout(maxWidth: productTextWidth);
-        descHeight = 6.0 + descPainter.height;
+        descHeight = 2.0 + descPainter.height;
       }
 
       final double contentH =
-          namePainter.height + 4.0 + codeBrandPainter.height + descHeight;
-      // 12px vertical padding + 0.5px border
+          namePainter.height + 2.0 + codeBrandPainter.height + descHeight;
+      // 8px vertical padding + 0.5px border
       final double rowHeight =
-          math.max(QuotationLayoutSpec.productImageSize, contentH) + 12.5;
+          math.max(QuotationLayoutSpec.productImageSize, contentH) + 8.5;
 
-      if (currentHeight + rowHeight > availablePageHeight) {
+      final double remainingHeight = availablePageHeight - currentHeight;
+
+      bool forceNewPage = false;
+      if (isFirstPage && currentChunk.length >= 5) {
+        forceNewPage = true;
+      }
+
+      if (rowHeight <= remainingHeight + 0.1 && !forceNewPage) {
+        currentChunk.add(item);
+        currentChunkHeights.add(rowHeight);
+        currentHeight += rowHeight;
+      } else {
         productPages.add(
           QuotationProductsPageModel(
             items: List.from(currentChunk),
@@ -108,10 +123,6 @@ class QuotationPaginator {
         currentChunk = [item];
         currentChunkHeights = [rowHeight];
         currentHeight = headerHeight + rowHeight;
-      } else {
-        currentChunk.add(item);
-        currentChunkHeights.add(rowHeight);
-        currentHeight += rowHeight;
       }
     }
 
@@ -123,9 +134,10 @@ class QuotationPaginator {
       ),
     );
 
-    // Evaluate Totals placement on the final product page
-    if (currentHeight + totalsHeight <= availablePageHeight) {
-      // It fits on the current last page
+    final int totalProducts = quotation.lineItems.length;
+
+    if (totalProducts <= 4) {
+      // Case A: 1 to 4 products. Place totals immediately after the final product.
       final lastPage = productPages.removeLast();
       productPages.add(
         QuotationProductsPageModel(
@@ -137,58 +149,19 @@ class QuotationPaginator {
       );
       pages.addAll(productPages);
     } else {
-      // It does not fit. Try to create a new page by pulling rows from the end of the last page.
-      final lastPage = productPages.removeLast();
-      List<QuotationLineItem> newPageItems = [];
-      double newPageRowsHeight = 0;
-      bool resolved = false;
-
-      while (lastPage.items.isNotEmpty) {
-        final itemToMove = lastPage.items.removeLast();
-        final itemHeight = currentChunkHeights.removeLast();
-
-        newPageItems.insert(0, itemToMove);
-        newPageRowsHeight += itemHeight;
-
-        final double projectedNewPageHeight =
-            headerHeight + newPageRowsHeight + totalsHeight;
-
-        if (projectedNewPageHeight <= availablePageHeight) {
-          // We found a balance!
-          resolved = true;
-          break;
-        }
-      }
-
-      if (resolved) {
-        if (lastPage.items.isNotEmpty) {
-          productPages.add(lastPage);
-        }
-        productPages.add(
-          QuotationProductsPageModel(
-            items: newPageItems,
-            hasCover: false, // It's a new page
-            hasTotals: true,
-            isLastPage: true,
-          ),
-        );
-        pages.addAll(productPages);
-      } else {
-        // Fallback: Even one row + totals didn't fit, or we exhausted the page.
-        // Restore the original page.
-        lastPage.items.addAll(newPageItems);
+      // Case B: More than 4 products
+      if (productPages.length == 1) {
+        // All products (e.g. 5) fit on Page 1. Do not reserve totals space on Page 1.
+        final lastPage = productPages.removeLast();
         productPages.add(
           QuotationProductsPageModel(
             items: lastPage.items,
             hasCover: lastPage.hasCover,
             hasTotals: false,
-            isLastPage: true,
+            isLastPage: false,
           ),
         );
-        pages.addAll(productPages);
-
-        // Safe totals-only fallback
-        pages.add(
+        productPages.add(
           const QuotationProductsPageModel(
             items: [],
             hasCover: false,
@@ -196,6 +169,77 @@ class QuotationPaginator {
             isLastPage: true,
           ),
         );
+        pages.addAll(productPages);
+      } else {
+        // Multiple pages. Continue using the existing totals-balancing algorithm on the final product page.
+        if (currentHeight + totalsHeight <= availablePageHeight) {
+          final lastPage = productPages.removeLast();
+          productPages.add(
+            QuotationProductsPageModel(
+              items: lastPage.items,
+              hasCover: lastPage.hasCover,
+              hasTotals: true,
+              isLastPage: true,
+            ),
+          );
+          pages.addAll(productPages);
+        } else {
+          final lastPage = productPages.removeLast();
+          List<QuotationLineItem> newPageItems = [];
+          double newPageRowsHeight = 0;
+          bool resolved = false;
+
+          while (lastPage.items.isNotEmpty) {
+            final itemToMove = lastPage.items.removeLast();
+            final itemHeight = currentChunkHeights.removeLast();
+
+            newPageItems.insert(0, itemToMove);
+            newPageRowsHeight += itemHeight;
+
+            final double projectedNewPageHeight =
+                headerHeight + newPageRowsHeight + totalsHeight;
+
+            if (projectedNewPageHeight <= availablePageHeight) {
+              resolved = true;
+              break;
+            }
+          }
+
+          if (resolved) {
+            if (lastPage.items.isNotEmpty) {
+              productPages.add(lastPage);
+            }
+            productPages.add(
+              QuotationProductsPageModel(
+                items: newPageItems,
+                hasCover: false,
+                hasTotals: true,
+                isLastPage: true,
+              ),
+            );
+            pages.addAll(productPages);
+          } else {
+            lastPage.items.addAll(newPageItems);
+            productPages.add(
+              QuotationProductsPageModel(
+                items: lastPage.items,
+                hasCover: lastPage.hasCover,
+                hasTotals: false,
+                isLastPage: true,
+              ),
+            );
+            pages.addAll(productPages);
+
+            pages.add(
+              const QuotationProductsPageModel(
+                items: [],
+                hasCover: false,
+                hasTotals: true,
+                isLastPage: true,
+              ),
+            );
+          }
+        }
       }
     }
 

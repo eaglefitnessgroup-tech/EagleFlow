@@ -102,11 +102,11 @@ void main() {
       expect(page.items.length, 1);
     });
 
-    testWidgets('5 standard products produce predictable pagination', (
+    testWidgets('3 standard products + totals fit on Page 1', (
       WidgetTester tester,
     ) async {
       final List<QuotationLineItem> items = List.generate(
-        5,
+        3,
         (i) => QuotationLineItem(
           id: 'id_$i',
           productId: 'p_$i',
@@ -118,21 +118,150 @@ void main() {
       );
       final quotation = filledQuotation.copyWith(lineItems: items);
       final pages = QuotationPaginator.paginate(quotation);
-      expect(pages[pages.length - 1], isA<QuotationInfoPageModel>());
 
-      final docPages = pages.take(pages.length - 1).toList();
-
-      expect(docPages.length, lessThanOrEqualTo(2));
-
-      final allItems = docPages
+      final productPages = pages
           .whereType<QuotationProductsPageModel>()
-          .expand((p) => p.items)
           .toList();
-      expect(allItems.length, 5);
+      expect(productPages.length, 1);
+      expect(productPages.first.items.length, 3);
+      expect(productPages.first.hasTotals, isTrue);
+    });
 
-      if (docPages.length == 2) {
-        expect((docPages[1] as QuotationProductsPageModel).hasTotals, isTrue);
-      }
+    testWidgets('4 standard products + totals fit on Page 1', (
+      WidgetTester tester,
+    ) async {
+      final List<QuotationLineItem> items = List.generate(
+        4,
+        (i) => QuotationLineItem(
+          id: 'id_$i',
+          productId: 'p_$i',
+          name: 'Item $i',
+          brand: 'Generic',
+          quantity: 1,
+          unitPrice: 100,
+        ),
+      );
+      final quotation = filledQuotation.copyWith(lineItems: items);
+      final pages = QuotationPaginator.paginate(quotation);
+
+      final productPages = pages
+          .whereType<QuotationProductsPageModel>()
+          .toList();
+      expect(productPages.length, 1);
+      expect(productPages.first.items.length, 4);
+      expect(productPages.first.hasTotals, isTrue);
+    });
+
+    testWidgets(
+      '5 products: Page 1 contains 5 products, totals move to Page 2',
+      (WidgetTester tester) async {
+        final List<QuotationLineItem> items = List.generate(
+          5,
+          (i) => QuotationLineItem(
+            id: 'id_$i',
+            productId: 'p_$i',
+            name: 'Item $i',
+            brand: 'Generic',
+            quantity: 1,
+            unitPrice: 100,
+          ),
+        );
+        final quotation = filledQuotation.copyWith(lineItems: items);
+        final pages = QuotationPaginator.paginate(quotation);
+
+        final productPages = pages
+            .whereType<QuotationProductsPageModel>()
+            .toList();
+        expect(productPages.length, 2);
+        expect(productPages[0].items.length, 5);
+        expect(productPages[0].hasTotals, isFalse);
+        expect(productPages[1].items.length, 0);
+        expect(productPages[1].hasTotals, isTrue);
+      },
+    );
+
+    testWidgets(
+      '6 products: Page 1 contains 5 products, Page 2 contains product 6 + totals',
+      (WidgetTester tester) async {
+        final List<QuotationLineItem> items = List.generate(
+          6,
+          (i) => QuotationLineItem(
+            id: 'id_$i',
+            productId: 'p_$i',
+            name: 'Item $i',
+            brand: 'Generic',
+            quantity: 1,
+            unitPrice: 100,
+          ),
+        );
+        final quotation = filledQuotation.copyWith(lineItems: items);
+        final pages = QuotationPaginator.paginate(quotation);
+
+        final productPages = pages
+            .whereType<QuotationProductsPageModel>()
+            .toList();
+        expect(productPages.length, 2);
+        expect(productPages[0].items.length, 5);
+        expect(productPages[0].hasTotals, isFalse);
+        expect(productPages[1].items.length, 1);
+        expect(productPages[1].hasTotals, isTrue);
+      },
+    );
+
+    testWidgets(
+      '9 products: Page 1 contains 5 products, Page 2 contains 4 products + totals',
+      (WidgetTester tester) async {
+        final List<QuotationLineItem> items = List.generate(
+          9,
+          (i) => QuotationLineItem(
+            id: 'id_$i',
+            productId: 'p_$i',
+            name: 'Item $i',
+            brand: 'Generic',
+            quantity: 1,
+            unitPrice: 100,
+          ),
+        );
+        final quotation = filledQuotation.copyWith(lineItems: items);
+        final pages = QuotationPaginator.paginate(quotation);
+
+        final productPages = pages
+            .whereType<QuotationProductsPageModel>()
+            .toList();
+        expect(productPages.length, 2);
+        expect(productPages[0].items.length, 5);
+        expect(productPages[0].hasTotals, isFalse);
+        expect(productPages[1].items.length, 4);
+        expect(productPages[1].hasTotals, isTrue);
+      },
+    );
+
+    testWidgets('Products with two-line titles/descriptions pack correctly', (
+      WidgetTester tester,
+    ) async {
+      final List<QuotationLineItem> items = List.generate(
+        3, // 3 tall items should still fit comfortably on one page
+        (i) => QuotationLineItem(
+          id: 'id_$i',
+          productId: 'p_$i',
+          name:
+              'Very long product name that will wrap to two lines easily because it is quite long',
+          brand: 'Generic',
+          description:
+              'A similarly long description that will also naturally wrap to two lines',
+          quantity: 1,
+          unitPrice: 100,
+        ),
+      );
+      final quotation = filledQuotation.copyWith(lineItems: items);
+      final pages = QuotationPaginator.paginate(quotation);
+
+      final productPages = pages
+          .whereType<QuotationProductsPageModel>()
+          .toList();
+      expect(productPages.length, 1);
+      expect(productPages.first.items.length, 3);
+      expect(productPages.first.hasTotals, isTrue);
     });
 
     testWidgets('12 products produce predictable pagination', (
