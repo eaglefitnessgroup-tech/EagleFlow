@@ -27,7 +27,9 @@ class QuotationPaginator {
     // A4 Logical Height Constraints
     final double pageMarginTotal = QuotationLayoutSpec.pageMargin.vertical;
     final double availablePageHeight =
-        QuotationLayoutSpec.a4LogicalHeight - pageMarginTotal;
+        QuotationLayoutSpec.a4LogicalHeight -
+        pageMarginTotal -
+        QuotationLayoutSpec.footerHeight;
 
     // Calculate Product Column width to measure text wrapping
     final double contentWidth =
@@ -121,83 +123,9 @@ class QuotationPaginator {
       ),
     );
 
-    // Orphan Balancing: Evaluate the last two pages
-    if (productPages.length > 1) {
-      final lastPage = productPages.last;
-      final previousPage = productPages[productPages.length - 2];
-
-      if (lastPage.items.length == 1 && previousPage.items.length > 1) {
-        // Can we safely move the last item of previousPage to lastPage?
-        // Let's recalculate the new height of lastPage if we do this.
-        // To be safe, we must use the actual row height of the item we're moving.
-        // Unfortunately we didn't store previousPage's row heights cleanly per page.
-        // Let's just recalculate it for the candidate item.
-        final candidateItem = previousPage.items.last;
-        final TextPainter namePainter = TextPainter(
-          text: TextSpan(
-            text: candidateItem.name,
-            style: QuotationDocumentTheme.bodyBold,
-          ),
-          textDirection: TextDirection.ltr,
-          maxLines: 2,
-        )..layout(maxWidth: productTextWidth);
-        final TextPainter codeBrandPainter = TextPainter(
-          text: TextSpan(
-            text:
-                'Code: ${candidateItem.productCode ?? "—"} | Brand: ${candidateItem.brand.isNotEmpty ? candidateItem.brand : "—"}',
-            style: QuotationDocumentTheme.small,
-          ),
-          textDirection: TextDirection.ltr,
-          maxLines: 1,
-        )..layout(maxWidth: productTextWidth);
-        double descHeight = 0;
-        if (candidateItem.description != null &&
-            candidateItem.description!.isNotEmpty) {
-          final TextPainter descPainter = TextPainter(
-            text: TextSpan(
-              text: candidateItem.description,
-              style: QuotationDocumentTheme.small,
-            ),
-            textDirection: TextDirection.ltr,
-            maxLines: 2,
-          )..layout(maxWidth: productTextWidth);
-          descHeight = 6.0 + descPainter.height;
-        }
-        final double candidateContentH =
-            namePainter.height + 4.0 + codeBrandPainter.height + descHeight;
-        final double candidateRowHeight =
-            math.max(QuotationLayoutSpec.productImageSize, candidateContentH) +
-            12.5;
-
-        // Is there room for it on the last page?
-        // Last page only has header + 1 row currently.
-        final double currentLastPageHeight =
-            headerHeight + currentChunkHeights.first;
-        final double projectedLastPageHeight =
-            currentLastPageHeight + candidateRowHeight;
-
-        // Also check if moving it would push the totals block off the page (if it currently fits)
-        bool willPushTotals = false;
-        bool totalsCurrentlyFit =
-            (currentLastPageHeight + totalsHeight <= availablePageHeight);
-        if (totalsCurrentlyFit &&
-            projectedLastPageHeight + totalsHeight > availablePageHeight) {
-          willPushTotals = true;
-        }
-
-        // We only move if it strictly fits without overflowing, and doesn't push totals unnecessarily
-        if (projectedLastPageHeight <= availablePageHeight && !willPushTotals) {
-          // It's safe! Apply the rebalance.
-          previousPage.items.removeLast();
-          lastPage.items.insert(0, candidateItem);
-          currentHeight = projectedLastPageHeight;
-        }
-      }
-    }
-
     // Evaluate Totals placement on the final product page
     if (currentHeight + totalsHeight <= availablePageHeight) {
-      // Replace last page with one that has totals
+      // It fits on the current last page
       final lastPage = productPages.removeLast();
       productPages.add(
         QuotationProductsPageModel(
@@ -209,21 +137,69 @@ class QuotationPaginator {
       );
       pages.addAll(productPages);
     } else {
-      // Replace last page to mark it as last product page (but no totals)
+      // It does not fit. Try to create a new page by pulling rows from the end of the last page.
       final lastPage = productPages.removeLast();
-      productPages.add(
-        QuotationProductsPageModel(
-          items: lastPage.items,
-          hasCover: lastPage.hasCover,
-          isLastPage: true,
-        ),
-      );
-      pages.addAll(productPages);
-      pages.add(const QuotationTotalsPageModel());
+      List<QuotationLineItem> newPageItems = [];
+      double newPageRowsHeight = 0;
+      bool resolved = false;
+
+      while (lastPage.items.isNotEmpty) {
+        final itemToMove = lastPage.items.removeLast();
+        final itemHeight = currentChunkHeights.removeLast();
+
+        newPageItems.insert(0, itemToMove);
+        newPageRowsHeight += itemHeight;
+
+        final double projectedNewPageHeight =
+            headerHeight + newPageRowsHeight + totalsHeight;
+
+        if (projectedNewPageHeight <= availablePageHeight) {
+          // We found a balance!
+          resolved = true;
+          break;
+        }
+      }
+
+      if (resolved) {
+        if (lastPage.items.isNotEmpty) {
+          productPages.add(lastPage);
+        }
+        productPages.add(
+          QuotationProductsPageModel(
+            items: newPageItems,
+            hasCover: false, // It's a new page
+            hasTotals: true,
+            isLastPage: true,
+          ),
+        );
+        pages.addAll(productPages);
+      } else {
+        // Fallback: Even one row + totals didn't fit, or we exhausted the page.
+        // Restore the original page.
+        lastPage.items.addAll(newPageItems);
+        productPages.add(
+          QuotationProductsPageModel(
+            items: lastPage.items,
+            hasCover: lastPage.hasCover,
+            hasTotals: false,
+            isLastPage: true,
+          ),
+        );
+        pages.addAll(productPages);
+
+        // Safe totals-only fallback
+        pages.add(
+          const QuotationProductsPageModel(
+            items: [],
+            hasCover: false,
+            hasTotals: true,
+            isLastPage: true,
+          ),
+        );
+      }
     }
 
-    pages.add(const QuotationTermsPageModel());
-    pages.add(const QuotationBankDetailsPageModel());
+    pages.add(const QuotationInfoPageModel());
     return pages;
   }
 }

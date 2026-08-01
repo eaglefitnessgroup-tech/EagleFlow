@@ -6,9 +6,7 @@ import 'preview/utils/quotation_paginator.dart';
 import 'preview/components/quotation_a4_page.dart';
 
 import 'preview/pages/quotation_products_page.dart';
-import 'preview/pages/quotation_totals_page.dart';
-import 'preview/pages/quotation_terms_page.dart';
-import 'preview/pages/quotation_bank_details_page.dart';
+import 'preview/pages/quotation_info_page.dart';
 
 class QuotationPreviewScreen extends StatefulWidget {
   const QuotationPreviewScreen({super.key});
@@ -63,12 +61,8 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         model: pageModel,
         startIndex: startIndex,
       );
-    } else if (pageModel is QuotationTotalsPageModel) {
-      return QuotationTotalsPage(quotation: _controller.quotation);
-    } else if (pageModel is QuotationTermsPageModel) {
-      return const QuotationTermsPage();
-    } else if (pageModel is QuotationBankDetailsPageModel) {
-      return const QuotationBankDetailsPage();
+    } else if (pageModel is QuotationInfoPageModel) {
+      return const QuotationInfoPage();
     }
     return const SizedBox.shrink();
   }

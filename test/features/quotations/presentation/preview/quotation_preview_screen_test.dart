@@ -25,7 +25,7 @@ void main() {
       final quotation = baseQuotation.copyWith(lineItems: [item]);
 
       final pages = QuotationPaginator.paginate(quotation);
-      expect(pages.length, 3);
+      expect(pages.length, 2);
       expect(pages[0] is QuotationProductsPageModel, true);
 
       final firstPage = pages[0] as QuotationProductsPageModel;
@@ -57,7 +57,6 @@ void main() {
       expect(productPages.isNotEmpty, true);
       expect(productPages.first.hasCover, true);
 
-      // Verify that subsequent product pages do NOT have cover
       for (int i = 1; i < productPages.length; i++) {
         expect(productPages[i].hasCover, false);
       }

@@ -44,4 +44,5 @@ class QuotationLayoutSpec {
   // Pagination reserves (Top/Bottom safe areas)
   static const double pageReserveTop = 40.0;
   static const double pageReserveBottom = 24.0;
+  static const double footerHeight = 28.0;
 }

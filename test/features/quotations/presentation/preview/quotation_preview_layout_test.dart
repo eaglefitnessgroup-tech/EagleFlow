@@ -91,11 +91,10 @@ void main() {
         ],
       );
       final pages = QuotationPaginator.paginate(quotation);
-      expect(pages.length, 3);
-      expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
-      expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+      expect(pages.length, 2);
+      expect(pages[pages.length - 1], isA<QuotationInfoPageModel>());
 
-      final docPages = pages.take(pages.length - 2).toList();
+      final docPages = pages.take(pages.length - 1).toList();
       expect(docPages.length, 1);
       final page = docPages[0] as QuotationProductsPageModel;
       expect(page.hasCover, isTrue);
@@ -119,10 +118,9 @@ void main() {
       );
       final quotation = filledQuotation.copyWith(lineItems: items);
       final pages = QuotationPaginator.paginate(quotation);
-      expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
-      expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+      expect(pages[pages.length - 1], isA<QuotationInfoPageModel>());
 
-      final docPages = pages.take(pages.length - 2).toList();
+      final docPages = pages.take(pages.length - 1).toList();
 
       expect(docPages.length, lessThanOrEqualTo(2));
 
@@ -133,11 +131,7 @@ void main() {
       expect(allItems.length, 5);
 
       if (docPages.length == 2) {
-        if (docPages[1] is QuotationProductsPageModel) {
-          expect((docPages[1] as QuotationProductsPageModel).hasTotals, isTrue);
-        } else {
-          expect(docPages[1], isA<QuotationTotalsPageModel>());
-        }
+        expect((docPages[1] as QuotationProductsPageModel).hasTotals, isTrue);
       }
     });
 
@@ -157,10 +151,9 @@ void main() {
       );
       final quotation = filledQuotation.copyWith(lineItems: items);
       final pages = QuotationPaginator.paginate(quotation);
-      expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
-      expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+      expect(pages[pages.length - 1], isA<QuotationInfoPageModel>());
 
-      final docPages = pages.take(pages.length - 2).toList();
+      final docPages = pages.take(pages.length - 1).toList();
 
       final productPages = docPages
           .whereType<QuotationProductsPageModel>()
@@ -192,10 +185,9 @@ void main() {
         );
         final quotation = filledQuotation.copyWith(lineItems: items);
         final pages = QuotationPaginator.paginate(quotation);
-        expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
-        expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+        expect(pages[pages.length - 1], isA<QuotationInfoPageModel>());
 
-        final docPages = pages.take(pages.length - 2).toList();
+        final docPages = pages.take(pages.length - 1).toList();
 
         final productPages = docPages
             .whereType<QuotationProductsPageModel>()
@@ -229,10 +221,9 @@ void main() {
           lineItems: items.take(count).toList(),
         );
         final pages = QuotationPaginator.paginate(quotation);
-        expect(pages[pages.length - 2], isA<QuotationTermsPageModel>());
-        expect(pages[pages.length - 1], isA<QuotationBankDetailsPageModel>());
+        expect(pages[pages.length - 1], isA<QuotationInfoPageModel>());
 
-        final docPages = pages.take(pages.length - 2).toList();
+        final docPages = pages.take(pages.length - 1).toList();
 
         final productPages = docPages
             .whereType<QuotationProductsPageModel>()

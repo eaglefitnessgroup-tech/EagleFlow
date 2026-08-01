@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../quotation_layout_spec.dart';
 import '../quotation_document_theme.dart';
+import 'quotation_document_footer.dart';
 
 class QuotationA4Page extends StatelessWidget {
   final Widget child;
@@ -25,7 +26,15 @@ class QuotationA4Page extends StatelessWidget {
         ),
         // The clip prevents any child content from spilling outside the page
         clipBehavior: Clip.hardEdge,
-        child: Padding(padding: QuotationLayoutSpec.pageMargin, child: child),
+        child: Padding(
+          padding: QuotationLayoutSpec.pageMargin,
+          child: Column(
+            children: [
+              Expanded(child: child),
+              const QuotationDocumentFooter(),
+            ],
+          ),
+        ),
       ),
     );
   }

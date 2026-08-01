@@ -18,14 +18,6 @@ class QuotationProductsPageModel extends QuotationPreviewPage {
   });
 }
 
-class QuotationTotalsPageModel extends QuotationPreviewPage {
-  const QuotationTotalsPageModel();
-}
-
-class QuotationTermsPageModel extends QuotationPreviewPage {
-  const QuotationTermsPageModel();
-}
-
-class QuotationBankDetailsPageModel extends QuotationPreviewPage {
-  const QuotationBankDetailsPageModel();
+class QuotationInfoPageModel extends QuotationPreviewPage {
+  const QuotationInfoPageModel();
 }
