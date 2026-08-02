@@ -336,21 +336,41 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
 
-        final titleContent = Column(
+        final titleContent = Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Previous Quotations',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.charcoal,
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppColors.charcoal),
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.pushReplacementNamed(context, '/dashboard');
+                  }
+                },
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'View, manage and reuse saved quotations',
-              style: TextStyle(color: AppColors.mutedText),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Previous Quotations',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'View, manage and reuse saved quotations',
+                    style: TextStyle(color: AppColors.mutedText),
+                  ),
+                ],
+              ),
             ),
           ],
         );

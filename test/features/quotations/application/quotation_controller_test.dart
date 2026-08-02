@@ -56,25 +56,29 @@ void main() {
     });
 
     group('Product Integration', () {
-      final p1 = const Product(
+      final p1 = Product(
         id: 'p_1',
         name: 'Product 1',
         brand: 'Brand A',
         productCode: 'c_1',
         category: 'cat',
         sellingPrice: 100.0,
-        stockQuantity: 10,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        openingStock: 10,
         description: 'desc 1',
       );
 
-      final p2 = const Product(
+      final p2 = Product(
         id: 'p_2',
         name: 'Product 2',
         brand: 'Brand B',
         productCode: 'c_2',
         category: 'cat',
         sellingPrice: 200.0,
-        stockQuantity: 5,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        openingStock: 5,
         description: 'desc 2',
       );
 

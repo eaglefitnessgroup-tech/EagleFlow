@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/widgets/eagle_bottom_nav.dart';
 import '../domain/product.dart';
-import '../data/sample_products.dart';
+import '../../../../core/di/service_locator.dart';
+import '../application/product_master_controller.dart';
 import 'widgets/product_search_field.dart';
 import 'widgets/product_category_chips.dart';
 import 'widgets/product_filter_row.dart';
 import 'widgets/product_card.dart';
-import 'widgets/add_custom_item_sheet.dart';
+import 'add_edit_product_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -30,9 +31,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final namePrefix = n.startsWith(q);
     final namePartial = n.contains(q) && !namePrefix;
 
-    final inStock = p.stockQuantity > 5;
-    final lowStock = p.stockQuantity > 0 && p.stockQuantity <= 5;
-    final outOfStock = p.stockQuantity <= 0;
+    final inStock = p.openingStock > 5;
+    final lowStock =
+        p.openingStock > 0 &&
+        p.openingStock <= (p.minStockLevel > 0 ? p.minStockLevel : 5);
+    final outOfStock = p.openingStock <= 0;
 
     if (namePrefix || namePartial) {
       if (outOfStock) return 5;
@@ -54,19 +57,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return 99;
   }
 
-  List<Product> get _filteredProducts {
-    var list = sampleProducts.where((product) {
+  List<Product> _getFilteredProducts(ProductMasterController controller) {
+    var list = controller.products.where((product) {
       // Category filter
       if (_selectedCategory != 'All' && product.category != _selectedCategory) {
         return false;
       }
 
       // Stock filters
-      if (_inStockOnly && product.stockQuantity <= 0) {
+      if (_inStockOnly && product.openingStock <= 0) {
         return false;
       }
       if (_lowStockOnly &&
-          (product.stockQuantity <= 0 || product.stockQuantity > 5)) {
+          (product.openingStock <= 0 ||
+              product.openingStock >
+                  (product.minStockLevel > 0 ? product.minStockLevel : 5))) {
         return false;
       }
 
@@ -97,83 +102,90 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredProducts = _filteredProducts;
+    final controller = ServiceLocator().productMasterController;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      bottomNavigationBar: const EagleBottomNav(currentIndex: 1),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.all(20.0),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      _buildHeader(),
-                      const SizedBox(height: 24),
-                      ProductSearchField(
-                        onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val.trim().toLowerCase();
-                          });
-                        },
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final filteredProducts = _getFilteredProducts(controller);
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          bottomNavigationBar: const EagleBottomNav(currentIndex: 1),
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.all(20.0),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          _buildHeader(),
+                          const SizedBox(height: 24),
+                          ProductSearchField(
+                            onChanged: (val) {
+                              setState(() {
+                                _searchQuery = val.trim().toLowerCase();
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          ProductCategoryChips(
+                            selectedCategory: _selectedCategory,
+                            onCategorySelected: (category) {
+                              setState(() {
+                                _selectedCategory = category;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          ProductFilterRow(
+                            inStockOnly: _inStockOnly,
+                            lowStockOnly: _lowStockOnly,
+                            onInStockToggled: (val) {
+                              setState(() {
+                                _inStockOnly = val;
+                                if (val) _lowStockOnly = false;
+                              });
+                            },
+                            onLowStockToggled: (val) {
+                              setState(() {
+                                _lowStockOnly = val;
+                                if (val) _inStockOnly = false;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          _buildListHeader(filteredProducts.length),
+                          const SizedBox(height: 16),
+                        ]),
                       ),
-                      const SizedBox(height: 20),
-                      ProductCategoryChips(
-                        selectedCategory: _selectedCategory,
-                        onCategorySelected: (category) {
-                          setState(() {
-                            _selectedCategory = category;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      ProductFilterRow(
-                        inStockOnly: _inStockOnly,
-                        lowStockOnly: _lowStockOnly,
-                        onInStockToggled: (val) {
-                          setState(() {
-                            _inStockOnly = val;
-                            if (val) _lowStockOnly = false;
-                          });
-                        },
-                        onLowStockToggled: (val) {
-                          setState(() {
-                            _lowStockOnly = val;
-                            if (val) _inStockOnly = false;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      _buildListHeader(filteredProducts.length),
-                      const SizedBox(height: 16),
-                    ]),
-                  ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      sliver: filteredProducts.isEmpty
+                          ? SliverToBoxAdapter(child: _buildEmptyState())
+                          : SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                return ProductCard(
+                                  product: filteredProducts[index],
+                                );
+                              }, childCount: filteredProducts.length),
+                            ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  ],
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  sliver: filteredProducts.isEmpty
-                      ? SliverToBoxAdapter(child: _buildEmptyState())
-                      : SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            return ProductCard(
-                              product: filteredProducts[index],
-                            );
-                          }, childCount: filteredProducts.length),
-                        ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -215,11 +227,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
         ),
         TextButton(
           onPressed: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (ctx) => const AddCustomItemSheet(),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (ctx) => const AddEditProductScreen()),
             );
           },
           style: TextButton.styleFrom(
@@ -230,7 +240,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               fontSize: 13,
             ),
           ),
-          child: const Text('+ Custom Item'),
+          child: const Text('+ Add Product'),
         ),
       ],
     );

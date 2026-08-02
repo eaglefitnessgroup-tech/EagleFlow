@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'app/app.dart';
 
-void main() {
+import 'core/di/service_locator.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ServiceLocator().init();
   runApp(const EagleFlowApp());
 }

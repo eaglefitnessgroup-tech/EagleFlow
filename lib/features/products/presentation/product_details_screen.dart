@@ -64,19 +64,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ProductImagePanel(imagePath: product.imagePath),
+                  ProductImagePanel(imageBytes: product.imageBytes),
                   const SizedBox(height: 32),
                   ProductInfoSection(product: product),
                   const SizedBox(height: 32),
                   ProductDescriptionSection(description: product.description),
-                  if (product.description != null &&
-                      product.description!.isNotEmpty)
-                    const SizedBox(height: 32),
-                  ProductSpecificationsSection(
-                    specifications: product.specifications,
-                  ),
-                  if (product.specifications != null &&
-                      product.specifications!.isNotEmpty)
+                  if (product.description.isNotEmpty)
                     const SizedBox(height: 32),
                   QuantitySelector(
                     quantity: _quantity,

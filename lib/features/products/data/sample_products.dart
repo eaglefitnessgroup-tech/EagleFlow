@@ -1,6 +1,8 @@
 import '../domain/product.dart';
 
-const List<Product> sampleProducts = [
+final DateTime _now = DateTime.now();
+
+final List<Product> sampleProducts = [
   Product(
     id: 'p_6840EA',
     name: 'Motorized Treadmill',
@@ -8,18 +10,11 @@ const List<Product> sampleProducts = [
     productCode: '6840EA',
     category: 'Cardio',
     sellingPrice: 8500.0,
-    stockQuantity: 15,
+    openingStock: 15,
     description:
         'Heavy-duty commercial treadmill designed for continuous gym use.',
-    imagePath: 'assets/images/products/6840EA.webp',
-    specifications: {
-      'Motor': '5.0 HP AC',
-      'Max Speed': '22 km/h',
-      'Incline': '0–15%',
-      'Max User Weight': '180 kg',
-      'Running Area': '1600 × 580 mm',
-      'Usage': 'Commercial',
-    },
+    createdAt: _now,
+    updatedAt: _now,
   ),
   Product(
     id: 'p_E33',
@@ -28,18 +23,11 @@ const List<Product> sampleProducts = [
     productCode: 'E33',
     category: 'Cardio',
     sellingPrice: 4800.0,
-    stockQuantity: 0,
+    openingStock: 0,
     description:
         'Heavy-duty commercial Crosstrainer designed for continuous gym use',
-    imagePath: 'assets/images/products/E33.webp',
-    specifications: {
-      'Motor': '5.0 HP AC',
-      'Max Speed': '22 km/h',
-      'Incline': '0–15%',
-      'Max User Weight': '180 kg',
-      'Running Area': '1600 × 580 mm',
-      'Usage': 'Commercial',
-    },
+    createdAt: _now,
+    updatedAt: _now,
   ),
   Product(
     id: 'p_FH003',
@@ -48,18 +36,11 @@ const List<Product> sampleProducts = [
     productCode: 'FH003',
     category: 'Strength',
     sellingPrice: 4500.0,
-    stockQuantity: 10,
+    openingStock: 10,
     description:
         'Heavy-duty commercial Strength Machine for continuous gym use',
-    imagePath: 'assets/images/products/FH003.webp',
-    specifications: {
-      'Motor': '5.0 HP AC',
-      'Max Speed': '22 km/h',
-      'Incline': '0–15%',
-      'Max User Weight': '180 kg',
-      'Running Area': '1600 × 580 mm',
-      'Usage': 'Commercial',
-    },
+    createdAt: _now,
+    updatedAt: _now,
   ),
   Product(
     id: 'p_TB65',
@@ -68,18 +49,11 @@ const List<Product> sampleProducts = [
     productCode: 'TB65',
     category: 'Strength',
     sellingPrice: 4250.0,
-    stockQuantity: 5,
+    openingStock: 5,
     description:
         'Heavy-duty commercial Strength Machine for continuous gym use',
-    imagePath: 'assets/images/products/TB65.webp',
-    specifications: {
-      'Motor': '5.0 HP AC',
-      'Max Speed': '22 km/h',
-      'Incline': '0–15%',
-      'Max User Weight': '180 kg',
-      'Running Area': '1600 × 580 mm',
-      'Usage': 'Commercial',
-    },
+    createdAt: _now,
+    updatedAt: _now,
   ),
   Product(
     id: 'p_FX0013',
@@ -88,17 +62,10 @@ const List<Product> sampleProducts = [
     productCode: 'FX0013',
     category: 'Flooring',
     sellingPrice: 110.0,
-    stockQuantity: 500,
+    openingStock: 500,
     description:
         'Heavy-duty commercial Strength Machine for continuous gym use',
-    imagePath: 'assets/images/products/FX0013.webp',
-    specifications: {
-      'Motor': '5.0 HP AC',
-      'Max Speed': '22 km/h',
-      'Incline': '0–15%',
-      'Max User Weight': '180 kg',
-      'Running Area': '1600 × 580 mm',
-      'Usage': 'Commercial',
-    },
+    createdAt: _now,
+    updatedAt: _now,
   ),
 ];

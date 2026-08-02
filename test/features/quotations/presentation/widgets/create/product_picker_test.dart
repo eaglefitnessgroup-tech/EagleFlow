@@ -3,9 +3,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/quotations/presentation/widgets/create/product_picker.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/products/data/sample_products.dart';
+import 'package:eagleflow/core/di/service_locator.dart';
+import 'package:eagleflow/features/products/application/product_master_controller.dart';
+import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
+import 'package:eagleflow/core/database/database_service.dart';
+import 'package:sembast/sembast.dart';
+import 'package:sembast/sembast_memory.dart';
 
 void main() {
   group('ProductPicker Widget Tests', () {
+    late Database db;
+
+    setUp(() async {
+      final dbName = 'test_picker_${DateTime.now().millisecondsSinceEpoch}.db';
+      db = await databaseFactoryMemory.openDatabase(dbName);
+      DatabaseService().setDatabaseForTesting(db);
+      // init will seed the sampleProducts and load them into the controller
+      await ServiceLocator().init();
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
     Widget buildTestApp(BuildContext? savedContext) {
       return MaterialApp(
         home: Scaffold(
@@ -168,8 +188,8 @@ void main() {
 
         expect(returnedProducts, isNotNull);
         expect(returnedProducts!.length, 2);
-        expect(returnedProducts![0].id, p1.id);
-        expect(returnedProducts![1].id, p2.id);
+        expect(returnedProducts![0].name, p2.name);
+        expect(returnedProducts![1].name, p1.name);
       },
     );
 

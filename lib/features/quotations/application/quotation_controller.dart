@@ -145,9 +145,11 @@ class QuotationController extends ChangeNotifier {
       unitPrice: product.sellingPrice,
       quantity: safeQty,
       discount: 0.0,
-      imagePath: product.imagePath,
+      imageId: product.imageId,
+      imageBytes: product.imageBytes,
       description: product.description,
       isCustom: false,
+      isVatApplicable: product.isVatApplicable,
     );
 
     _quotation = _quotation.copyWith(
@@ -207,7 +209,8 @@ class QuotationController extends ChangeNotifier {
           unitPrice: product.sellingPrice,
           quantity: safeQty,
           discount: 0.0,
-          imagePath: product.imagePath,
+          imageId: product.imageId,
+          imageBytes: product.imageBytes,
           description: product.description,
           isCustom: false,
         );

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../../../app/theme/app_colors.dart';
 
-class ProductImagePanel extends StatelessWidget {
-  final String? imagePath;
+import 'dart:typed_data';
 
-  const ProductImagePanel({super.key, this.imagePath});
+class ProductImagePanel extends StatelessWidget {
+  final Uint8List? imageBytes;
+
+  const ProductImagePanel({super.key, this.imageBytes});
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +27,9 @@ class ProductImagePanel extends StatelessWidget {
   }
 
   Widget _buildImage() {
-    if (imagePath != null && imagePath!.isNotEmpty) {
-      return Image.asset(
-        imagePath!,
+    if (imageBytes != null && imageBytes!.isNotEmpty) {
+      return Image.memory(
+        imageBytes!,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,

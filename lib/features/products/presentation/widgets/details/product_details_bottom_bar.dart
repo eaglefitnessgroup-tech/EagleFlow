@@ -84,7 +84,7 @@ class ProductDetailsBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double totalPrice = product.sellingPrice * quantity;
-    final bool isOutOfStock = product.stockQuantity <= 0;
+    final bool isOutOfStock = product.openingStock <= 0;
 
     return Container(
       padding: EdgeInsets.only(

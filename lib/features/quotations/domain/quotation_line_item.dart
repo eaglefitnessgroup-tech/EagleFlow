@@ -14,6 +14,7 @@ class QuotationLineItem {
   final String? imageId; // Reference to persisted blob
   final String? description;
   final bool isCustom;
+  final bool isVatApplicable;
 
   const QuotationLineItem({
     required this.id,
@@ -29,6 +30,7 @@ class QuotationLineItem {
     this.imageId,
     this.description,
     this.isCustom = false,
+    this.isVatApplicable = true,
   });
 
   QuotationLineItem copyWith({
@@ -45,6 +47,7 @@ class QuotationLineItem {
     String? imageId,
     String? description,
     bool? isCustom,
+    bool? isVatApplicable,
   }) {
     return QuotationLineItem(
       id: id ?? this.id,
@@ -60,6 +63,7 @@ class QuotationLineItem {
       imageId: imageId ?? this.imageId,
       description: description ?? this.description,
       isCustom: isCustom ?? this.isCustom,
+      isVatApplicable: isVatApplicable ?? this.isVatApplicable,
     );
   }
 
@@ -77,6 +81,7 @@ class QuotationLineItem {
       'imageId': imageId,
       'description': description,
       'isCustom': isCustom,
+      'isVatApplicable': isVatApplicable,
     };
   }
 
@@ -94,6 +99,7 @@ class QuotationLineItem {
       imageId: json['imageId'] as String?,
       description: json['description'] as String?,
       isCustom: json['isCustom'] as bool? ?? false,
+      isVatApplicable: json['isVatApplicable'] as bool? ?? true,
     );
   }
 }

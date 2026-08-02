@@ -67,18 +67,21 @@ class ProductInfoSection extends StatelessWidget {
   Widget _buildStockIndicator() {
     Color textColor;
     String label;
-    bool isOutOfStock = product.stockQuantity <= 0;
-    bool isLowStock = product.stockQuantity > 0 && product.stockQuantity <= 5;
+    bool isOutOfStock = product.openingStock <= 0;
+    bool isLowStock =
+        product.openingStock > 0 &&
+        product.openingStock <=
+            (product.minStockLevel > 0 ? product.minStockLevel : 5);
 
     if (isOutOfStock) {
       textColor = const Color(0xFFB42318);
       label = 'Out of Stock';
     } else if (isLowStock) {
       textColor = AppColors.statusPendingText;
-      label = 'Low Stock • ${product.stockQuantity}';
+      label = 'Low Stock • ${product.openingStock}';
     } else {
       textColor = AppColors.statusApprovedText;
-      label = 'Available • ${product.stockQuantity}';
+      label = 'Available • ${product.openingStock}';
     }
 
     return Text(

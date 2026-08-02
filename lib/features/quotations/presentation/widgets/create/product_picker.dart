@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
 import '../../../../products/domain/product.dart';
-import '../../../../products/data/sample_products.dart';
+import '../../../../../../core/di/service_locator.dart';
 
 class ProductPicker {
   static Future<List<Product>?> show(BuildContext context) {
@@ -63,32 +63,33 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   }
 
   void _loadProducts() {
-    // Simulate initial loading
-    _loadingTimer = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        setState(() {
-          _filteredProducts = _sortProducts(sampleProducts);
-          _isLoading = false;
-        });
-      }
+    setState(() {
+      _isLoading = false;
+      _onSearchChanged();
     });
   }
 
   void _onSearchChanged() {
     final query = _searchController.text.trim().toLowerCase();
 
+    // Only get active products
+    final allActiveProducts = ServiceLocator().productMasterController.products
+        .where((p) => p.isActive)
+        .toList();
+
     if (query.isEmpty) {
       setState(() {
-        _filteredProducts = _sortProducts(sampleProducts);
+        _filteredProducts = _sortProducts(allActiveProducts);
       });
       return;
     }
 
-    final filtered = sampleProducts.where((p) {
+    final filtered = allActiveProducts.where((p) {
       final nameMatches = p.name.toLowerCase().contains(query);
       final codeMatches = p.productCode.toLowerCase().contains(query);
       final brandMatches = p.brand.toLowerCase().contains(query);
-      return nameMatches || codeMatches || brandMatches;
+      final categoryMatches = p.category.toLowerCase().contains(query);
+      return nameMatches || codeMatches || brandMatches || categoryMatches;
     }).toList();
 
     setState(() {
@@ -99,8 +100,8 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   List<Product> _sortProducts(List<Product> products) {
     final List<Product> sorted = List.from(products);
     sorted.sort((a, b) {
-      final aInStock = a.stockQuantity > 0;
-      final bInStock = b.stockQuantity > 0;
+      final aInStock = a.openingStock > 0;
+      final bInStock = b.openingStock > 0;
 
       if (aInStock && !bInStock) return -1;
       if (!aInStock && bInStock) return 1;
@@ -263,7 +264,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
       itemBuilder: (context, index) {
         final product = _filteredProducts[index];
         final isSelected = _selectedIds.contains(product.id);
-        final inStock = product.stockQuantity > 0;
+        final inStock = product.openingStock > 0;
 
         return _buildProductTile(product, isSelected, inStock);
       },
@@ -316,16 +317,14 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
-              child: product.imagePath != null
+              child: product.imageBytes != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        product.imagePath!,
+                      child: Image.memory(
+                        product.imageBytes!,
                         fit: BoxFit.cover,
                         errorBuilder: (ctx, error, stackTrace) {
-                          debugPrint(
-                            'Product image failed: ${product.imagePath} — $error',
-                          );
+                          debugPrint('Product image failed: — $error');
                           return const SizedBox.shrink();
                         },
                       ),
@@ -374,7 +373,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                           ),
                           child: Text(
                             inStock
-                                ? '${product.stockQuantity} in stock'
+                                ? '${product.openingStock} in stock'
                                 : 'Out of stock',
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -459,7 +458,9 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                       setState(() {
                         _isSubmitting = true;
                       });
-                      final selectedProducts = sampleProducts
+                      final allProducts =
+                          ServiceLocator().productMasterController.products;
+                      final selectedProducts = allProducts
                           .where((p) => _selectedIds.contains(p.id))
                           .toList();
                       Navigator.of(context).pop(selectedProducts);

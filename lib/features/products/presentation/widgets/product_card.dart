@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../../../app/routes/app_routes.dart';
 import '../../domain/product.dart';
 import '../../../../../app/theme/app_colors.dart';
+import '../add_edit_product_screen.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
 
   const ProductCard({super.key, required this.product});
 
-  bool get isOutOfStock => product.stockQuantity <= 0;
+  bool get isOutOfStock => product.openingStock <= 0;
   bool get isLowStock =>
-      product.stockQuantity > 0 && product.stockQuantity <= 5;
+      product.openingStock > 0 &&
+      product.openingStock <=
+          (product.minStockLevel > 0 ? product.minStockLevel : 5);
 
   String _formatPrice(double price) {
     String priceStr = price.toStringAsFixed(2);
@@ -19,62 +21,6 @@ class ProductCard extends StatelessWidget {
     }
     final reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
     return priceStr.replaceAllMapped(reg, (Match m) => '${m[1]},');
-  }
-
-  void _showOutOfStockDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(
-          'Product is out of stock',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: const Text(
-          'This product is currently out of stock. Add it to the quotation anyway?',
-          style: TextStyle(color: AppColors.charcoal),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: AppColors.mutedText,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Out-of-stock product will be added to the quotation',
-                  ),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Add Anyway',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -166,56 +112,25 @@ class ProductCard extends StatelessWidget {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
-                          Navigator.of(context).pushNamed(
-                            AppRoutes.productDetails,
-                            arguments: product,
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (ctx) =>
+                                  AddEditProductScreen(product: product),
+                            ),
                           );
                         },
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(color: AppColors.border),
+                          side: const BorderSide(color: AppColors.primaryBlue),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          foregroundColor: AppColors.charcoal,
+                          foregroundColor: AppColors.primaryBlue,
                         ),
                         child: const Text(
-                          'Details',
+                          'Edit Product',
                           style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (isOutOfStock) {
-                            _showOutOfStockDialog(context);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Quotation functionality will be added later',
-                                ),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: AppColors.primaryBlue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          '+ Add',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
                         ),
                       ),
                     ),
@@ -230,11 +145,11 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildProductImage() {
-    if (product.imagePath != null && product.imagePath!.isNotEmpty) {
+    if (product.imageBytes != null && product.imageBytes!.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.asset(
-          product.imagePath!,
+        child: Image.memory(
+          product.imageBytes!,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) => const Icon(
             Icons.inventory_2_outlined,
@@ -260,10 +175,10 @@ class ProductCard extends StatelessWidget {
       label = 'Out of Stock';
     } else if (isLowStock) {
       textColor = AppColors.statusPendingText;
-      label = 'Low Stock • ${product.stockQuantity}';
+      label = 'Low Stock • ${product.openingStock}';
     } else {
       textColor = AppColors.statusApprovedText;
-      label = 'Available • ${product.stockQuantity}';
+      label = 'Available • ${product.openingStock}';
     }
 
     return Text(
