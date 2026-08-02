@@ -4,8 +4,17 @@ import '../../../../../app/theme/app_colors.dart';
 
 class ProductInfoSection extends StatelessWidget {
   final Product product;
+  final int currentStock;
+  final bool isLoading;
+  final bool hasError;
 
-  const ProductInfoSection({super.key, required this.product});
+  const ProductInfoSection({
+    super.key,
+    required this.product,
+    required this.currentStock,
+    required this.isLoading,
+    required this.hasError,
+  });
 
   String _formatPrice(double price) {
     String priceStr = price.toStringAsFixed(2);
@@ -65,23 +74,43 @@ class ProductInfoSection extends StatelessWidget {
   }
 
   Widget _buildStockIndicator() {
+    if (isLoading) {
+      return const Text(
+        'Loading stock...',
+        style: TextStyle(
+          color: AppColors.mutedText,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+    if (hasError) {
+      return const Text(
+        'Stock calculation failed',
+        style: TextStyle(
+          color: AppColors.statusRejectedText,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
     Color textColor;
     String label;
-    bool isOutOfStock = product.openingStock <= 0;
+    bool isOutOfStock = currentStock <= 0;
     bool isLowStock =
-        product.openingStock > 0 &&
-        product.openingStock <=
-            (product.minStockLevel > 0 ? product.minStockLevel : 5);
+        currentStock > 0 &&
+        currentStock <= (product.minStockLevel > 0 ? product.minStockLevel : 5);
 
     if (isOutOfStock) {
       textColor = const Color(0xFFB42318);
       label = 'Out of Stock';
     } else if (isLowStock) {
       textColor = AppColors.statusPendingText;
-      label = 'Low Stock • ${product.openingStock}';
+      label = 'Low Stock • $currentStock';
     } else {
       textColor = AppColors.statusApprovedText;
-      label = 'Available • ${product.openingStock}';
+      label = 'Available • $currentStock';
     }
 
     return Text(

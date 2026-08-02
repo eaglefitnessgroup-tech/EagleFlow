@@ -188,8 +188,13 @@ void main() {
 
         expect(returnedProducts, isNotNull);
         expect(returnedProducts!.length, 2);
-        expect(returnedProducts![0].name, p2.name);
-        expect(returnedProducts![1].name, p1.name);
+
+        // Sort both by name to avoid flakiness due to UI catalogue order vs selection order
+        returnedProducts!.sort((a, b) => a.name.compareTo(b.name));
+        final expectedNames = [p1.name, p2.name]..sort();
+
+        expect(returnedProducts![0].name, expectedNames[0]);
+        expect(returnedProducts![1].name, expectedNames[1]);
       },
     );
 

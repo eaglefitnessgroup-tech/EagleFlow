@@ -317,6 +317,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     'Opening Stock',
                     _openingStockController,
                     isNumber: true,
+                    readOnly: widget.product != null,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -366,16 +367,21 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     bool isNumber = false,
     bool required = false,
     int maxLines = 1,
+    bool readOnly = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: controller,
+        readOnly: readOnly,
+        enableInteractiveSelection: !readOnly,
         keyboardType: isNumber
             ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.text,
         maxLines: maxLines,
         decoration: InputDecoration(
+          filled: readOnly,
+          fillColor: readOnly ? Colors.grey.shade100 : null,
           labelText: label,
           labelStyle: const TextStyle(color: AppColors.mutedText),
           border: OutlineInputBorder(
