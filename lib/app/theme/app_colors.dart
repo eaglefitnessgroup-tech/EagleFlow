@@ -21,6 +21,12 @@ class AppColors {
   static const Color statusSentText = primaryBlue;
   static const Color statusApprovedBg = Color(0xFFD1FADF);
   static const Color statusApprovedText = Color(0xFF027A48);
+  static const Color statusRejectedBg = Color(0xFFFEE4E2);
+  static const Color statusRejectedText = Color(0xFFD92D20);
+  static const Color statusExpiredBg = Color(0xFFFEF0C7);
+  static const Color statusExpiredText = Color(0xFFDC6803);
+  static const Color statusDraftBg = Color(0xFFF2F4F7);
+  static const Color statusDraftText = Color(0xFF344054);
 
   // Legacy mappings for locked screens
   static const Color primaryText = charcoal;
