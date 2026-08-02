@@ -28,4 +28,24 @@ class CustomerInfo {
       projectLocation: projectLocation ?? this.projectLocation,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'company': company,
+      'phone': phone,
+      'email': email,
+      'projectLocation': projectLocation,
+    };
+  }
+
+  factory CustomerInfo.fromJson(Map<String, dynamic> json) {
+    return CustomerInfo(
+      name: json['name'] as String? ?? '',
+      company: json['company'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      projectLocation: json['projectLocation'] as String? ?? '',
+    );
+  }
 }

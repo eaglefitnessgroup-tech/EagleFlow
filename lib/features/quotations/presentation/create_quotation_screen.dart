@@ -5,6 +5,8 @@ import '../domain/quotation_defaults.dart';
 import '../application/quotation_calculator.dart';
 import '../application/quotation_controller.dart';
 import '../application/quotation_validator.dart';
+import '../../../../core/di/service_locator.dart';
+import '../domain/quotation.dart';
 import 'widgets/create/quotation_page_header.dart';
 import 'widgets/create/customer_information_card.dart';
 import 'widgets/create/quotation_information_card.dart';
@@ -23,19 +25,59 @@ class CreateQuotationScreen extends StatefulWidget {
 }
 
 class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
-  late final QuotationController _controller;
+  late QuotationController _controller;
+  bool _isInit = false;
+  bool _isSaving = false;
 
   @override
-  void initState() {
-    super.initState();
-    final draft = QuotationDefaults.createEmptyDraft();
-    _controller = QuotationController(draft);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Quotation) {
+        _controller = QuotationController(args);
+      } else {
+        final draft = QuotationDefaults.createEmptyDraft();
+        _controller = QuotationController(draft);
+      }
+      _isInit = true;
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    try {
+      final repo = ServiceLocator().quotationRepository;
+      final savedQuotation = await repo.saveQuotation(_controller.quotation);
+      _controller.loadQuotation(savedQuotation);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Quotation saved successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
@@ -97,6 +139,8 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                 );
                 return QuotationBottomActionBar(
                   canPreview: canPreview,
+                  isSaving: _isSaving,
+                  onSaveDraft: _handleSave,
                   onPreview: () {
                     Navigator.pushNamed(
                       context,

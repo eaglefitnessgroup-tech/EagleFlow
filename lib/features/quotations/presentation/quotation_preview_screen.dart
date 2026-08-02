@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../application/quotation_controller.dart';
+import '../domain/quotation.dart';
+import '../domain/quotation_defaults.dart';
 import 'preview/models/quotation_preview_page.dart';
 import 'preview/utils/quotation_paginator.dart';
 import 'preview/components/quotation_a4_page.dart';
@@ -17,15 +19,27 @@ class QuotationPreviewScreen extends StatefulWidget {
 
 class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
   int _currentPageIndex = 0;
-  late final QuotationController _controller;
-  late final List<QuotationPreviewPage> _pages;
+  QuotationController? _controller;
+  List<QuotationPreviewPage> _pages = [];
+  bool _isError = false;
+  String _errorMsg = '';
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _controller =
-        ModalRoute.of(context)!.settings.arguments as QuotationController;
-    _pages = QuotationPaginator.paginate(_controller.quotation);
+    final args = ModalRoute.of(context)?.settings.arguments;
+
+    if (args is QuotationController) {
+      _controller = args;
+      _pages = QuotationPaginator.paginate(_controller!.quotation);
+    } else if (args is Quotation) {
+      _controller = QuotationController(QuotationDefaults.createEmptyDraft());
+      _controller!.loadQuotation(args);
+      _pages = QuotationPaginator.paginate(_controller!.quotation);
+    } else {
+      _isError = true;
+      _errorMsg = 'Invalid quotation data provided.';
+    }
   }
 
   void _nextPage() {
@@ -57,7 +71,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         }
       }
       return QuotationProductsPage(
-        quotation: _controller.quotation,
+        quotation: _controller!.quotation,
         model: pageModel,
         startIndex: startIndex,
       );
@@ -69,6 +83,38 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isError || _controller == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Preview Error',
+            style: TextStyle(color: AppColors.charcoal, fontSize: 16),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 1,
+          iconTheme: const IconThemeData(color: AppColors.charcoal),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _errorMsg,
+                style: const TextStyle(fontSize: 16, color: AppColors.charcoal),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(

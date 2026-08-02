@@ -12,6 +12,11 @@ class QuotationController extends ChangeNotifier {
 
   Quotation get quotation => _quotation;
 
+  void loadQuotation(Quotation newQuotation) {
+    _quotation = newQuotation;
+    notifyListeners();
+  }
+
   void updateCustomerName(String name) {
     _quotation = _quotation.copyWith(
       customerInfo: _quotation.customerInfo.copyWith(name: name),

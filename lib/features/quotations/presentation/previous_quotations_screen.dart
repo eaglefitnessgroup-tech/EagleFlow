@@ -7,8 +7,8 @@ import '../domain/quotation_charges.dart';
 import 'widgets/previous/quotations_summary_row.dart';
 import 'widgets/previous/quotation_filter_bar.dart';
 import 'widgets/previous/quotation_list_view.dart';
-import '../application/quotation_controller.dart';
 import '../application/quotation_calculator.dart';
+import '../../../../core/di/service_locator.dart';
 
 class PreviousQuotationsScreen extends StatefulWidget {
   const PreviousQuotationsScreen({super.key});
@@ -19,90 +19,46 @@ class PreviousQuotationsScreen extends StatefulWidget {
 }
 
 class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
-  late List<Quotation> _allQuotations;
-  late List<Quotation> _filteredQuotations;
+  List<Quotation> _allQuotations = [];
+  List<Quotation> _filteredQuotations = [];
 
   String _searchQuery = '';
   QuotationStatus? _selectedStatus;
   String _sortBy = 'Newest';
 
+  bool _isLoading = true;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
-    _generateMockData();
-    _applyFilters();
+    _loadQuotations();
   }
 
-  void _generateMockData() {
-    final now = DateTime.now();
-    _allQuotations = [
-      Quotation(
-        id: '1',
-        quotationNumber: 'QT-0001-26',
-        customerInfo: const CustomerInfo(name: 'Acme Corp'),
-        salespersonId: 'John Doe',
-        createdDate: now,
-        modifiedDate: now,
-        validUntil: now.add(const Duration(days: 30)),
-        expectedDelivery: now.add(const Duration(days: 7)),
-        status: QuotationStatus.draft,
-        charges: const QuotationCharges(deliveryCharges: 100),
-      ),
-      Quotation(
-        id: '2',
-        quotationNumber: 'QT-0002-26',
-        customerInfo: const CustomerInfo(name: 'Wayne Enterprises'),
-        salespersonId: 'Jane Smith',
-        createdDate: now.subtract(const Duration(days: 2)),
-        modifiedDate: now,
-        validUntil: now.add(const Duration(days: 28)),
-        expectedDelivery: now.add(const Duration(days: 5)),
-        status: QuotationStatus.sent,
-        charges: const QuotationCharges(
-          deliveryCharges: 500,
-          installationCharges: 200,
-        ),
-      ),
-      Quotation(
-        id: '3',
-        quotationNumber: 'QT-0003-26',
-        customerInfo: const CustomerInfo(name: 'Stark Industries'),
-        salespersonId: 'Bruce Banner',
-        createdDate: now.subtract(const Duration(days: 5)),
-        modifiedDate: now,
-        validUntil: now.add(const Duration(days: 25)),
-        expectedDelivery: now.add(const Duration(days: 10)),
-        status: QuotationStatus.approved,
-        charges: const QuotationCharges(
-          deliveryCharges: 1000,
-          installationCharges: 5000,
-        ),
-      ),
-      Quotation(
-        id: '4',
-        quotationNumber: 'QT-0004-26',
-        customerInfo: const CustomerInfo(name: 'Oscorp'),
-        salespersonId: 'Peter Parker',
-        createdDate: now.subtract(const Duration(days: 10)),
-        modifiedDate: now,
-        validUntil: now.add(const Duration(days: 20)),
-        expectedDelivery: now.add(const Duration(days: 14)),
-        status: QuotationStatus.rejected,
-        charges: const QuotationCharges(),
-      ),
-      Quotation(
-        id: '5',
-        quotationNumber: 'QT-0005-26',
-        customerInfo: const CustomerInfo(name: 'Daily Bugle'),
-        salespersonId: 'J. Jonah Jameson',
-        createdDate: now.subtract(const Duration(days: 40)),
-        modifiedDate: now,
-        validUntil: now.subtract(const Duration(days: 10)),
-        expectedDelivery: now,
-        status: QuotationStatus.expired,
-        charges: const QuotationCharges(deliveryCharges: 50),
-      ),
-    ];
+  Future<void> _loadQuotations() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final repo = ServiceLocator().quotationRepository;
+      final data = await repo.getAllQuotations();
+      if (mounted) {
+        setState(() {
+          _allQuotations = data;
+          _isLoading = false;
+        });
+        _applyFilters();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _applyFilters() {
@@ -155,24 +111,89 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
     });
   }
 
-  void _handleDelete(Quotation quotation) {
-    setState(() {
-      _allQuotations.removeWhere((q) => q.id == quotation.id);
-      _applyFilters();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Quotation ${quotation.quotationNumber} deleted (Mock).'),
-      ),
-    );
+  Future<void> _handleDelete(Quotation quotation) async {
+    try {
+      final repo = ServiceLocator().quotationRepository;
+      await repo.deleteQuotation(quotation.id);
+      _loadQuotations();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Quotation deleted.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      }
+    }
   }
 
-  void _handleView(Quotation quotation) {
-    Navigator.pushNamed(
-      context,
-      '/quotation-preview',
-      arguments: QuotationController(quotation),
-    );
+  Future<void> _handleDuplicate(Quotation quotation) async {
+    try {
+      final repo = ServiceLocator().quotationRepository;
+      await repo.duplicateQuotation(quotation);
+      _loadQuotations();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Quotation duplicated.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Duplicate failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _handleEdit(Quotation quotation) async {
+    setState(() => _isLoading = true);
+    try {
+      final repo = ServiceLocator().quotationRepository;
+      final fullQuotation = await repo.getQuotationWithImages(quotation);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        await Navigator.pushNamed(
+          context,
+          '/create-quotation',
+          arguments: fullQuotation,
+        );
+        _loadQuotations();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load edit: $e')));
+      }
+    }
+  }
+
+  void _handleView(Quotation quotation) async {
+    setState(() => _isLoading = true);
+    try {
+      final repo = ServiceLocator().quotationRepository;
+      final fullQuotation = await repo.getQuotationWithImages(quotation);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pushNamed(
+          context,
+          '/quotation-preview',
+          arguments: fullQuotation,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load preview: $e')));
+      }
+    }
   }
 
   void _showMockActionToast(String action) {
@@ -215,35 +236,81 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                   acceptedCount: accepted,
                 ),
                 const SizedBox(height: 24),
-                QuotationFilterBar(
-                  searchQuery: _searchQuery,
-                  selectedStatus: _selectedStatus,
-                  sortBy: _sortBy,
-                  onSearchChanged: (val) {
-                    _searchQuery = val;
-                    _applyFilters();
-                  },
-                  onStatusChanged: (val) {
-                    _selectedStatus = val;
-                    _applyFilters();
-                  },
-                  onSortChanged: (val) {
-                    _sortBy = val;
-                    _applyFilters();
-                  },
-                ),
-                const SizedBox(height: 24),
-                _buildResultCount(_filteredQuotations.length, total),
-                QuotationListView(
-                  quotations: _filteredQuotations,
-                  onView: _handleView,
-                  onEdit: (q) => _showMockActionToast('Edit'),
-                  onDuplicate: (q) => _showMockActionToast('Duplicate'),
-                  onShare: (q) => _showMockActionToast('PDF sharing'),
-                  onDelete: _handleDelete,
-                  onCreate: () =>
-                      Navigator.pushNamed(context, '/create-quotation'),
-                ),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(48.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.all(48.0),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: Colors.red,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error: $_errorMessage',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _loadQuotations,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (_allQuotations.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(48.0),
+                    child: Center(child: Text('No quotations found.')),
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      QuotationFilterBar(
+                        searchQuery: _searchQuery,
+                        selectedStatus: _selectedStatus,
+                        sortBy: _sortBy,
+                        onSearchChanged: (val) {
+                          _searchQuery = val;
+                          _applyFilters();
+                        },
+                        onStatusChanged: (val) {
+                          _selectedStatus = val;
+                          _applyFilters();
+                        },
+                        onSortChanged: (val) {
+                          _sortBy = val;
+                          _applyFilters();
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      _buildResultCount(_filteredQuotations.length, total),
+                      QuotationListView(
+                        quotations: _filteredQuotations,
+                        onView: _handleView,
+                        onEdit: _handleEdit,
+                        onDuplicate: _handleDuplicate,
+                        onShare: (q) => _showMockActionToast('PDF sharing'),
+                        onDelete: _handleDelete,
+                        onCreate: () async {
+                          await Navigator.pushNamed(
+                            context,
+                            '/create-quotation',
+                          );
+                          _loadQuotations();
+                        },
+                      ),
+                    ],
+                  ),
               ]),
             ),
           ),
@@ -294,7 +361,10 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                 ? null
                 : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
-          onPressed: () => Navigator.pushNamed(context, '/create-quotation'),
+          onPressed: () async {
+            await Navigator.pushNamed(context, '/create-quotation');
+            _loadQuotations();
+          },
           icon: const Icon(Icons.add),
           label: const Text('Create Quotation'),
         );

@@ -8,8 +8,8 @@ class QuotationDefaults {
   static Quotation createEmptyDraft() {
     final now = DateTime.now();
     return Quotation(
-      id: 'temp_draft_id',
-      quotationNumber: 'QTN-${now.year}-00001',
+      id: '',
+      quotationNumber: '',
       customerInfo: const CustomerInfo(name: ''),
       salespersonId: 'SP-001',
       createdDate: now,

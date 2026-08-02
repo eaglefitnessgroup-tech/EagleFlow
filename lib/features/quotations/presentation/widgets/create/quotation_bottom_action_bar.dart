@@ -4,11 +4,15 @@ import '../../../../../../app/theme/app_colors.dart';
 class QuotationBottomActionBar extends StatelessWidget {
   final bool canPreview;
   final VoidCallback onPreview;
+  final VoidCallback onSaveDraft;
+  final bool isSaving;
 
   const QuotationBottomActionBar({
     super.key,
     required this.canPreview,
     required this.onPreview,
+    required this.onSaveDraft,
+    this.isSaving = false,
   });
 
   @override
@@ -41,15 +45,7 @@ class QuotationBottomActionBar extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Draft persistence is not yet implemented.',
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: isSaving ? null : onSaveDraft,
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: const BorderSide(color: AppColors.border),
@@ -58,10 +54,16 @@ class QuotationBottomActionBar extends StatelessWidget {
                       ),
                       foregroundColor: AppColors.charcoal,
                     ),
-                    child: const Text(
-                      'Save Draft',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+                    child: isSaving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Save Draft',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),

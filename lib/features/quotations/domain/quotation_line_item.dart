@@ -11,6 +11,7 @@ class QuotationLineItem {
   final double discount;
   final String? imagePath;
   final Uint8List? imageBytes;
+  final String? imageId; // Reference to persisted blob
   final String? description;
   final bool isCustom;
 
@@ -25,6 +26,7 @@ class QuotationLineItem {
     this.discount = 0.0,
     this.imagePath,
     this.imageBytes,
+    this.imageId,
     this.description,
     this.isCustom = false,
   });
@@ -40,6 +42,7 @@ class QuotationLineItem {
     double? discount,
     String? imagePath,
     Uint8List? imageBytes,
+    String? imageId,
     String? description,
     bool? isCustom,
   }) {
@@ -54,8 +57,43 @@ class QuotationLineItem {
       discount: discount ?? this.discount,
       imagePath: imagePath ?? this.imagePath,
       imageBytes: imageBytes ?? this.imageBytes,
+      imageId: imageId ?? this.imageId,
       description: description ?? this.description,
       isCustom: isCustom ?? this.isCustom,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'productId': productId,
+      'productCode': productCode,
+      'name': name,
+      'brand': brand,
+      'unitPrice': unitPrice,
+      'quantity': quantity,
+      'discount': discount,
+      'imagePath': imagePath,
+      'imageId': imageId,
+      'description': description,
+      'isCustom': isCustom,
+    };
+  }
+
+  factory QuotationLineItem.fromJson(Map<String, dynamic> json) {
+    return QuotationLineItem(
+      id: json['id'] as String,
+      productId: json['productId'] as String?,
+      productCode: json['productCode'] as String?,
+      name: json['name'] as String,
+      brand: json['brand'] as String? ?? '',
+      unitPrice: (json['unitPrice'] as num).toDouble(),
+      quantity: json['quantity'] as int,
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      imagePath: json['imagePath'] as String?,
+      imageId: json['imageId'] as String?,
+      description: json['description'] as String?,
+      isCustom: json['isCustom'] as bool? ?? false,
     );
   }
 }

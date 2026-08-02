@@ -69,4 +69,58 @@ class Quotation {
       internalNotes: internalNotes ?? this.internalNotes,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'quotationNumber': quotationNumber,
+      'customerInfo': customerInfo.toJson(),
+      'salespersonId': salespersonId,
+      'createdDate': createdDate.toIso8601String(),
+      'modifiedDate': modifiedDate.toIso8601String(),
+      'validUntil': validUntil.toIso8601String(),
+      'expectedDelivery': expectedDelivery.toIso8601String(),
+      'status': status.name,
+      'syncStatus': syncStatus.name,
+      'lineItems': lineItems.map((e) => e.toJson()).toList(),
+      'charges': charges.toJson(),
+      'customerNotes': customerNotes,
+      'internalNotes': internalNotes,
+    };
+  }
+
+  factory Quotation.fromJson(Map<String, dynamic> json) {
+    return Quotation(
+      id: json['id'] as String,
+      quotationNumber: json['quotationNumber'] as String,
+      customerInfo: CustomerInfo.fromJson(
+        json['customerInfo'] as Map<String, dynamic>,
+      ),
+      salespersonId: json['salespersonId'] as String,
+      createdDate: DateTime.parse(json['createdDate'] as String),
+      modifiedDate: DateTime.parse(json['modifiedDate'] as String),
+      validUntil: DateTime.parse(json['validUntil'] as String),
+      expectedDelivery: DateTime.parse(json['expectedDelivery'] as String),
+      status: QuotationStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => QuotationStatus.draft,
+      ),
+      syncStatus: SyncStatus.values.firstWhere(
+        (e) => e.name == json['syncStatus'],
+        orElse: () => SyncStatus.pending,
+      ),
+      lineItems:
+          (json['lineItems'] as List<dynamic>?)
+              ?.map(
+                (e) => QuotationLineItem.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          [],
+      charges: QuotationCharges.fromJson(
+        json['charges'] as Map<String, dynamic>,
+      ),
+      customerNotes: json['customerNotes'] as String? ?? '',
+      internalNotes: json['internalNotes'] as String? ?? '',
+    );
+  }
 }

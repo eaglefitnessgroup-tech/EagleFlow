@@ -28,4 +28,25 @@ class QuotationCharges {
       vatPercentage: vatPercentage ?? this.vatPercentage,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'deliveryCharges': deliveryCharges,
+      'installationCharges': installationCharges,
+      'otherCharges': otherCharges,
+      'overallDiscount': overallDiscount,
+      'vatPercentage': vatPercentage,
+    };
+  }
+
+  factory QuotationCharges.fromJson(Map<String, dynamic> json) {
+    return QuotationCharges(
+      deliveryCharges: (json['deliveryCharges'] as num?)?.toDouble() ?? 0.0,
+      installationCharges:
+          (json['installationCharges'] as num?)?.toDouble() ?? 0.0,
+      otherCharges: (json['otherCharges'] as num?)?.toDouble() ?? 0.0,
+      overallDiscount: (json['overallDiscount'] as num?)?.toDouble() ?? 0.0,
+      vatPercentage: (json['vatPercentage'] as num?)?.toDouble() ?? 5.0,
+    );
+  }
 }
