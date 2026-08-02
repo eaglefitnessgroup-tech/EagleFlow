@@ -303,7 +303,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildActionCard(
               title: 'Stock',
               icon: Icons.warehouse_outlined,
-              onTap: () => _showComingSoonSnackBar('Stock module coming soon.'),
+              onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
             ),
             _buildActionCard(
               title: 'Low Stock',
@@ -311,6 +311,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               iconColor: Colors.amber.shade700,
               onTap: () =>
                   _showComingSoonSnackBar('Low Stock module coming soon.'),
+            ),
+            // TODO: Restrict this card to admin users after role-based authentication is implemented.
+            _buildActionCard(
+              title: 'Stock\nManagement',
+              icon: Icons.admin_panel_settings_outlined,
+              onTap: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.stockManagement),
             ),
           ],
         );

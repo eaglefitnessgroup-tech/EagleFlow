@@ -8,6 +8,9 @@ import '../../features/quotations/presentation/create_quotation_screen.dart';
 import '../../features/quotations/presentation/quotation_preview_screen.dart';
 import '../../features/quotations/presentation/previous_quotations_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/stock/presentation/stock_management_screen.dart';
+import '../../features/stock/presentation/stock_in_screen.dart';
+import '../../features/stock/presentation/stock_out_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -21,6 +24,9 @@ class AppRoutes {
   static const String quotationPreview = '/quotation-preview';
   static const String previousQuotations = '/previous-quotations';
   static const String profile = '/profile';
+  static const String stockManagement = '/stock-management';
+  static const String stockIn = '/stock-in';
+  static const String stockOut = '/stock-out';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -33,6 +39,9 @@ class AppRoutes {
       quotationPreview: (context) => const QuotationPreviewScreen(),
       previousQuotations: (context) => const PreviousQuotationsScreen(),
       profile: (context) => const ProfileScreen(),
+      stockManagement: (context) => const StockManagementScreen(),
+      stockIn: (context) => const StockInScreen(),
+      stockOut: (context) => const StockOutScreen(),
     };
   }
 }
