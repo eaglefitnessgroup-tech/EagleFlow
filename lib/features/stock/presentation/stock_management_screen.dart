@@ -63,12 +63,9 @@ class StockManagementScreen extends StatelessWidget {
     required Color iconColor,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: () {
-        debugPrint('Tapped $title action card');
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
