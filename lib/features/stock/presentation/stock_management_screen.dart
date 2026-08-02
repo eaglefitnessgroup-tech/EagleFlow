@@ -24,31 +24,33 @@ class StockManagementScreen extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: ListView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        children: [
-          _buildActionCard(
-            context,
-            title: 'Stock In',
-            subtitle: 'Add new stock to inventory',
-            icon: Icons.add_circle_outline,
-            iconColor: AppColors.statusApprovedText,
-            onTap: () {
-              Navigator.of(context).pushNamed(AppRoutes.stockIn);
-            },
-          ),
-          const SizedBox(height: 16),
-          _buildActionCard(
-            context,
-            title: 'Stock Out',
-            subtitle: 'Deduct stock from inventory',
-            icon: Icons.remove_circle_outline,
-            iconColor: AppColors.statusRejectedText,
-            onTap: () {
-              Navigator.of(context).pushNamed(AppRoutes.stockOut);
-            },
-          ),
-        ],
+        child: Column(
+          children: [
+            _buildActionCard(
+              context,
+              title: 'Stock In',
+              subtitle: 'Add new stock to inventory',
+              icon: Icons.add_circle_outline,
+              iconColor: AppColors.statusApprovedText,
+              onTap: () {
+                Navigator.of(context).pushNamed(AppRoutes.stockIn);
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildActionCard(
+              context,
+              title: 'Stock Out',
+              subtitle: 'Deduct stock from inventory',
+              icon: Icons.remove_circle_outline,
+              iconColor: AppColors.statusRejectedText,
+              onTap: () {
+                Navigator.of(context).pushNamed(AppRoutes.stockOut);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -62,7 +64,10 @@ class StockManagementScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        debugPrint('Tapped $title action card');
+        onTap();
+      },
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(20),
