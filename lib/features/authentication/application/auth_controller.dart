@@ -21,6 +21,11 @@ class AuthController extends ChangeNotifier {
   bool get isAdmin => _currentUser?.isAdmin ?? false;
   bool get isSalesperson => _currentUser?.isSalesperson ?? false;
 
+  @visibleForTesting
+  void setCurrentUserForTesting(AppUser? user) {
+    _currentUser = user;
+  }
+
   Future<void> initialize() async {
     if (_isInitializing) return;
 

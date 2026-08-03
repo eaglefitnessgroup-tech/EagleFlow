@@ -4,6 +4,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../domain/product.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/guards/admin_guard.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   final Product? product; // null if adding
@@ -156,206 +157,211 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   @override
   Widget build(BuildContext context) {
     final title = widget.product == null ? 'Add Product' : 'Edit Product';
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.charcoal,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.charcoal),
-        actions: [
-          if (_isSaving)
-            const Padding(
-              padding: EdgeInsets.only(right: 20.0),
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
-          else
-            TextButton(
-              onPressed: _save,
-              child: const Text(
-                'Save',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+    return AdminGuard(
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.charcoal,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
             ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.w500,
+          ),
+          backgroundColor: Colors.white,
+          centerTitle: true,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: AppColors.charcoal),
+          actions: [
+            if (_isSaving)
+              const Padding(
+                padding: EdgeInsets.only(right: 20.0),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
+                ),
+              )
+            else
+              TextButton(
+                onPressed: _save,
+                child: const Text(
+                  'Save',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-
-            // Image Picker
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  width: 120,
-                  height: 120,
+          ],
+        ),
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              if (_errorMessage != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _imageBytes != null
-                      ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.memory(_imageBytes!, fit: BoxFit.cover),
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: GestureDetector(
-                                onTap: _removeImage,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black54,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.close,
-                                    size: 16,
-                                    color: Colors.white,
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+
+              // Image Picker
+              Center(
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _imageBytes != null
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.memory(_imageBytes!, fit: BoxFit.cover),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: _removeImage,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        )
-                      : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_photo_alternate_outlined,
-                              color: AppColors.mutedText,
-                              size: 32,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Add Image',
-                              style: TextStyle(
+                            ],
+                          )
+                        : const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_photo_alternate_outlined,
                                 color: AppColors.mutedText,
-                                fontSize: 12,
+                                size: 32,
                               ),
-                            ),
-                          ],
-                        ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Add Image',
+                                style: TextStyle(
+                                  color: AppColors.mutedText,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            _buildTextField(
-              'Product Code / SKU *',
-              _codeController,
-              required: true,
-            ),
-            _buildTextField('Product Name *', _nameController, required: true),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTextField('Category', _categoryController),
-                ),
-                const SizedBox(width: 16),
-                Expanded(child: _buildTextField('Brand', _brandController)),
-              ],
-            ),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTextField(
-                    'Selling Price *',
-                    _priceController,
-                    isNumber: true,
-                    required: true,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(child: _buildTextField('Unit', _unitController)),
-              ],
-            ),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTextField(
-                    'Opening Stock',
-                    _openingStockController,
-                    isNumber: true,
-                    readOnly: widget.product != null,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildTextField(
-                    'Min Stock Level',
-                    _minStockController,
-                    isNumber: true,
-                  ),
-                ),
-              ],
-            ),
-
-            _buildTextField(
-              'Description / Notes',
-              _descriptionController,
-              maxLines: 3,
-            ),
-
-            const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('VAT Applicable'),
-              contentPadding: EdgeInsets.zero,
-              activeThumbColor: AppColors.primaryBlue,
-              value: _isVatApplicable,
-              onChanged: (val) => setState(() => _isVatApplicable = val),
-            ),
-            SwitchListTile(
-              title: const Text('Active Product'),
-              subtitle: const Text(
-                'Inactive products cannot be added to new quotations',
+              _buildTextField(
+                'Product Code / SKU *',
+                _codeController,
+                required: true,
               ),
-              contentPadding: EdgeInsets.zero,
-              activeThumbColor: AppColors.primaryBlue,
-              value: _isActive,
-              onChanged: (val) => setState(() => _isActive = val),
-            ),
-          ],
+              _buildTextField(
+                'Product Name *',
+                _nameController,
+                required: true,
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField('Category', _categoryController),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildTextField('Brand', _brandController)),
+                ],
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      'Selling Price *',
+                      _priceController,
+                      isNumber: true,
+                      required: true,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildTextField('Unit', _unitController)),
+                ],
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      'Opening Stock',
+                      _openingStockController,
+                      isNumber: true,
+                      readOnly: widget.product != null,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildTextField(
+                      'Min Stock Level',
+                      _minStockController,
+                      isNumber: true,
+                    ),
+                  ),
+                ],
+              ),
+
+              _buildTextField(
+                'Description / Notes',
+                _descriptionController,
+                maxLines: 3,
+              ),
+
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text('VAT Applicable'),
+                contentPadding: EdgeInsets.zero,
+                activeThumbColor: AppColors.primaryBlue,
+                value: _isVatApplicable,
+                onChanged: (val) => setState(() => _isVatApplicable = val),
+              ),
+              SwitchListTile(
+                title: const Text('Active Product'),
+                subtitle: const Text(
+                  'Inactive products cannot be added to new quotations',
+                ),
+                contentPadding: EdgeInsets.zero,
+                activeThumbColor: AppColors.primaryBlue,
+                value: _isActive,
+                onChanged: (val) => setState(() => _isActive = val),
+              ),
+            ],
+          ),
         ),
       ),
     );

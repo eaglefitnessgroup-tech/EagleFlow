@@ -11,7 +11,7 @@ import 'widgets/details/product_details_bottom_bar.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final Product? testProduct;
-  
+
   const ProductDetailsScreen({super.key, this.testProduct});
 
   @override
@@ -30,7 +30,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInit) {
-      _product = widget.testProduct ?? ModalRoute.of(context)?.settings.arguments as Product?;
+      _product =
+          widget.testProduct ??
+          ModalRoute.of(context)?.settings.arguments as Product?;
       if (_product != null) {
         _fetchStock();
       }

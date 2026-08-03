@@ -47,56 +47,74 @@ void main() {
   }
 
   Widget buildProductDetailsScreen() {
-    return MaterialApp(
-      home: ProductDetailsScreen(testProduct: dummyProduct),
-    );
+    return MaterialApp(home: ProductDetailsScreen(testProduct: dummyProduct));
   }
 
   group('Products Screen Permissions', () {
     testWidgets('Admin sees Add Product', (WidgetTester tester) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(username: 'admin', password: 'admin123', rememberMe: true);
+        await ServiceLocator().authController.login(
+          username: 'admin',
+          password: 'admin123',
+          rememberMe: true,
+        );
       });
 
       await tester.pumpWidget(buildProductsScreen());
       await tester.pumpAndSettle();
-      
+
       expect(find.text('+ Add Product'), findsOneWidget);
     });
 
-    testWidgets('Salesperson does not see Add Product', (WidgetTester tester) async {
+    testWidgets('Salesperson does not see Add Product', (
+      WidgetTester tester,
+    ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(username: 'sales', password: 'sales123', rememberMe: true);
+        await ServiceLocator().authController.login(
+          username: 'sales',
+          password: 'sales123',
+          rememberMe: true,
+        );
       });
 
       await tester.pumpWidget(buildProductsScreen());
       await tester.pumpAndSettle();
-      
+
       expect(find.text('+ Add Product'), findsNothing);
     });
 
-    testWidgets('Null user treated as non-admin (hides Add Product)', (WidgetTester tester) async {
+    testWidgets('Null user treated as non-admin (hides Add Product)', (
+      WidgetTester tester,
+    ) async {
       expect(ServiceLocator().authController.currentUser, isNull);
 
       await tester.pumpWidget(buildProductsScreen());
       await tester.pumpAndSettle();
-      
+
       expect(find.text('+ Add Product'), findsNothing);
     });
   });
 
   group('Product Details Permissions', () {
-    testWidgets('Admin sees Edit Product and Stock Actions', (WidgetTester tester) async {
+    testWidgets('Admin sees Edit Product and Stock Actions', (
+      WidgetTester tester,
+    ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(username: 'admin', password: 'admin123', rememberMe: true);
+        await ServiceLocator().authController.login(
+          username: 'admin',
+          password: 'admin123',
+          rememberMe: true,
+        );
       });
 
       // We need a proper ProductCard to show Edit Product
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: ProductCard(product: dummyProduct))),
+        MaterialApp(
+          home: Scaffold(body: ProductCard(product: dummyProduct)),
+        ),
       );
       await tester.pumpAndSettle();
-      
+
       // Admin sees Edit Product on the card
       expect(find.text('Edit Product'), findsOneWidget);
 
@@ -108,16 +126,24 @@ void main() {
       expect(find.text('Stock Out'), findsOneWidget);
     });
 
-    testWidgets('Salesperson does not see Edit Product or Stock Actions', (WidgetTester tester) async {
+    testWidgets('Salesperson does not see Edit Product or Stock Actions', (
+      WidgetTester tester,
+    ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(username: 'sales', password: 'sales123', rememberMe: true);
+        await ServiceLocator().authController.login(
+          username: 'sales',
+          password: 'sales123',
+          rememberMe: true,
+        );
       });
 
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: ProductCard(product: dummyProduct))),
+        MaterialApp(
+          home: Scaffold(body: ProductCard(product: dummyProduct)),
+        ),
       );
       await tester.pumpAndSettle();
-      
+
       // Edit Product is hidden on card
       expect(find.text('Edit Product'), findsNothing);
 

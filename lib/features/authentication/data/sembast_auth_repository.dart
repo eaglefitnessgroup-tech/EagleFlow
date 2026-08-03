@@ -17,10 +17,14 @@ class SembastAuthRepository implements AuthRepository {
 
   SembastAuthRepository({DatabaseService? databaseService})
     : _databaseService = databaseService ?? DatabaseService() {
-    _initDefaultUsers();
+    _initFuture = _initDefaultUsers();
   }
 
   Future<Database> get _db async => await _databaseService.database;
+
+  late final Future<void> _initFuture;
+
+  Future<void> _ensureInitialized() => _initFuture;
 
   Future<void> _initDefaultUsers() async {
     final db = await _db;
@@ -103,6 +107,7 @@ class SembastAuthRepository implements AuthRepository {
 
   @override
   Future<AppUser?> getCurrentUser() async {
+    await _ensureInitialized();
     final db = await _db;
     final sessionData = await _sessionStore.record(_sessionKey).get(db);
 

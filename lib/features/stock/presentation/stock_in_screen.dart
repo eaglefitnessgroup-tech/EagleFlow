@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../products/domain/product.dart';
+import '../../../../core/guards/admin_guard.dart';
 
 class StockInScreen extends StatefulWidget {
   const StockInScreen({super.key});
@@ -262,295 +263,307 @@ class _StockInScreenState extends State<StockInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'Stock In',
-          style: TextStyle(
-            color: AppColors.charcoal,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
+    return AdminGuard(
+      child: Scaffold(
         backgroundColor: AppColors.background,
-        iconTheme: const IconThemeData(color: AppColors.charcoal),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(24.0),
-          children: [
-            const Text(
-              'PRODUCT DETAILS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.mutedText,
-                letterSpacing: 1.2,
-              ),
+        appBar: AppBar(
+          title: const Text(
+            'Stock In',
+            style: TextStyle(
+              color: AppColors.charcoal,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _productController,
-              readOnly: true,
-              decoration: InputDecoration(
-                hintText: 'Choose a product',
-                hintStyle: const TextStyle(color: AppColors.mutedText),
-                prefixIcon: const Icon(
-                  Icons.inventory_2_outlined,
+          ),
+          centerTitle: true,
+          backgroundColor: AppColors.background,
+          iconTheme: const IconThemeData(color: AppColors.charcoal),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+        ),
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(24.0),
+            children: [
+              const Text(
+                'PRODUCT DETAILS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                   color: AppColors.mutedText,
+                  letterSpacing: 1.2,
                 ),
-                suffixIcon: const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: AppColors.mutedText,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primaryBlue),
-                ),
-                filled: true,
-                fillColor: AppColors.surface,
               ),
-              onTap: _showProductSelectionSheet,
-            ),
-            if (_selectedProduct != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               TextFormField(
-                key: ValueKey(
-                  'stock_$_selectedProductStock',
-                ), // Force rebuild on change
-                initialValue: _isLoadingStock
-                    ? 'Loading...'
-                    : '${_selectedProductStock ?? 0} units',
+                controller: _productController,
                 readOnly: true,
                 decoration: InputDecoration(
-                  labelText: 'Current Stock',
-                  labelStyle: const TextStyle(color: AppColors.mutedText),
+                  hintText: 'Choose a product',
+                  hintStyle: const TextStyle(color: AppColors.mutedText),
+                  prefixIcon: const Icon(
+                    Icons.inventory_2_outlined,
+                    color: AppColors.mutedText,
+                  ),
+                  suffixIcon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: AppColors.mutedText,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primaryBlue),
+                  ),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
+                  fillColor: AppColors.surface,
+                ),
+                onTap: _showProductSelectionSheet,
+              ),
+              if (_selectedProduct != null) ...[
+                const SizedBox(height: 24),
+                TextFormField(
+                  key: ValueKey(
+                    'stock_$_selectedProductStock',
+                  ), // Force rebuild on change
+                  initialValue: _isLoadingStock
+                      ? 'Loading...'
+                      : '${_selectedProductStock ?? 0} units',
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: 'Current Stock',
+                    labelStyle: const TextStyle(color: AppColors.mutedText),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'This value updates automatically from live stock.',
-                style: TextStyle(fontSize: 12, color: AppColors.mutedText),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _quantityController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Enter a valid quantity greater than 0.';
-                  }
-                  final numValue = int.tryParse(value.trim());
-                  if (numValue == null || numValue <= 0) {
-                    return 'Enter a valid quantity greater than 0.';
-                  }
-                  return null;
-                },
-                decoration: InputDecoration(
-                  labelText: 'Quantity Received',
-                  hintText: 'Enter quantity',
-                  hintStyle: const TextStyle(color: AppColors.mutedText),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryBlue),
-                  ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This value updates automatically from live stock.',
+                  style: TextStyle(fontSize: 12, color: AppColors.mutedText),
                 ),
-              ),
-              const SizedBox(height: 24),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _quantityController,
-                builder: (context, value, _) {
-                  final quantityText = value.text.trim();
-                  final quantity = int.tryParse(quantityText);
-                  final validQuantity = (quantity != null && quantity > 0)
-                      ? quantity
-                      : 0;
-                  final currentStock = _selectedProductStock ?? 0;
-                  final newStock = currentStock + validQuantity;
-
-                  return TextFormField(
-                    key: ValueKey(
-                      'new_stock_$newStock',
-                    ), // Force rebuild on change
-                    initialValue: _isLoadingStock
-                        ? 'Loading...'
-                        : '$newStock units',
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: 'New Stock',
-                      labelStyle: const TextStyle(color: AppColors.mutedText),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.border),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _quantityController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter a valid quantity greater than 0.';
+                    }
+                    final numValue = int.tryParse(value.trim());
+                    if (numValue == null || numValue <= 0) {
+                      return 'Enter a valid quantity greater than 0.';
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Quantity Received',
+                    hintText: 'Enter quantity',
+                    hintStyle: const TextStyle(color: AppColors.mutedText),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryBlue,
                       ),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _referenceController,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9 \-/]')),
-                ],
-                decoration: InputDecoration(
-                  labelText: 'Reference Number',
-                  hintText: 'Enter PO or reference number',
-                  hintStyle: const TextStyle(color: AppColors.mutedText),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryBlue),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _supplierController,
-                decoration: InputDecoration(
-                  labelText: 'Supplier / Source',
-                  hintText: 'Enter supplier or source',
-                  hintStyle: const TextStyle(color: AppColors.mutedText),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryBlue),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _notesController,
-                minLines: 3,
-                maxLines: 5,
-                keyboardType: TextInputType.multiline,
-                decoration: InputDecoration(
-                  labelText: 'Notes',
-                  hintText: 'Add any additional details',
-                  hintStyle: const TextStyle(color: AppColors.mutedText),
-                  alignLabelWithHint: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryBlue),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _quantityController,
-                builder: (context, value, _) {
-                  final qty = int.tryParse(value.text.trim());
-                  final isValid =
-                      qty != null &&
-                      qty > 0 &&
-                      !_isLoadingStock &&
-                      _selectedProduct != null;
+                const SizedBox(height: 24),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _quantityController,
+                  builder: (context, value, _) {
+                    final quantityText = value.text.trim();
+                    final quantity = int.tryParse(quantityText);
+                    final validQuantity = (quantity != null && quantity > 0)
+                        ? quantity
+                        : 0;
+                    final currentStock = _selectedProductStock ?? 0;
+                    final newStock = currentStock + validQuantity;
 
-                  return SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      onPressed: isValid
-                          ? () {
-                              final current = _selectedProductStock ?? 0;
-                              _showConfirmationDialog(
-                                qty!,
-                                current,
-                                current + qty,
-                              );
-                            }
-                          : null,
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text(
-                        'Confirm Stock In',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
+                    return TextFormField(
+                      key: ValueKey(
+                        'new_stock_$newStock',
+                      ), // Force rebuild on change
+                      initialValue: _isLoadingStock
+                          ? 'Loading...'
+                          : '$newStock units',
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'New Stock',
+                        labelStyle: const TextStyle(color: AppColors.mutedText),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
-                        elevation: isValid ? 2 : 0,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _referenceController,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'[a-zA-Z0-9 \-/]'),
+                    ),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Reference Number',
+                    hintText: 'Enter PO or reference number',
+                    hintStyle: const TextStyle(color: AppColors.mutedText),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryBlue,
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _supplierController,
+                  decoration: InputDecoration(
+                    labelText: 'Supplier / Source',
+                    hintText: 'Enter supplier or source',
+                    hintStyle: const TextStyle(color: AppColors.mutedText),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _notesController,
+                  minLines: 3,
+                  maxLines: 5,
+                  keyboardType: TextInputType.multiline,
+                  decoration: InputDecoration(
+                    labelText: 'Notes',
+                    hintText: 'Add any additional details',
+                    hintStyle: const TextStyle(color: AppColors.mutedText),
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _quantityController,
+                  builder: (context, value, _) {
+                    final qty = int.tryParse(value.text.trim());
+                    final isValid =
+                        qty != null &&
+                        qty > 0 &&
+                        !_isLoadingStock &&
+                        _selectedProduct != null;
+
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        onPressed: isValid
+                            ? () {
+                                final current = _selectedProductStock ?? 0;
+                                _showConfirmationDialog(
+                                  qty!,
+                                  current,
+                                  current + qty,
+                                );
+                              }
+                            : null,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text(
+                          'Confirm Stock In',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: isValid ? 2 : 0,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -2,65 +2,71 @@ import 'package:flutter/material.dart';
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 
+import '../../../../core/guards/admin_guard.dart';
+
 class StockManagementScreen extends StatelessWidget {
   const StockManagementScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'Stock Management',
-          style: TextStyle(
-            color: AppColors.charcoal,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
+    return AdminGuard(
+      child: Scaffold(
         backgroundColor: AppColors.background,
-        iconTheme: const IconThemeData(color: AppColors.charcoal),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            _buildActionCard(
-              context,
-              title: 'Stock In',
-              subtitle: 'Add new stock to inventory',
-              icon: Icons.add_circle_outline,
-              iconColor: AppColors.statusApprovedText,
-              onTap: () {
-                Navigator.of(context).pushNamed(AppRoutes.stockIn);
-              },
+        appBar: AppBar(
+          title: const Text(
+            'Stock Management',
+            style: TextStyle(
+              color: AppColors.charcoal,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 16),
-            _buildActionCard(
-              context,
-              title: 'Stock Out',
-              subtitle: 'Deduct stock from inventory',
-              icon: Icons.remove_circle_outline,
-              iconColor: AppColors.statusRejectedText,
-              onTap: () {
-                Navigator.of(context).pushNamed(AppRoutes.stockOut);
-              },
-            ),
-            const SizedBox(height: 16),
-            _buildActionCard(
-              context,
-              title: 'Stock Out by Quotation',
-              subtitle: 'Deduct stock using a saved quotation',
-              icon: Icons.receipt_long_outlined,
-              iconColor: AppColors.primaryBlue,
-              onTap: () {
-                Navigator.of(context).pushNamed(AppRoutes.stockOutByQuotation);
-              },
-            ),
-          ],
+          ),
+          centerTitle: true,
+          backgroundColor: AppColors.background,
+          iconTheme: const IconThemeData(color: AppColors.charcoal),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              _buildActionCard(
+                context,
+                title: 'Stock In',
+                subtitle: 'Add new stock to inventory',
+                icon: Icons.add_circle_outline,
+                iconColor: AppColors.statusApprovedText,
+                onTap: () {
+                  Navigator.of(context).pushNamed(AppRoutes.stockIn);
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildActionCard(
+                context,
+                title: 'Stock Out',
+                subtitle: 'Deduct stock from inventory',
+                icon: Icons.remove_circle_outline,
+                iconColor: AppColors.statusRejectedText,
+                onTap: () {
+                  Navigator.of(context).pushNamed(AppRoutes.stockOut);
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildActionCard(
+                context,
+                title: 'Stock Out by Quotation',
+                subtitle: 'Deduct stock using a saved quotation',
+                icon: Icons.receipt_long_outlined,
+                iconColor: AppColors.primaryBlue,
+                onTap: () {
+                  Navigator.of(
+                    context,
+                  ).pushNamed(AppRoutes.stockOutByQuotation);
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
