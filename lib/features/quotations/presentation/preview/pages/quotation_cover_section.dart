@@ -112,7 +112,12 @@ class QuotationCoverSection extends StatelessWidget {
                       quotation.validUntil,
                     ),
                   ),
-                  _buildCustomerRow('SALESMAN', '—'),
+                  _buildCustomerRow(
+                    'SALESMAN',
+                    quotation.salespersonName.isNotEmpty
+                        ? quotation.salespersonName
+                        : '—',
+                  ),
                 ],
               ),
             ),

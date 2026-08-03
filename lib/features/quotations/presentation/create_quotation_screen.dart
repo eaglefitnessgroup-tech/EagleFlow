@@ -37,7 +37,13 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
       if (args is Quotation) {
         _controller = QuotationController(args);
       } else {
-        final draft = QuotationDefaults.createEmptyDraft();
+        // Inject current user into the new draft so salesperson fields are
+        // populated from the authenticated session rather than hardcoded.
+        final user = ServiceLocator().authController.currentUser;
+        final draft = QuotationDefaults.createEmptyDraft(
+          salespersonId: user?.id ?? '',
+          salespersonName: user?.name ?? '',
+        );
         _controller = QuotationController(draft);
       }
       _isInit = true;
@@ -52,6 +58,21 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
 
   Future<void> _handleSave() async {
     if (_isSaving) return;
+
+    // Guard: must be authenticated to save a quotation.
+    final user = ServiceLocator().authController.currentUser;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please log in again to create a quotation.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -198,7 +219,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                     const SizedBox(height: 20),
                     QuotationInformationCard(
                       quotationNumber: quotation.quotationNumber,
-                      salesperson: quotation.salespersonId,
+                      salespersonName: quotation.salespersonName,
                       date: quotation.createdDate,
                       validUntil: quotation.validUntil,
                       expectedDelivery: quotation.expectedDelivery,
@@ -288,7 +309,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
           const SizedBox(height: 20),
           QuotationInformationCard(
             quotationNumber: quotation.quotationNumber,
-            salesperson: quotation.salespersonId,
+            salespersonName: quotation.salespersonName,
             date: quotation.createdDate,
             validUntil: quotation.validUntil,
             expectedDelivery: quotation.expectedDelivery,

@@ -3,7 +3,7 @@ import '../../../../../../app/theme/app_colors.dart';
 
 class QuotationInformationCard extends StatelessWidget {
   final String quotationNumber;
-  final String salesperson;
+  final String salespersonName;
   final DateTime date;
   final DateTime validUntil;
   final DateTime expectedDelivery;
@@ -11,7 +11,7 @@ class QuotationInformationCard extends StatelessWidget {
   const QuotationInformationCard({
     super.key,
     required this.quotationNumber,
-    required this.salesperson,
+    required this.salespersonName,
     required this.date,
     required this.validUntil,
     required this.expectedDelivery,
@@ -96,7 +96,7 @@ class QuotationInformationCard extends StatelessWidget {
               const SizedBox(height: 16),
               _buildTextField(
                 'Salesperson',
-                initialValue: salesperson,
+                initialValue: salespersonName,
                 readOnly: true,
               ),
             ],

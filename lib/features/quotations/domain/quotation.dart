@@ -8,6 +8,7 @@ class Quotation {
   final String quotationNumber;
   final CustomerInfo customerInfo;
   final String salespersonId;
+  final String salespersonName;
   final DateTime createdDate;
   final DateTime modifiedDate;
   final DateTime validUntil;
@@ -25,6 +26,7 @@ class Quotation {
     required this.quotationNumber,
     required this.customerInfo,
     required this.salespersonId,
+    required this.salespersonName,
     required this.createdDate,
     required this.modifiedDate,
     required this.validUntil,
@@ -43,6 +45,7 @@ class Quotation {
     String? quotationNumber,
     CustomerInfo? customerInfo,
     String? salespersonId,
+    String? salespersonName,
     DateTime? createdDate,
     DateTime? modifiedDate,
     DateTime? validUntil,
@@ -60,6 +63,7 @@ class Quotation {
       quotationNumber: quotationNumber ?? this.quotationNumber,
       customerInfo: customerInfo ?? this.customerInfo,
       salespersonId: salespersonId ?? this.salespersonId,
+      salespersonName: salespersonName ?? this.salespersonName,
       createdDate: createdDate ?? this.createdDate,
       modifiedDate: modifiedDate ?? this.modifiedDate,
       validUntil: validUntil ?? this.validUntil,
@@ -80,6 +84,7 @@ class Quotation {
       'quotationNumber': quotationNumber,
       'customerInfo': customerInfo.toJson(),
       'salespersonId': salespersonId,
+      'salespersonName': salespersonName,
       'createdDate': createdDate.toIso8601String(),
       'modifiedDate': modifiedDate.toIso8601String(),
       'validUntil': validUntil.toIso8601String(),
@@ -102,6 +107,7 @@ class Quotation {
         json['customerInfo'] as Map<String, dynamic>,
       ),
       salespersonId: json['salespersonId'] as String,
+      salespersonName: json['salespersonName'] as String? ?? '',
       createdDate: DateTime.parse(json['createdDate'] as String),
       modifiedDate: DateTime.parse(json['modifiedDate'] as String),
       validUntil: DateTime.parse(json['validUntil'] as String),
