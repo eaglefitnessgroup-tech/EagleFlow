@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../features/quotations/data/quotation_repository.dart';
 import '../../features/quotations/data/sembast_quotation_repository.dart';
+import '../../features/quotations/data/supabase_quotation_repository.dart';
 import '../../features/products/domain/product_repository.dart';
 import '../../features/products/data/sembast_product_repository.dart';
 import '../../features/products/data/supabase_product_repository.dart';
@@ -29,8 +30,11 @@ class ServiceLocator {
 
   late final AuthController authController = AuthController(authRepository);
 
-  late final QuotationRepository quotationRepository =
+  late final SembastQuotationRepository _sembastQuotationRepository =
       SembastQuotationRepository();
+
+  late final QuotationRepository quotationRepository =
+      SupabaseQuotationRepository(_sembastQuotationRepository, supabaseService);
 
   late final SembastProductRepository _sembastProductRepository =
       SembastProductRepository();
@@ -70,6 +74,10 @@ class ServiceLocator {
 
     if (stockRepository is SupabaseStockRepository) {
       await (stockRepository as SupabaseStockRepository).init();
+    }
+
+    if (quotationRepository is SupabaseQuotationRepository) {
+      await (quotationRepository as SupabaseQuotationRepository).init();
     }
 
     // Phase 7: Initialize Supabase connection.
