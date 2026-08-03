@@ -31,6 +31,20 @@ class SembastQuotationRepository implements QuotationRepository {
   }
 
   @override
+  Future<Quotation?> getQuotationByNumber(String quotationNumber) async {
+    final db = await _db;
+    final cleanNumber = quotationNumber.trim();
+    final finder = Finder(
+      filter: Filter.equals('quotationNumber', cleanNumber),
+    );
+    final record = await _quotationsStore.findFirst(db, finder: finder);
+    if (record != null) {
+      return Quotation.fromJson(record.value);
+    }
+    return null;
+  }
+
+  @override
   Future<Quotation> getQuotationWithImages(Quotation quotation) async {
     final db = await _db;
     final updatedItems = <QuotationLineItem>[];

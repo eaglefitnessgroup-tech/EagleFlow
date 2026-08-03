@@ -6,4 +6,5 @@ abstract class QuotationRepository {
   Future<void> deleteQuotation(String id);
   Future<Quotation> duplicateQuotation(Quotation sourceQuotation);
   Future<Quotation> getQuotationWithImages(Quotation quotation);
+  Future<Quotation?> getQuotationByNumber(String quotationNumber);
 }

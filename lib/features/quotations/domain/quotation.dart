@@ -18,6 +18,7 @@ class Quotation {
   final QuotationCharges charges;
   final String customerNotes;
   final String internalNotes;
+  final bool isStockOutProcessed;
 
   const Quotation({
     required this.id,
@@ -34,6 +35,7 @@ class Quotation {
     this.charges = const QuotationCharges(),
     this.customerNotes = '',
     this.internalNotes = '',
+    this.isStockOutProcessed = false,
   });
 
   Quotation copyWith({
@@ -51,6 +53,7 @@ class Quotation {
     QuotationCharges? charges,
     String? customerNotes,
     String? internalNotes,
+    bool? isStockOutProcessed,
   }) {
     return Quotation(
       id: id ?? this.id,
@@ -67,6 +70,7 @@ class Quotation {
       charges: charges ?? this.charges,
       customerNotes: customerNotes ?? this.customerNotes,
       internalNotes: internalNotes ?? this.internalNotes,
+      isStockOutProcessed: isStockOutProcessed ?? this.isStockOutProcessed,
     );
   }
 
@@ -86,6 +90,7 @@ class Quotation {
       'charges': charges.toJson(),
       'customerNotes': customerNotes,
       'internalNotes': internalNotes,
+      'isStockOutProcessed': isStockOutProcessed,
     };
   }
 
@@ -121,6 +126,7 @@ class Quotation {
       ),
       customerNotes: json['customerNotes'] as String? ?? '',
       internalNotes: json['internalNotes'] as String? ?? '',
+      isStockOutProcessed: json['isStockOutProcessed'] as bool? ?? false,
     );
   }
 }
