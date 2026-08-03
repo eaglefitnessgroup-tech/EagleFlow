@@ -221,13 +221,39 @@ class SupabaseQuotationRepository implements QuotationRepository {
           }
         }
       } catch (e) {
-        throw Exception('Failed to sync quotation to remote: $e');
+        if (toSave.status != QuotationStatus.draft) {
+          throw Exception('Failed to sync quotation to remote: $e');
+        }
+        if (toSave.id.isEmpty) {
+          final newId = const Uuid().v4();
+          toSave = toSave.copyWith(id: newId, quotationNumber: 'DRAFT-$newId');
+        }
+        final payload = toSave.toJson();
+        if (payload['lineItems'] != null) {
+          for (var item in payload['lineItems'] as List<dynamic>) {
+            item.remove('imageBytes');
+          }
+        }
+        await ServiceLocator().syncCoordinator.queueFailedWrite(
+          'quotations',
+          payload,
+        );
       }
     } else {
       if (toSave.id.isEmpty) {
         final newId = const Uuid().v4();
         toSave = toSave.copyWith(id: newId, quotationNumber: 'DRAFT-$newId');
       }
+      final payload = toSave.toJson();
+      if (payload['lineItems'] != null) {
+        for (var item in payload['lineItems'] as List<dynamic>) {
+          item.remove('imageBytes');
+        }
+      }
+      await ServiceLocator().syncCoordinator.queueFailedWrite(
+        'quotations',
+        payload,
+      );
     }
 
     return await localCache.saveQuotation(toSave);

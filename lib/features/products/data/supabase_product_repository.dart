@@ -131,10 +131,6 @@ class SupabaseProductRepository implements ProductRepository {
   Future<Product> addProduct(Product product) async {
     _checkAdmin();
 
-    if (!isConnectedToServer) {
-      throw Exception('Cannot add product offline.');
-    }
-
     final newId = _uuid.v4();
     final now = DateTime.now();
     var updatedProduct = product.copyWith(
@@ -147,8 +143,16 @@ class SupabaseProductRepository implements ProductRepository {
       throw Exception('Product code must be unique');
     }
 
-    // 1. Save to Supabase first
-    await insertProductToServer(_toSupabase(updatedProduct));
+    // 1. Save to Supabase first or queue if offline/fails
+    try {
+      if (!isConnectedToServer) throw Exception('Offline');
+      await insertProductToServer(_toSupabase(updatedProduct));
+    } catch (e) {
+      await ServiceLocator().syncCoordinator.queueFailedWrite(
+        'products',
+        _toSupabase(updatedProduct),
+      );
+    }
 
     // 2. Save locally
     final db = await _db;
@@ -178,10 +182,6 @@ class SupabaseProductRepository implements ProductRepository {
   Future<Product> updateProduct(Product product) async {
     _checkAdmin();
 
-    if (!isConnectedToServer) {
-      throw Exception('Cannot edit product offline.');
-    }
-
     var updatedProduct = product.copyWith(updatedAt: DateTime.now());
 
     if (!(await localCache.isProductCodeUnique(
@@ -191,8 +191,19 @@ class SupabaseProductRepository implements ProductRepository {
       throw Exception('Product code must be unique');
     }
 
-    // 1. Save to Supabase first
-    await updateProductOnServer(updatedProduct.id, _toSupabase(updatedProduct));
+    // 1. Save to Supabase first or queue
+    try {
+      if (!isConnectedToServer) throw Exception('Offline');
+      await updateProductOnServer(
+        updatedProduct.id,
+        _toSupabase(updatedProduct),
+      );
+    } catch (e) {
+      await ServiceLocator().syncCoordinator.queueFailedWrite(
+        'products',
+        _toSupabase(updatedProduct),
+      );
+    }
 
     // 2. Save locally
     final finalProduct = await localCache.updateProduct(updatedProduct);
@@ -211,14 +222,25 @@ class SupabaseProductRepository implements ProductRepository {
   Future<void> toggleProductStatus(String id, bool isActive) async {
     _checkAdmin();
 
-    if (!isConnectedToServer) {
-      throw Exception('Cannot toggle product status offline.');
+    try {
+      if (!isConnectedToServer) throw Exception('Offline');
+      await updateProductOnServer(id, {
+        'is_active': isActive,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (e) {
+      final p = await getProductById(id);
+      if (p != null) {
+        final updated = p.copyWith(
+          isActive: isActive,
+          updatedAt: DateTime.now(),
+        );
+        await ServiceLocator().syncCoordinator.queueFailedWrite(
+          'products',
+          _toSupabase(updated),
+        );
+      }
     }
-
-    await updateProductOnServer(id, {
-      'is_active': isActive,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    });
 
     await localCache.toggleProductStatus(id, isActive);
   }
@@ -227,10 +249,6 @@ class SupabaseProductRepository implements ProductRepository {
   Future<void> deleteProduct(String id) async {
     _checkAdmin();
 
-    if (!isConnectedToServer) {
-      throw Exception('Cannot delete product offline.');
-    }
-
     final hasRefs = await localCache.hasQuotationReferences(id);
     if (hasRefs) {
       throw Exception(
@@ -238,10 +256,23 @@ class SupabaseProductRepository implements ProductRepository {
       );
     }
 
-    // Save to Supabase first (soft delete)
-    await updateProductOnServer(id, {
-      'deleted_at': DateTime.now().toUtc().toIso8601String(),
-    });
+    // Save to Supabase first (soft delete) or queue
+    try {
+      if (!isConnectedToServer) throw Exception('Offline');
+      await updateProductOnServer(id, {
+        'deleted_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (e) {
+      final p = await getProductById(id);
+      if (p != null) {
+        final payload = _toSupabase(p);
+        payload['deleted_at'] = DateTime.now().toUtc().toIso8601String();
+        await ServiceLocator().syncCoordinator.queueFailedWrite(
+          'products',
+          payload,
+        );
+      }
+    }
 
     // Update local cache
     await localCache.deleteProduct(id);

@@ -23,6 +23,12 @@ class SupabaseService extends ChangeNotifier {
     _instance = SupabaseService._internal();
   }
 
+  @visibleForTesting
+  static SupabaseService resetForTestingAndReturn() {
+    _instance = SupabaseService._internal();
+    return _instance;
+  }
+
   // ── State ──────────────────────────────────────────────────────────────────
   bool _initialized = false;
   bool _isConnected = false;

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../sync/sync_coordinator.dart';
 import '../../features/quotations/data/quotation_repository.dart';
 import '../../features/quotations/data/sembast_quotation_repository.dart';
 import '../../features/quotations/data/supabase_quotation_repository.dart';
@@ -55,6 +56,10 @@ class ServiceLocator {
     supabaseService,
   );
 
+  late SyncCoordinator syncCoordinator = SyncCoordinator(
+    client: supabaseService.client,
+  );
+
   late final StockController stockController = StockController(stockRepository);
 
   late final StockOutByQuotationService stockOutByQuotationService =
@@ -84,8 +89,10 @@ class ServiceLocator {
     // Runs after Sembast is ready. A Supabase failure never blocks startup.
     try {
       await supabaseService.initialize();
+      // Initialize SyncCoordinator AFTER repositories and supabase
+      await syncCoordinator.start();
     } catch (e) {
-      // Supabase is optional at this stage — app operates in local-only mode.
+      debugPrint('Supabase init failed. Continuing offline. Error: $e');
     }
   }
 }

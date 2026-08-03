@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
+import 'package:eagleflow/core/sync/sync_coordinator.dart';
 import 'package:eagleflow/features/authentication/domain/app_user.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/features/products/data/supabase_product_repository.dart';
@@ -129,28 +130,19 @@ void main() {
       final products = await repo.getAllProducts();
       expect(products, isA<List<Product>>());
 
-      // Should throw on add
-      expect(
-        () => repo.addProduct(
-          Product(
-            id: '',
-            productCode: 'PROD-NEW',
-            name: 'New',
-            category: 'Cat',
-            brand: 'Brand',
-            sellingPrice: 10,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        ),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'msg',
-            contains('offline'),
-          ),
+      final added = await repo.addProduct(
+        Product(
+          id: '',
+          productCode: 'PROD-NEW',
+          name: 'New',
+          category: 'Cat',
+          brand: 'Brand',
+          sellingPrice: 10,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         ),
       );
+      expect(added.id, isNotEmpty);
     });
 
     test('3. Duplicate product protection', () async {

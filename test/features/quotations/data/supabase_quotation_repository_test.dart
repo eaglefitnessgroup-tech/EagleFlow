@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
+import 'package:eagleflow/core/sync/sync_coordinator.dart';
 import 'package:eagleflow/features/authentication/domain/app_user.dart';
 import 'package:eagleflow/features/quotations/data/sembast_quotation_repository.dart';
 import 'package:eagleflow/features/quotations/data/supabase_quotation_repository.dart';
@@ -42,6 +43,7 @@ void main() {
     DatabaseService().setDatabaseForTesting(db);
 
     locator = ServiceLocator();
+    locator.syncCoordinator = SyncCoordinator(client: null);
 
     locator.authController.setCurrentUserForTesting(
       AppUser(
@@ -50,29 +52,14 @@ void main() {
         username: 'admin',
         passwordHash: '',
         role: UserRole.admin,
-        isActive: true,
         createdAt: DateTime.now(),
       ),
     );
 
     localCache = SembastQuotationRepository();
-    repo = FakeSupabaseQuotationRepository(localCache, locator.supabaseService);
 
-    repo.serverQuotations = [
-      {
-        'id': 'remote-q1',
-        'quotation_number': 'QT-0001-26',
-        'salesperson_id': 'SALES-001',
-        'customer_name': 'Remote Customer',
-        'status': 'sent',
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-        'valid_until': DateTime.now()
-            .add(const Duration(days: 7))
-            .toIso8601String(),
-        'quotation_items': [],
-      },
-    ];
+    // Reset supabase mock config if needed (not needed for this test since we mock connection)
+    repo = FakeSupabaseQuotationRepository(localCache, locator.supabaseService);
   });
 
   tearDown(() async {
@@ -80,135 +67,181 @@ void main() {
   });
 
   Quotation createTestQuotation({
-    String id = '',
-    String spId = 'ADMIN-001',
+    String salespersonId = 'ADMIN-001',
     QuotationStatus status = QuotationStatus.draft,
   }) {
     return Quotation(
-      id: id,
+      id: '',
       quotationNumber: '',
-      salespersonId: spId,
-      customerInfo: const CustomerInfo(name: 'Test Customer'),
-      charges: const QuotationCharges(),
+      salespersonId: salespersonId,
+      customerInfo: const CustomerInfo(
+        name: 'Test Customer',
+        company: 'Test Co',
+        phone: '1234567890',
+        email: 'test@example.com',
+        projectLocation: 'Dubai',
+      ),
+      charges: const QuotationCharges(
+        deliveryCharges: 100,
+        installationCharges: 50,
+        otherCharges: 0,
+        overallDiscount: 0,
+        vatPercentage: 5,
+      ),
+      customerNotes: 'Deliver between 9 AM - 5 PM.',
+      internalNotes: 'VIP client, prioritize delivery.',
       status: status,
       createdDate: DateTime.now(),
       modifiedDate: DateTime.now(),
-      validUntil: DateTime.now().add(const Duration(days: 7)),
-      expectedDelivery: DateTime.now().add(const Duration(days: 14)),
-      lineItems: [],
+      validUntil: DateTime.now().add(const Duration(days: 14)),
+      expectedDelivery: DateTime.now().add(const Duration(days: 3)),
+      lineItems: [], // Normally this would have QuotationLineItem objects
     );
   }
 
   group('SupabaseQuotationRepository Tests', () {
     test('1. Online pull + cache and Remote newer record wins', () async {
       repo.overrideIsConnected = true;
-      await repo.init(); // Triggers _syncQuotationsDown
 
-      final quotations = await repo.getAllQuotations();
-      expect(quotations.length, 1);
-      expect(quotations.first.id, 'remote-q1');
-      expect(quotations.first.quotationNumber, 'QT-0001-26');
+      // Seed local cache with an older record
+      final now = DateTime.now();
+      final oldRecord = createTestQuotation().copyWith(
+        id: 'Q1',
+        quotationNumber: 'QT-0001-26',
+        modifiedDate: now.subtract(const Duration(hours: 1)),
+      );
+      await localCache.saveQuotation(oldRecord);
+
+      // Seed server with newer record
+      repo.serverQuotations = [
+        {
+          'id': 'Q1',
+          'quotation_number': 'QT-0001-26',
+          'salesperson_id': 'ADMIN-001',
+          'customer_name': 'Remote Customer',
+          'status': 'sent',
+          'created_at': oldRecord.createdDate.toIso8601String(),
+          'updated_at': now.add(const Duration(hours: 2)).toIso8601String(),
+          'valid_until': oldRecord.validUntil.toIso8601String(),
+          'expected_delivery': oldRecord.expectedDelivery.toIso8601String(),
+          'quotation_items': [],
+        },
+      ];
+
+      await repo.init(); // Triggers sync
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      final q = await repo.getQuotationByNumber('QT-0001-26');
+      expect(q, isNotNull);
+      expect(q!.customerInfo.name, 'Remote Customer');
+      expect(q.status, QuotationStatus.sent);
     });
 
     test('2. Offline read fallback', () async {
-      repo.overrideIsConnected = true;
-      await repo.init(); // Sync first
-
       repo.overrideIsConnected = false;
-      final quotations = await repo.getAllQuotations();
-      expect(quotations.length, 1);
-      expect(quotations.first.id, 'remote-q1');
+
+      final q = createTestQuotation().copyWith(
+        id: 'Q2',
+        quotationNumber: 'QT-0002-26',
+      );
+      await localCache.saveQuotation(q);
+
+      final list = await repo.getAllQuotations();
+      expect(list.length, 1);
+      expect(list.first.quotationNumber, 'QT-0002-26');
     });
 
     test(
       '3. Server number generation blocked offline for final save',
       () async {
         repo.overrideIsConnected = false;
-        final q = createTestQuotation(status: QuotationStatus.sent);
 
+        final q = createTestQuotation(status: QuotationStatus.sent);
         expect(
           () => repo.saveQuotation(q),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
               'msg',
-              contains('Cannot finalize'),
+              contains('Cannot finalize or save a non-draft quotation offline'),
             ),
           ),
         );
       },
     );
 
-    test('4. Drafts get DRAFT- UUID number offline', () async {
+    test('4. Drafts get DRAFT-[UUID] number offline', () async {
       repo.overrideIsConnected = false;
-      final q = createTestQuotation(status: QuotationStatus.draft);
 
+      final q = createTestQuotation();
       final saved = await repo.saveQuotation(q);
+
+      expect(saved.id, isNotEmpty);
       expect(saved.quotationNumber.startsWith('DRAFT-'), isTrue);
-      expect(saved.id.isNotEmpty, isTrue);
     });
 
     test('5. Salesperson own-only rules', () async {
-      // Switch to Salesperson
+      // Simulate Salesperson
       locator.authController.setCurrentUserForTesting(
         AppUser(
-          id: 'SALES-002',
+          id: 'SALES-001',
           name: 'Sales',
           username: 'sales',
           passwordHash: '',
           role: UserRole.salesperson,
-          isActive: true,
           createdAt: DateTime.now(),
         ),
       );
 
-      // Attempt to read all - should filter
-      repo.overrideIsConnected = true;
-      await repo.init(); // Sync pulls 'SALES-001' remote quotation
+      final qAdmin = createTestQuotation(
+        salespersonId: 'ADMIN-001',
+      ).copyWith(id: 'Q-ADMIN', quotationNumber: 'QT-A');
+      final qSales = createTestQuotation(
+        salespersonId: 'SALES-001',
+      ).copyWith(id: 'Q-SALES', quotationNumber: 'QT-S');
+      await localCache.saveQuotation(qAdmin);
+      await localCache.saveQuotation(qSales);
 
       final list = await repo.getAllQuotations();
-      expect(list, isEmpty); // Cannot see SALES-001's quotation
+      expect(list.length, 1);
+      expect(list.first.salespersonId, 'SALES-001');
 
-      // Attempt to save quotation for another salesperson
-      final q = createTestQuotation(spId: 'SALES-001');
+      // Attempt to save someone else's quotation
       expect(
-        () => repo.saveQuotation(q),
+        () => repo.saveQuotation(qAdmin),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
             'msg',
-            contains('Unauthorized'),
+            contains(
+              'Unauthorized: Cannot modify quotations belonging to others',
+            ),
           ),
         ),
       );
     });
 
     test('6. Admin read-all', () async {
-      repo.overrideIsConnected = true;
-      await repo.init(); // Sync pulls 'SALES-001' remote quotation
+      final qAdmin = createTestQuotation(
+        salespersonId: 'ADMIN-001',
+      ).copyWith(id: 'Q-ADMIN', quotationNumber: 'QT-A');
+      final qSales = createTestQuotation(
+        salespersonId: 'SALES-001',
+      ).copyWith(id: 'Q-SALES', quotationNumber: 'QT-S');
+      await localCache.saveQuotation(qAdmin);
+      await localCache.saveQuotation(qSales);
 
       final list = await repo.getAllQuotations();
-      expect(list.length, 1);
-      expect(list.first.salespersonId, 'SALES-001');
+      expect(list.length, 2);
     });
 
-    test('7. Save quotation fails gracefully if rpc fails', () async {
-      // Test that our wrapper prevents the ID generation if RPC isn't faked properly
+    test('7. Save quotation draft queues gracefully if rpc fails', () async {
       repo.overrideIsConnected = true;
-      // We haven't mocked the RPC in the test client, so the client.rpc will actually try and fail
-      // but client is null because we didn't init supabase fully.
       final q = createTestQuotation();
+      final saved = await repo.saveQuotation(q);
 
-      expect(
-        () => repo.saveQuotation(q),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'msg',
-            contains('Failed to sync'),
-          ),
-        ),
-      );
+      expect(saved.id, isNotEmpty);
+      expect(saved.quotationNumber.startsWith('DRAFT-'), isTrue);
     });
   });
 }
