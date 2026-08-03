@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../core/di/service_locator.dart';
 import 'dart:math' as math;
 
 class SplashScreen extends StatefulWidget {
@@ -39,8 +40,22 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigateToNext() async {
     await Future.delayed(const Duration(milliseconds: 2200));
+
     if (mounted) {
-      Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+      final authController = ServiceLocator().authController;
+
+      // If initialization is somehow still happening (e.g. late init), wait for it
+      while (authController.isInitializing) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      if (!mounted) return;
+
+      if (authController.isAuthenticated) {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+      } else {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+      }
     }
   }
 
