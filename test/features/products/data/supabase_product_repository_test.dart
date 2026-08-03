@@ -327,32 +327,32 @@ void main() {
         );
 
         // 2. Create and save a quotation using the QuotationRepository
-      final quotationRepo = ServiceLocator().quotationRepository;
-      
-      final q = Quotation(
-        id: '',
-        quotationNumber: 'QT-001',
-        customerInfo: const CustomerInfo(name: 'Test Cust', phone: '123'),
-        lineItems: [
-          QuotationLineItem(
-            id: 'item-1',
-            productId: p.id,
-            productCode: p.productCode,
-            name: p.name,
-            brand: p.brand,
-            quantity: 1,
-            unitPrice: p.sellingPrice,
-          )
-        ],
-        charges: const QuotationCharges(),
-        createdDate: DateTime.now(),
-        modifiedDate: DateTime.now(),
-        validUntil: DateTime.now().add(const Duration(days: 30)),
-        expectedDelivery: DateTime.now().add(const Duration(days: 7)),
-        salespersonId: 'ADMIN-001',
-      );
-      
-      final savedQ = await quotationRepo.saveQuotation(q);
+        final quotationRepo = ServiceLocator().quotationRepository;
+
+        final q = Quotation(
+          id: '',
+          quotationNumber: 'QT-001',
+          customerInfo: const CustomerInfo(name: 'Test Cust', phone: '123'),
+          lineItems: [
+            QuotationLineItem(
+              id: 'item-1',
+              productId: p.id,
+              productCode: p.productCode,
+              name: p.name,
+              brand: p.brand,
+              quantity: 1,
+              unitPrice: p.sellingPrice,
+            ),
+          ],
+          charges: const QuotationCharges(),
+          createdDate: DateTime.now(),
+          modifiedDate: DateTime.now(),
+          validUntil: DateTime.now().add(const Duration(days: 30)),
+          expectedDelivery: DateTime.now().add(const Duration(days: 7)),
+          salespersonId: 'ADMIN-001',
+        );
+
+        final savedQ = await quotationRepo.saveQuotation(q);
 
         // 3. Simulate remote soft delete
         repo.serverProducts.firstWhere((sp) => sp['id'] == p.id)['deleted_at'] =
@@ -367,11 +367,13 @@ void main() {
         expect(localCheck, isNull);
 
         // 6. Verify quotation can still be loaded and contains the product snapshot
-      final loadedQ = await quotationRepo.getQuotationByNumber(savedQ.quotationNumber);
-      expect(loadedQ, isNotNull);
-      expect(loadedQ!.lineItems.length, 1);
-      expect(loadedQ.lineItems.first.productId, p.id);
-      expect(loadedQ.lineItems.first.name, 'Regression Product');
+        final loadedQ = await quotationRepo.getQuotationByNumber(
+          savedQ.quotationNumber,
+        );
+        expect(loadedQ, isNotNull);
+        expect(loadedQ!.lineItems.length, 1);
+        expect(loadedQ.lineItems.first.productId, p.id);
+        expect(loadedQ.lineItems.first.name, 'Regression Product');
       },
     );
   });

@@ -7,6 +7,7 @@ import '../../features/products/data/supabase_product_repository.dart';
 import '../../features/products/application/product_master_controller.dart';
 import '../../features/stock/domain/stock_repository.dart';
 import '../../features/stock/data/sembast_stock_repository.dart';
+import '../../features/stock/data/supabase_stock_repository.dart';
 import '../../features/stock/application/stock_controller.dart';
 import '../../features/stock/application/stock_out_by_quotation_service.dart';
 import '../../features/authentication/domain/auth_repository.dart';
@@ -42,7 +43,13 @@ class ServiceLocator {
   late final ProductMasterController productMasterController =
       ProductMasterController(productRepository);
 
-  late final StockRepository stockRepository = SembastStockRepository();
+  late final SembastStockRepository _sembastStockRepository =
+      SembastStockRepository();
+
+  late final StockRepository stockRepository = SupabaseStockRepository(
+    _sembastStockRepository,
+    supabaseService,
+  );
 
   late final StockController stockController = StockController(stockRepository);
 
@@ -60,6 +67,10 @@ class ServiceLocator {
 
     await productRepository.init();
     await productMasterController.loadProducts();
+
+    if (stockRepository is SupabaseStockRepository) {
+      await (stockRepository as SupabaseStockRepository).init();
+    }
 
     // Phase 7: Initialize Supabase connection.
     // Runs after Sembast is ready. A Supabase failure never blocks startup.
