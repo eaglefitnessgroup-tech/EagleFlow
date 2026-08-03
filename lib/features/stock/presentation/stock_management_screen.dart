@@ -49,6 +49,17 @@ class StockManagementScreen extends StatelessWidget {
                 Navigator.of(context).pushNamed(AppRoutes.stockOut);
               },
             ),
+            const SizedBox(height: 16),
+            _buildActionCard(
+              context,
+              title: 'Stock Out by Quotation',
+              subtitle: 'Deduct stock using a saved quotation',
+              icon: Icons.receipt_long_outlined,
+              iconColor: AppColors.primaryBlue,
+              onTap: () {
+                Navigator.of(context).pushNamed(AppRoutes.stockOutByQuotation);
+              },
+            ),
           ],
         ),
       ),

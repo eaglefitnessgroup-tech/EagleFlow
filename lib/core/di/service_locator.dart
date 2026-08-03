@@ -6,6 +6,7 @@ import '../../features/products/application/product_master_controller.dart';
 import '../../features/stock/domain/stock_repository.dart';
 import '../../features/stock/data/sembast_stock_repository.dart';
 import '../../features/stock/application/stock_controller.dart';
+import '../../features/stock/application/stock_out_by_quotation_service.dart';
 
 class ServiceLocator {
   static final ServiceLocator _instance = ServiceLocator._internal();
@@ -23,6 +24,9 @@ class ServiceLocator {
   late final StockRepository stockRepository = SembastStockRepository();
 
   late final StockController stockController = StockController(stockRepository);
+
+  late final StockOutByQuotationService stockOutByQuotationService =
+      StockOutByQuotationService(quotationRepository: quotationRepository);
 
   Future<void> init() async {
     await productRepository.init();

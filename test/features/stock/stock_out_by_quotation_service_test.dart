@@ -41,7 +41,7 @@ void main() {
     }) async {
       final p = Product(
         id: '',
-        productCode: 'PROD-${DateTime.now().millisecondsSinceEpoch}',
+        productCode: 'PROD-${DateTime.now().microsecondsSinceEpoch}',
         name: name,
         category: 'Cat',
         brand: 'Brand',
