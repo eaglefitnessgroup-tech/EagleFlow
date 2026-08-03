@@ -42,7 +42,6 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
         final user = ServiceLocator().authController.currentUser;
         final draft = QuotationDefaults.createEmptyDraft(
           salespersonId: user?.id ?? '',
-          salespersonName: user?.name ?? '',
         );
         _controller = QuotationController(draft);
       }
@@ -219,7 +218,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                     const SizedBox(height: 20),
                     QuotationInformationCard(
                       quotationNumber: quotation.quotationNumber,
-                      salespersonName: quotation.salespersonName,
+                      salespersonId: quotation.salespersonId,
                       date: quotation.createdDate,
                       validUntil: quotation.validUntil,
                       expectedDelivery: quotation.expectedDelivery,
@@ -309,7 +308,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
           const SizedBox(height: 20),
           QuotationInformationCard(
             quotationNumber: quotation.quotationNumber,
-            salespersonName: quotation.salespersonName,
+            salespersonId: quotation.salespersonId,
             date: quotation.createdDate,
             validUntil: quotation.validUntil,
             expectedDelivery: quotation.expectedDelivery,

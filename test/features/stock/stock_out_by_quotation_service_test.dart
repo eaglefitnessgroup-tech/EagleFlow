@@ -62,7 +62,6 @@ void main() {
         quotationNumber: '', // Will be generated on save
         customerInfo: const CustomerInfo(name: 'Test Customer', phone: ''),
         salespersonId: 'admin',
-        salespersonName: 'Admin',
         createdDate: DateTime.now(),
         modifiedDate: DateTime.now(),
         validUntil: DateTime.now().add(const Duration(days: 7)),

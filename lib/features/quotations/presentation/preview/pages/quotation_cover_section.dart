@@ -114,8 +114,8 @@ class QuotationCoverSection extends StatelessWidget {
                   ),
                   _buildCustomerRow(
                     'SALESMAN',
-                    quotation.salespersonName.isNotEmpty
-                        ? quotation.salespersonName
+                    quotation.salespersonId.isNotEmpty
+                        ? quotation.salespersonId
                         : '—',
                   ),
                 ],

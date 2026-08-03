@@ -7,20 +7,16 @@ class QuotationDefaults {
 
   /// Creates a new empty draft.
   ///
-  /// [salespersonId] and [salespersonName] should be provided from the
-  /// currently logged-in user.  Both default to empty string so callers
-  /// that do not yet have a user (e.g. test helpers) still compile.
-  static Quotation createEmptyDraft({
-    String salespersonId = '',
-    String salespersonName = '',
-  }) {
+  /// [salespersonId] should be provided from the currently logged-in user.
+  /// Defaults to empty string so callers without a user (e.g. test helpers)
+  /// still compile.
+  static Quotation createEmptyDraft({String salespersonId = ''}) {
     final now = DateTime.now();
     return Quotation(
       id: '',
       quotationNumber: '',
       customerInfo: const CustomerInfo(name: ''),
       salespersonId: salespersonId,
-      salespersonName: salespersonName,
       createdDate: now,
       modifiedDate: now,
       validUntil: now.add(
