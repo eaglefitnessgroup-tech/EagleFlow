@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../core/di/service_locator.dart';
 
 // Temporary structured models
 class QuotationSummary {
@@ -29,7 +30,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final String _staffName = "Anshad";
   final int _currentIndex = 0;
 
   final List<QuotationSummary> _recentQuotations = const [
@@ -153,7 +153,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               Text(
-                _staffName,
+                ServiceLocator().authController.currentUser?.name ?? 'User',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
@@ -312,13 +312,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onTap: () =>
                   _showComingSoonSnackBar('Low Stock module coming soon.'),
             ),
-            // TODO: Restrict this card to admin users after role-based authentication is implemented.
-            _buildActionCard(
-              title: 'Stock\nManagement',
-              icon: Icons.admin_panel_settings_outlined,
-              onTap: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.stockManagement),
-            ),
+            if (ServiceLocator().authController.isAdmin)
+              _buildActionCard(
+                title: 'Stock\nManagement',
+                icon: Icons.admin_panel_settings_outlined,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.stockManagement),
+              ),
           ],
         );
       },

@@ -10,11 +10,11 @@ void main() {
   setUp(() async {
     // Reset any previous state first
     ServiceLocator.resetForTesting();
-    
+
     final dbName = 'test_splash_${DateTime.now().microsecondsSinceEpoch}.db';
     final db = await databaseFactoryMemory.openDatabase(dbName);
     DatabaseService().setDatabaseForTesting(db);
-    
+
     // Ensure fresh init
     await ServiceLocator().init();
     await ServiceLocator().authController.logout();
@@ -38,36 +38,45 @@ void main() {
     );
   }
 
-  testWidgets('No remembered session navigates to Login after delay', (WidgetTester tester) async {
+  testWidgets('No remembered session navigates to Login after delay', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestableWidget());
-    
+
     // Initial state should be splash screen
     expect(find.byType(SplashScreen), findsOneWidget);
-    
+
     // Fast-forward past the splash screen delay (2200ms)
     await tester.pumpAndSettle();
-    
+
     // Should navigate to login
     expect(find.text('Login Screen'), findsOneWidget);
     expect(find.byType(SplashScreen), findsNothing);
   });
 
-  testWidgets('Remembered authenticated user navigates to Dashboard after delay', (WidgetTester tester) async {
-    // Simulate active session
-    await tester.runAsync(() async {
-      await ServiceLocator().authController.login(username: 'admin', password: 'admin123', rememberMe: true);
-    });
-    
-    await tester.pumpWidget(buildTestableWidget());
-    
-    // Initial state should be splash screen
-    expect(find.byType(SplashScreen), findsOneWidget);
-    
-    // Fast-forward past the splash screen delay (2200ms)
-    await tester.pumpAndSettle();
-    
-    // Should navigate to dashboard
-    expect(find.text('Dashboard Screen'), findsOneWidget);
-    expect(find.byType(SplashScreen), findsNothing);
-  });
+  testWidgets(
+    'Remembered authenticated user navigates to Dashboard after delay',
+    (WidgetTester tester) async {
+      // Simulate active session
+      await tester.runAsync(() async {
+        await ServiceLocator().authController.login(
+          username: 'admin',
+          password: 'admin123',
+          rememberMe: true,
+        );
+      });
+
+      await tester.pumpWidget(buildTestableWidget());
+
+      // Initial state should be splash screen
+      expect(find.byType(SplashScreen), findsOneWidget);
+
+      // Fast-forward past the splash screen delay (2200ms)
+      await tester.pumpAndSettle();
+
+      // Should navigate to dashboard
+      expect(find.text('Dashboard Screen'), findsOneWidget);
+      expect(find.byType(SplashScreen), findsNothing);
+    },
+  );
 }

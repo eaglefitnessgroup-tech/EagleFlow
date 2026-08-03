@@ -102,54 +102,56 @@ class ProductStockSection extends StatelessWidget {
             _buildStat('Minimum Stock', product.minStockLevel.toString()),
           ],
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  StockAdjustmentBottomSheet.show(
-                    context,
-                    productId: product.id,
-                    initialType: StockMovementType.stockIn,
-                    onSuccess: onStockAdjusted,
-                  );
-                },
-                icon: const Icon(Icons.add_circle_outline, size: 18),
-                label: const Text('Stock In'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.statusApprovedText,
-                  side: const BorderSide(color: AppColors.statusApprovedText),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+        if (ServiceLocator().authController.isAdmin) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    StockAdjustmentBottomSheet.show(
+                      context,
+                      productId: product.id,
+                      initialType: StockMovementType.stockIn,
+                      onSuccess: onStockAdjusted,
+                    );
+                  },
+                  icon: const Icon(Icons.add_circle_outline, size: 18),
+                  label: const Text('Stock In'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.statusApprovedText,
+                    side: const BorderSide(color: AppColors.statusApprovedText),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  StockAdjustmentBottomSheet.show(
-                    context,
-                    productId: product.id,
-                    initialType: StockMovementType.stockOut,
-                    onSuccess: onStockAdjusted,
-                  );
-                },
-                icon: const Icon(Icons.remove_circle_outline, size: 18),
-                label: const Text('Stock Out'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.statusRejectedText,
-                  side: const BorderSide(color: AppColors.statusRejectedText),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    StockAdjustmentBottomSheet.show(
+                      context,
+                      productId: product.id,
+                      initialType: StockMovementType.stockOut,
+                      onSuccess: onStockAdjusted,
+                    );
+                  },
+                  icon: const Icon(Icons.remove_circle_outline, size: 18),
+                  label: const Text('Stock Out'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.statusRejectedText,
+                    side: const BorderSide(color: AppColors.statusRejectedText),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ],
     );
   }

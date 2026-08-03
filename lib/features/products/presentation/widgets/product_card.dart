@@ -165,40 +165,42 @@ class _ProductCardState extends State<ProductCard> {
                       _buildStockIndicator(),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (ctx) => AddEditProductScreen(
-                                  product: widget.product,
+                  if (ServiceLocator().authController.isAdmin) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (ctx) => AddEditProductScreen(
+                                    product: widget.product,
+                                  ),
                                 ),
+                              );
+                              _fetchStock();
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: const BorderSide(
+                                color: AppColors.primaryBlue,
                               ),
-                            );
-                            _fetchStock();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: const BorderSide(
-                              color: AppColors.primaryBlue,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              foregroundColor: AppColors.primaryBlue,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                            child: const Text(
+                              'Edit Product',
+                              style: TextStyle(fontWeight: FontWeight.w600),
                             ),
-                            foregroundColor: AppColors.primaryBlue,
-                          ),
-                          child: const Text(
-                            'Edit Product',
-                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

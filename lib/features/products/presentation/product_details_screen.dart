@@ -6,12 +6,13 @@ import 'widgets/details/product_image_panel.dart';
 import 'widgets/details/product_info_section.dart';
 import 'widgets/details/product_stock_section.dart';
 import 'widgets/details/product_description_section.dart';
-import 'widgets/details/product_specifications_section.dart';
 import 'widgets/details/quantity_selector.dart';
 import 'widgets/details/product_details_bottom_bar.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
-  const ProductDetailsScreen({super.key});
+  final Product? testProduct;
+  
+  const ProductDetailsScreen({super.key, this.testProduct});
 
   @override
   State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
@@ -29,7 +30,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInit) {
-      _product = ModalRoute.of(context)?.settings.arguments as Product?;
+      _product = widget.testProduct ?? ModalRoute.of(context)?.settings.arguments as Product?;
       if (_product != null) {
         _fetchStock();
       }

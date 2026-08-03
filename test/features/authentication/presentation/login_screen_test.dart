@@ -10,15 +10,15 @@ void main() {
   setUp(() async {
     // Reset any previous state first
     ServiceLocator.resetForTesting();
-    
+
     // Setup in-memory DB so SembastAuthRepository works correctly
     final dbName = 'test_login_${DateTime.now().microsecondsSinceEpoch}.db';
     final db = await databaseFactoryMemory.openDatabase(dbName);
     DatabaseService().setDatabaseForTesting(db);
-    
+
     // Initialize the real ServiceLocator
     await ServiceLocator().init();
-    
+
     // Ensure we are logged out before each test
     await ServiceLocator().authController.logout();
   });

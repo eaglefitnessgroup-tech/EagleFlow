@@ -1,5 +1,3 @@
-import 'package:equatable/equatable.dart';
-
 enum UserRole {
   admin,
   salesperson;

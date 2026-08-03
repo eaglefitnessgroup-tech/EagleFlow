@@ -225,23 +225,26 @@ class _ProductsScreenState extends State<ProductsScreen> {
             fontSize: 14,
           ),
         ),
-        TextButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (ctx) => const AddEditProductScreen()),
-            );
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.primaryBlue,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+        if (ServiceLocator().authController.isAdmin)
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => const AddEditProductScreen(),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primaryBlue,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
+            child: const Text('+ Add Product'),
           ),
-          child: const Text('+ Add Product'),
-        ),
       ],
     );
   }
