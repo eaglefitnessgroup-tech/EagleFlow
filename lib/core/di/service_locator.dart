@@ -11,6 +11,7 @@ import '../../features/stock/application/stock_out_by_quotation_service.dart';
 import '../../features/authentication/domain/auth_repository.dart';
 import '../../features/authentication/data/sembast_auth_repository.dart';
 import '../../features/authentication/application/auth_controller.dart';
+import '../supabase/supabase_service.dart';
 
 class ServiceLocator {
   static ServiceLocator _instance = ServiceLocator._internal();
@@ -41,6 +42,8 @@ class ServiceLocator {
   late final StockOutByQuotationService stockOutByQuotationService =
       StockOutByQuotationService(quotationRepository: quotationRepository);
 
+  late final SupabaseService supabaseService = SupabaseService();
+
   Future<void> init() async {
     try {
       await authController.initialize();
@@ -50,5 +53,13 @@ class ServiceLocator {
 
     await productRepository.init();
     await productMasterController.loadProducts();
+
+    // Phase 7: Initialize Supabase connection.
+    // Runs after Sembast is ready. A Supabase failure never blocks startup.
+    try {
+      await supabaseService.initialize();
+    } catch (e) {
+      // Supabase is optional at this stage — app operates in local-only mode.
+    }
   }
 }

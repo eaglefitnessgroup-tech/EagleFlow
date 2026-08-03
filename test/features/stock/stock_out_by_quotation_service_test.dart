@@ -35,13 +35,16 @@ void main() {
       await db.close();
     });
 
+    int productCounter = 0;
+
     Future<Product> seedProduct({
       required String name,
       required int openingStock,
     }) async {
+      productCounter++;
       final p = Product(
         id: '',
-        productCode: 'PROD-${DateTime.now().microsecondsSinceEpoch}',
+        productCode: 'PROD-$productCounter',
         name: name,
         category: 'Cat',
         brand: 'Brand',

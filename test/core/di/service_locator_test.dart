@@ -3,6 +3,7 @@ import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/features/authentication/data/sembast_auth_repository.dart';
 import 'package:eagleflow/features/authentication/application/auth_controller.dart';
 import 'package:eagleflow/core/database/database_service.dart';
+import 'package:eagleflow/core/supabase/supabase_service.dart';
 import 'package:sembast/sembast_memory.dart';
 
 void main() {
@@ -44,6 +45,20 @@ void main() {
       final locator = ServiceLocator();
 
       await expectLater(locator.init(), completes);
+    });
+
+    test('supabaseService is registered and is a SupabaseService', () {
+      final locator = ServiceLocator();
+
+      expect(locator.supabaseService, isA<SupabaseService>());
+    });
+
+    test('supabaseService follows singleton lifecycle', () {
+      final locator = ServiceLocator();
+
+      final s1 = locator.supabaseService;
+      final s2 = locator.supabaseService;
+      expect(identical(s1, s2), isTrue);
     });
   });
 }
