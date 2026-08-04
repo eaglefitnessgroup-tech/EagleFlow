@@ -28,7 +28,7 @@ class StockController extends ChangeNotifier {
       _movements = await _repository.getAllMovements();
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = 'Failed to load movements: $e';
+      _errorMessage = 'Failed to load movements. Please try again.';
     } finally {
       _setLoading(false);
     }
@@ -41,7 +41,7 @@ class StockController extends ChangeNotifier {
       _movements = await _repository.getMovementsForProduct(productId);
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = 'Failed to load movements for product: $e';
+      _errorMessage = 'Failed to load movements for product. Please try again.';
     } finally {
       _setLoading(false);
     }
@@ -126,7 +126,7 @@ class StockController extends ChangeNotifier {
         _errorMessage =
             'Cannot complete Stock Out: Insufficient stock available.';
       } else {
-        _errorMessage = 'Failed to record stock movement: $e';
+        _errorMessage = 'Failed to record stock movement. Please try again.';
       }
       return false;
     } finally {
@@ -144,7 +144,7 @@ class StockController extends ChangeNotifier {
       await _refreshCurrentList();
       return true;
     } catch (e) {
-      _errorMessage = 'Failed to delete movement: $e';
+      _errorMessage = 'Failed to delete movement. Please try again.';
       return false;
     } finally {
       _setSaving(false);

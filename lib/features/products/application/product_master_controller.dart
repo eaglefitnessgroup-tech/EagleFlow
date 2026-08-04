@@ -47,7 +47,7 @@ class ProductMasterController extends ChangeNotifier {
       // Apply default sorting: Newest First
       _products.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } catch (e) {
-      _error = 'Failed to load products: $e';
+      _error = 'Failed to load products. Please try again.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -62,7 +62,7 @@ class ProductMasterController extends ChangeNotifier {
       _products = list;
       notifyListeners();
     } catch (e) {
-      debugPrint('Failed to refresh products: $e');
+      debugPrint('Failed to refresh products');
     }
   }
 
@@ -81,7 +81,7 @@ class ProductMasterController extends ChangeNotifier {
       await refresh();
       return newProduct;
     } catch (e) {
-      _error = 'Failed to add product: $e';
+      _error = 'Failed to add product. Please try again.';
       notifyListeners();
       return null;
     }
@@ -103,7 +103,7 @@ class ProductMasterController extends ChangeNotifier {
       await refresh();
       return true;
     } catch (e) {
-      _error = 'Failed to update product: $e';
+      _error = 'Failed to update product. Please try again.';
       notifyListeners();
       return false;
     }
@@ -116,7 +116,7 @@ class ProductMasterController extends ChangeNotifier {
       await refresh();
       return true;
     } catch (e) {
-      _error = 'Failed to update product status: $e';
+      _error = 'Failed to toggle product status. Please try again.';
       notifyListeners();
       return false;
     }

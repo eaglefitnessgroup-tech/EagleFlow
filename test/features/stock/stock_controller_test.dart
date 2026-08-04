@@ -106,7 +106,7 @@ void main() {
 
       expect(controller.isLoading, false);
       expect(controller.movements.isEmpty, true);
-      expect(controller.errorMessage, contains('Database error'));
+      expect(controller.errorMessage, contains('Failed to load movements. Please try again.'));
     });
 
     test('add Stock In updates list and saving state', () async {
