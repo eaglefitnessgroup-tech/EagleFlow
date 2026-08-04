@@ -15,6 +15,7 @@ import '../../features/stock/application/stock_out_by_quotation_service.dart';
 import '../../features/authentication/domain/auth_repository.dart';
 import '../../features/authentication/data/sembast_auth_repository.dart';
 import '../../features/authentication/application/auth_controller.dart';
+import '../../features/products/application/bulk_import_service.dart';
 import '../supabase/supabase_service.dart';
 
 class ServiceLocator {
@@ -66,6 +67,11 @@ class ServiceLocator {
       StockOutByQuotationService(quotationRepository: quotationRepository);
 
   late final SupabaseService supabaseService = SupabaseService();
+
+  late final BulkImportService bulkImportService = BulkImportService(
+    productRepository,
+    supabaseService,
+  );
 
   Future<void> init() async {
     try {

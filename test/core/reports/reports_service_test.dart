@@ -31,6 +31,9 @@ class MockProductRepository implements ProductRepository {
   Future<Product> addProduct(Product product) async => product;
 
   @override
+  Future<void> addProducts(List<Product> products) async {}
+
+  @override
   Future<Product> updateProduct(Product product) async => product;
 
   @override

@@ -145,6 +145,16 @@ class SembastProductRepository implements ProductRepository {
   }
 
   @override
+  Future<void> addProducts(List<Product> products) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      for (final p in products) {
+        await _productsStore.record(p.id).put(txn, p.toJson());
+      }
+    });
+  }
+
+  @override
   Future<Product> updateProduct(Product product) async {
     final db = await _db;
     Product updatedProduct = product.copyWith(updatedAt: DateTime.now());

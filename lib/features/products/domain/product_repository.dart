@@ -17,6 +17,9 @@ abstract class ProductRepository {
   /// Add a new product
   Future<Product> addProduct(Product product);
 
+  /// Add multiple products atomically
+  Future<void> addProducts(List<Product> products);
+
   /// Update an existing product
   Future<Product> updateProduct(Product product);
 

@@ -9,6 +9,8 @@ import 'widgets/product_category_chips.dart';
 import 'widgets/product_filter_row.dart';
 import 'widgets/product_card.dart';
 import 'add_edit_product_screen.dart';
+import 'bulk_import_screen.dart';
+import '../../../../core/guards/admin_guard.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -226,24 +228,56 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
         ),
         if (ServiceLocator().authController.isAdmin)
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (ctx) => const AddEditProductScreen(),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) =>
+                          const AdminGuard(child: BulkImportScreen()),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.upload_file, size: 16),
+                label: const Text('Bulk Import'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primaryBlue,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
-              );
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primaryBlue,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
               ),
-            ),
-            child: const Text('+ Add Product'),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) => const AddEditProductScreen(),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primaryBlue,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                child: const Text('+ Add Product'),
+              ),
+            ],
           ),
       ],
     );

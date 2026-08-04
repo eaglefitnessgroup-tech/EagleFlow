@@ -128,6 +128,14 @@ class SupabaseProductRepository implements ProductRepository {
   }
 
   @override
+  Future<void> addProducts(List<Product> products) async {
+    _checkAdmin();
+    // For bulk import, remote insert is handled atomically by BulkImportService.
+    // This method only handles the atomic local cache transaction.
+    await localCache.addProducts(products);
+  }
+
+  @override
   Future<Product> addProduct(Product product) async {
     _checkAdmin();
 
