@@ -1,3 +1,4 @@
+import '../../../../../../core/utils/app_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../../../app/theme/app_colors.dart';
@@ -424,79 +425,17 @@ class QuotationListView extends StatelessWidget {
     BuildContext context,
     Quotation quotation,
     bool isMobile,
-  ) {
-    if (isMobile) {
-      showModalBottomSheet(
-        context: context,
-        builder: (ctx) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Delete Quotation',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Are you sure you want to delete ${quotation.quotationNumber} for ${quotation.customerInfo.name}?',
-                  style: const TextStyle(color: AppColors.mutedText),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Cancel'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          onDelete(quotation);
-                        },
-                        child: const Text('Delete'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete Quotation'),
-          content: Text(
-            'Are you sure you want to delete ${quotation.quotationNumber} for ${quotation.customerInfo.name}?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () {
-                Navigator.pop(ctx);
-                onDelete(quotation);
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
-      );
+  ) async {
+    final confirm = await AppDialogs.showConfirm(
+      context,
+      title: 'Delete Quotation',
+      message:
+          'Are you sure you want to delete ${quotation.quotationNumber} for ${quotation.customerInfo.name}?',
+      confirmLabel: 'Delete',
+      isDestructive: true,
+    );
+    if (confirm) {
+      onDelete(quotation);
     }
   }
 }

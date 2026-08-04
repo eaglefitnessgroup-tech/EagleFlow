@@ -30,6 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _onLoginPressed(BuildContext context) async {
+    if (_authController.isLoading) return;
     if (!_formKey.currentState!.validate()) return;
 
     // Hide keyboard

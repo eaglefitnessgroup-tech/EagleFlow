@@ -1,3 +1,4 @@
+import '../../../../core/utils/app_snackbars.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../domain/quotation.dart';
@@ -117,16 +118,13 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       await repo.deleteQuotation(quotation.id);
       _loadQuotations();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Quotation deleted.')));
+        AppSnackBars.showSuccess(context, 'Quotation deleted successfully.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete quotation. Please try again.'),
-          ),
+        AppSnackBars.showError(
+          context,
+          'Failed to delete quotation. Please try again.',
         );
       }
     }
@@ -138,16 +136,13 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       await repo.duplicateQuotation(quotation);
       _loadQuotations();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Quotation duplicated.')));
+        AppSnackBars.showSuccess(context, 'Quotation duplicated successfully.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to duplicate quotation. Please try again.'),
-          ),
+        AppSnackBars.showError(
+          context,
+          'Failed to duplicate quotation. Please try again.',
         );
       }
     }
