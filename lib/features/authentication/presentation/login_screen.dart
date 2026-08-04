@@ -145,8 +145,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               controller: _usernameController,
                               autocorrect: false,
                               enableSuggestions: false,
+                              textInputAction: TextInputAction.next,
                               decoration: InputDecoration(
-                                labelText: 'Username',
+                                labelText: 'Username *',
                                 hintText: 'Enter your username',
                                 prefixIcon: const Icon(Icons.person_outline),
                                 border: OutlineInputBorder(
@@ -164,25 +165,32 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
+                              textInputAction: TextInputAction.done,
+                              onFieldSubmitted: (_) => _onLoginPressed(context),
                               decoration: InputDecoration(
-                                labelText: 'Password',
+                                labelText: 'Password *',
                                 hintText: 'Enter your password',
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
-                                    color: AppColors.secondaryText,
+                                suffixIcon: Tooltip(
+                                  message: _obscurePassword
+                                      ? 'Show password'
+                                      : 'Hide password',
+                                  child: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                      color: AppColors.secondaryText,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
                                   ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
-                                  },
                                 ),
                               ),
                               validator: (value) {

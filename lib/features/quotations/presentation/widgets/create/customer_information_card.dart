@@ -101,9 +101,10 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                 SizedBox(
                   width: double.infinity,
                   child: _buildTextField(
-                    'Customer Name',
+                    'Customer Name *',
                     _nameController,
                     widget.onNameChanged,
+                    TextInputAction.next,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -113,6 +114,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                     'Company',
                     _companyController,
                     widget.onCompanyChanged,
+                    TextInputAction.next,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -122,6 +124,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                     'Phone',
                     _phoneController,
                     widget.onPhoneChanged,
+                    TextInputAction.next,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -131,6 +134,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                     'Email',
                     _emailController,
                     widget.onEmailChanged,
+                    TextInputAction.next,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -140,6 +144,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                     'Project / Location',
                     _projectController,
                     widget.onProjectLocationChanged,
+                    TextInputAction.done,
                   ),
                 ),
               ] else ...[
@@ -147,9 +152,10 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                   children: [
                     Expanded(
                       child: _buildTextField(
-                        'Customer Name',
+                        'Customer Name *',
                         _nameController,
                         widget.onNameChanged,
+                        TextInputAction.next,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -158,6 +164,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                         'Company',
                         _companyController,
                         widget.onCompanyChanged,
+                        TextInputAction.next,
                       ),
                     ),
                   ],
@@ -170,6 +177,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                         'Phone',
                         _phoneController,
                         widget.onPhoneChanged,
+                        TextInputAction.next,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -178,6 +186,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                         'Email',
                         _emailController,
                         widget.onEmailChanged,
+                        TextInputAction.next,
                       ),
                     ),
                   ],
@@ -187,6 +196,7 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                   'Project / Location',
                   _projectController,
                   widget.onProjectLocationChanged,
+                  TextInputAction.done,
                 ),
               ],
             ],
@@ -237,10 +247,12 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
     String label,
     TextEditingController controller, [
     ValueChanged<String>? onChanged,
+    TextInputAction? textInputAction,
   ]) {
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      textInputAction: textInputAction,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: AppColors.mutedText),

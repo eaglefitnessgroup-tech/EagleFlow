@@ -379,7 +379,7 @@ class _StockInScreenState extends State<StockInScreen> {
                     return null;
                   },
                   decoration: InputDecoration(
-                    labelText: 'Quantity Received',
+                    labelText: 'Quantity Received *',
                     hintText: 'Enter quantity',
                     hintStyle: const TextStyle(color: AppColors.mutedText),
                     border: OutlineInputBorder(
@@ -442,6 +442,7 @@ class _StockInScreenState extends State<StockInScreen> {
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _referenceController,
+                  textInputAction: TextInputAction.next,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(
                       RegExp(r'[a-zA-Z0-9 \-/]'),
@@ -470,6 +471,7 @@ class _StockInScreenState extends State<StockInScreen> {
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _supplierController,
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: 'Supplier / Source',
                     hintText: 'Enter supplier or source',

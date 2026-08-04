@@ -414,7 +414,7 @@ class _StockOutScreenState extends State<StockOutScreen> {
                     return null;
                   },
                   decoration: InputDecoration(
-                    labelText: 'Quantity Removed',
+                    labelText: 'Quantity Removed *',
                     hintText: 'Enter quantity',
                     hintStyle: const TextStyle(color: AppColors.mutedText),
                     border: OutlineInputBorder(
@@ -463,7 +463,7 @@ class _StockOutScreenState extends State<StockOutScreen> {
                     return null;
                   },
                   decoration: InputDecoration(
-                    labelText: 'Reason',
+                    labelText: 'Reason *',
                     hintText: 'Select reason',
                     hintStyle: const TextStyle(color: AppColors.mutedText),
                     border: OutlineInputBorder(
@@ -524,6 +524,7 @@ class _StockOutScreenState extends State<StockOutScreen> {
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _referenceController,
+                  textInputAction: TextInputAction.next,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(
                       RegExp(r'[a-zA-Z0-9 \-/]'),
@@ -552,6 +553,7 @@ class _StockOutScreenState extends State<StockOutScreen> {
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _customerController,
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: 'Customer / Destination',
                     hintText: 'Enter customer or destination',
