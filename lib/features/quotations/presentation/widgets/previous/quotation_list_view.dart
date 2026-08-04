@@ -57,36 +57,65 @@ class QuotationListView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 64, horizontal: 24),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.description_outlined,
-            size: 48,
-            color: AppColors.mutedText,
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              size: 48,
+              color: AppColors.mutedText,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           const Text(
-            'No quotations yet',
+            'No quotations found',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppColors.charcoal,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           const Text(
-            'Create your first quotation to get started.',
-            style: TextStyle(color: AppColors.mutedText),
+            'You haven\'t created any quotations yet, or none match your filters.',
+            style: TextStyle(
+              color: AppColors.mutedText,
+              fontSize: 15,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           FilledButton.icon(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             onPressed: onCreate,
-            icon: const Icon(Icons.add),
-            label: const Text('Create Quotation'),
+            icon: const Icon(Icons.add, size: 20),
+            label: const Text(
+              'Create New Quotation',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),

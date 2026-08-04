@@ -255,24 +255,73 @@ class _ProductsScreenState extends State<ProductsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.inventory_2_outlined,
-            size: 64,
-            color: AppColors.border,
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Icon(
+              Icons.search_off_outlined,
+              size: 48,
+              color: AppColors.mutedText,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
-            'No products found',
+            _searchQuery.isNotEmpty
+                ? 'No matches for "$_searchQuery"'
+                : 'No products found',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.charcoal,
               fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Try another product name or code.',
-            style: TextStyle(color: AppColors.mutedText, fontSize: 14),
+          const SizedBox(height: 12),
+          Text(
+            _searchQuery.isNotEmpty
+                ? 'Check the spelling or try a different search term.'
+                : 'Try adjusting your filters or search criteria.',
+            style: const TextStyle(
+              color: AppColors.mutedText,
+              fontSize: 15,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
           ),
+          if (_searchQuery.isNotEmpty ||
+              _selectedCategory != 'All' ||
+              _inStockOnly ||
+              _lowStockOnly) ...[
+            const SizedBox(height: 24),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _searchQuery = '';
+                  _selectedCategory = 'All';
+                  _inStockOnly = false;
+                  _lowStockOnly = false;
+                });
+              },
+              icon: const Icon(Icons.clear_all, size: 20),
+              label: const Text(
+                'Clear Filters',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -123,9 +123,11 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete quotation. Please try again.'),
+          ),
+        );
       }
     }
   }
@@ -142,9 +144,11 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Duplicate failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to duplicate quotation. Please try again.'),
+          ),
+        );
       }
     }
   }
@@ -166,9 +170,13 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load edit: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to load quotation for editing. Please check your connection.',
+            ),
+          ),
+        );
       }
     }
   }
@@ -189,9 +197,13 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load preview: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to load quotation preview. Please check your connection.',
+            ),
+          ),
+        );
       }
     }
   }
