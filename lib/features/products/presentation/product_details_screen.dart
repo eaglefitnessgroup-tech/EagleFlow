@@ -111,7 +111,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ProductImagePanel(imageBytes: product.imageBytes),
+                  ProductImagePanel(product: product),
                   const SizedBox(height: 32),
                   ProductInfoSection(
                     product: product,

@@ -4,6 +4,7 @@ import '../../../../../app/theme/app_colors.dart';
 import '../../../../../core/di/service_locator.dart';
 import '../add_edit_product_screen.dart';
 import '../product_details_screen.dart';
+import 'product_image.dart';
 
 class ProductCard extends StatefulWidget {
   final Product product;
@@ -109,7 +110,14 @@ class _ProductCardState extends State<ProductCard> {
                   color: AppColors.border.withValues(alpha: 0.5),
                 ),
               ),
-              child: _buildProductImage(),
+              clipBehavior: Clip.antiAlias,
+              child: ProductImage(
+                product: widget.product,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorIconSize: 24,
+              ),
             ),
             const SizedBox(width: 16),
             // Product Info
@@ -207,29 +215,6 @@ class _ProductCardState extends State<ProductCard> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildProductImage() {
-    if (widget.product.imageBytes != null &&
-        widget.product.imageBytes!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.memory(
-          widget.product.imageBytes!,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => const Icon(
-            Icons.inventory_2_outlined,
-            color: AppColors.mutedText,
-            size: 24,
-          ),
-        ),
-      );
-    }
-    return const Icon(
-      Icons.image_outlined,
-      color: AppColors.mutedText,
-      size: 24,
     );
   }
 

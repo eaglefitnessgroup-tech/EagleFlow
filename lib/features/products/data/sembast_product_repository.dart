@@ -6,7 +6,6 @@ import '../../../core/database/database_service.dart';
 import '../domain/product.dart';
 import '../domain/product_repository.dart';
 import '../../quotations/domain/quotation.dart';
-import '../data/sample_products.dart';
 
 class SembastProductRepository implements ProductRepository {
   final StoreRef<String, Map<String, dynamic>> _productsStore =
@@ -34,20 +33,21 @@ class SembastProductRepository implements ProductRepository {
         await _metadataStore.record('products_seeded').get(db) ?? false;
     if (!seeded) {
       await db.transaction((txn) async {
-        // Also check if products are actually empty
-        final count = await _productsStore.count(txn);
-        if (count == 0) {
-          for (var p in sampleProducts) {
-            final newId = _uuid.v4();
-            final now = DateTime.now();
-            final productToSave = p.copyWith(
-              id: newId,
-              createdAt: now,
-              updatedAt: now,
-            );
-            await _productsStore.record(newId).put(txn, productToSave.toJson());
-          }
-        }
+        // Temporarily disabled for development QA
+        // // Also check if products are actually empty
+        // final count = await _productsStore.count(txn);
+        // if (count == 0) {
+        //   for (var p in sampleProducts) {
+        //     final newId = _uuid.v4();
+        //     final now = DateTime.now();
+        //     final productToSave = p.copyWith(
+        //       id: newId,
+        //       createdAt: now,
+        //       updatedAt: now,
+        //     );
+        //     await _productsStore.record(newId).put(txn, productToSave.toJson());
+        //   }
+        // }
         await _metadataStore.record('products_seeded').put(txn, true);
       });
     }
@@ -142,6 +142,16 @@ class SembastProductRepository implements ProductRepository {
     });
 
     return updatedProduct;
+  }
+
+  @override
+  Future<void> addProducts(List<Product> products) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      for (final p in products) {
+        await _productsStore.record(p.id).put(txn, p.toJson());
+      }
+    });
   }
 
   @override

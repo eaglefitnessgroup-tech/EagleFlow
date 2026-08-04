@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
-import 'package:eagleflow/core/sync/sync_coordinator.dart';
+
 import 'package:eagleflow/features/authentication/domain/app_user.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/features/products/data/supabase_product_repository.dart';
@@ -93,7 +93,7 @@ void main() {
   });
 
   group('SupabaseProductRepository Tests', () {
-    test('1. Online Sync (Background) down to local cache', () async {
+    test('1. Online Sync down to local cache on init', () async {
       repo.overrideIsConnected = true;
       repo.serverProducts = [
         {
@@ -113,9 +113,7 @@ void main() {
         },
       ];
 
-      await repo.init(); // Triggers _syncProductsDown
-      // Yield to allow background future to complete
-      await Future.delayed(const Duration(milliseconds: 50));
+      await repo.init(); // Triggers and awaits _syncProductsDown
 
       final products = await repo.getAllProducts();
       expect(products.length, greaterThanOrEqualTo(1));
@@ -186,35 +184,45 @@ void main() {
       );
     });
 
-    test('4. Cache refresh (latest updated_at wins)', () async {
-      repo.overrideIsConnected = true;
+    test(
+      '4. Cache refresh via getAllProducts (latest updated_at wins) and keeps server imageId',
+      () async {
+        repo.overrideIsConnected = true;
 
-      final p1 = await repo.addProduct(
-        Product(
-          id: '',
-          productCode: 'REF-1',
-          name: 'Original',
-          category: 'Cat',
-          brand: 'Brand',
-          sellingPrice: 10,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
+        final p1 = await repo.addProduct(
+          Product(
+            id: '',
+            productCode: 'REF-1',
+            name: 'Original',
+            category: 'Cat',
+            brand: 'Brand',
+            sellingPrice: 10,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            // Local has no image
+          ),
+        );
 
-      // Simulate remote update
-      repo.serverProducts.firstWhere((p) => p['id'] == p1.id)['name'] =
-          'Updated Remotely';
-      repo.serverProducts.firstWhere((p) => p['id'] == p1.id)['updated_at'] =
-          DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String();
+        // Simulate remote update with an image ID
+        repo.serverProducts.firstWhere((p) => p['id'] == p1.id)['name'] =
+            'Updated Remotely';
+        repo.serverProducts.firstWhere((p) => p['id'] == p1.id)['image_id'] =
+            'server-image-id';
+        repo.serverProducts.firstWhere(
+          (p) => p['id'] == p1.id,
+        )['updated_at'] = DateTime.now()
+            .add(const Duration(days: 1))
+            .toUtc()
+            .toIso8601String();
 
-      // Trigger sync
-      await repo.init();
-      await Future.delayed(const Duration(milliseconds: 50));
+        // Trigger sync via getAllProducts
+        await repo.getAllProducts();
 
-      final refreshed = await repo.getProductById(p1.id);
-      expect(refreshed!.name, 'Updated Remotely');
-    });
+        final refreshed = await repo.getProductById(p1.id);
+        expect(refreshed!.name, 'Updated Remotely');
+        expect(refreshed.imageId, 'server-image-id');
+      },
+    );
 
     test('5. Admin CRUD sync', () async {
       repo.overrideIsConnected = true;
@@ -350,9 +358,8 @@ void main() {
         repo.serverProducts.firstWhere((sp) => sp['id'] == p.id)['deleted_at'] =
             DateTime.now().toUtc().toIso8601String();
 
-        // 4. Trigger sync
+        // 4. Trigger sync via init
         await repo.init();
-        await Future.delayed(const Duration(milliseconds: 50));
 
         // 5. Verify product is gone from local cache
         final localCheck = await repo.getProductById(p.id);

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../../app/theme/app_colors.dart';
 
-import 'dart:typed_data';
+import '../../../domain/product.dart';
+import '../product_image.dart';
 
 class ProductImagePanel extends StatelessWidget {
-  final Uint8List? imageBytes;
+  final Product product;
 
-  const ProductImagePanel({super.key, this.imageBytes});
+  const ProductImagePanel({super.key, required this.product});
 
   @override
   Widget build(BuildContext context) {
@@ -22,31 +23,12 @@ class ProductImagePanel extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: _buildImage(),
-    );
-  }
-
-  Widget _buildImage() {
-    if (imageBytes != null && imageBytes!.isNotEmpty) {
-      return Image.memory(
-        imageBytes!,
-        fit: BoxFit.cover,
+      child: ProductImage(
+        product: product,
         width: double.infinity,
         height: double.infinity,
-        errorBuilder: (context, error, stackTrace) => const Center(
-          child: Icon(
-            Icons.inventory_2_outlined,
-            size: 64,
-            color: AppColors.mutedText,
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      color: AppColors.primarySoft.withValues(alpha: 0.3),
-      child: const Center(
-        child: Icon(Icons.image_outlined, size: 64, color: AppColors.mutedText),
+        fit: BoxFit.cover,
+        errorIconSize: 64,
       ),
     );
   }
