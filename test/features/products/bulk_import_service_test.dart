@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:archive/archive.dart';
+import 'package:image/image.dart' as img;
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import 'package:eagleflow/features/products/application/bulk_import_service.dart';
@@ -708,6 +709,33 @@ void main() {
       }
       return ZipEncoder().encode(archive)!;
     }
+
+    test('generateSampleZip creates valid visible images', () async {
+      final bytes = service.generateSampleZip();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      final imageFiles = archive.where((f) => f.name.endsWith('.jpg')).toList();
+      expect(imageFiles.length, 3);
+
+      for (final file in imageFiles) {
+        final imgBytes = file.content as List<int>;
+        final decoded = img.decodeImage(Uint8List.fromList(imgBytes));
+        expect(decoded, isNotNull);
+        expect(decoded!.width, greaterThanOrEqualTo(300));
+        expect(decoded.height, greaterThanOrEqualTo(300));
+
+        // Ensure image is not completely uniform (i.e. has text rendered)
+        final bgPixel = decoded.getPixel(10, 10);
+        final centerPixel = decoded.getPixel(150, 150); // text should be here
+        expect(
+          bgPixel != centerPixel,
+          true,
+          reason: 'Image should not be completely uniform blank color',
+        );
+
+        expect(file.name.contains('EXAMPLE-'), true);
+      }
+    });
 
     test('valid ZIP parses successfully', () async {
       final excelBytes = service.generateTemplate();

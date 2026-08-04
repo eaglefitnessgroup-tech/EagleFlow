@@ -24,6 +24,7 @@ class SupabaseProductRepository implements ProductRepository {
   );
 
   final Uuid _uuid = const Uuid();
+  Future<void>? _activeSync;
 
   SupabaseProductRepository({required this.localCache, required this.supabase});
 
@@ -40,14 +41,24 @@ class SupabaseProductRepository implements ProductRepository {
   Future<void> init() async {
     await localCache.init();
     if (isConnectedToServer) {
-      _syncProductsDown().ignore();
+      await _syncProductsDown();
     }
   }
 
   Future<void> _syncProductsDown() async {
-    try {
-      if (!isConnectedToServer) return;
+    if (!isConnectedToServer) return;
 
+    if (_activeSync != null) return _activeSync!;
+
+    _activeSync = _performSyncDown().whenComplete(() {
+      _activeSync = null;
+    });
+
+    return _activeSync!;
+  }
+
+  Future<void> _performSyncDown() async {
+    try {
       final serverProducts = await fetchProductsFromServer();
 
       final db = await _db;
@@ -88,7 +99,9 @@ class SupabaseProductRepository implements ProductRepository {
             final localProd = Product.fromJson(localRecord);
             if (serverProd.updatedAt.isAfter(localProd.updatedAt)) {
               final merged = serverProd.copyWith(
-                imageId: localProd.imageId, // Keep local image untouched
+                imageId:
+                    serverProd.imageId ??
+                    localProd.imageId, // Prefer server, fallback to local
               );
               await _productsStore
                   .record(serverProd.id)
@@ -104,6 +117,9 @@ class SupabaseProductRepository implements ProductRepository {
 
   @override
   Future<List<Product>> getAllProducts() async {
+    if (isConnectedToServer) {
+      await _syncProductsDown();
+    }
     return localCache.getAllProducts();
   }
 

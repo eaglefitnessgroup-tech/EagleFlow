@@ -41,10 +41,15 @@ class ServiceLocator {
   late final SembastProductRepository _sembastProductRepository =
       SembastProductRepository();
 
-  late final ProductRepository productRepository = SupabaseProductRepository(
-    localCache: _sembastProductRepository,
-    supabase: supabaseService,
-  );
+  @visibleForTesting
+  ProductRepository? mockProductRepository;
+
+  late final ProductRepository productRepository =
+      mockProductRepository ??
+      SupabaseProductRepository(
+        localCache: _sembastProductRepository,
+        supabase: supabaseService,
+      );
 
   late final ProductMasterController productMasterController =
       ProductMasterController(productRepository);
@@ -66,7 +71,11 @@ class ServiceLocator {
   late final StockOutByQuotationService stockOutByQuotationService =
       StockOutByQuotationService(quotationRepository: quotationRepository);
 
-  late final SupabaseService supabaseService = SupabaseService();
+  @visibleForTesting
+  SupabaseService? mockSupabaseService;
+
+  late final SupabaseService supabaseService =
+      mockSupabaseService ?? SupabaseService();
 
   late final BulkImportService bulkImportService = BulkImportService(
     productRepository,
@@ -80,6 +89,15 @@ class ServiceLocator {
       // Safely ignore failures to prevent blocking app startup
     }
 
+    // Phase 7: Initialize Supabase connection.
+    // Runs before repository inits so that remote data can be synced on startup.
+    // A Supabase failure never blocks startup (fallback to local Sembast).
+    try {
+      await supabaseService.initialize();
+    } catch (e) {
+      debugPrint('Supabase init failed. Continuing offline. Error: $e');
+    }
+
     await productRepository.init();
     await productMasterController.loadProducts();
 
@@ -91,14 +109,11 @@ class ServiceLocator {
       await (quotationRepository as SupabaseQuotationRepository).init();
     }
 
-    // Phase 7: Initialize Supabase connection.
-    // Runs after Sembast is ready. A Supabase failure never blocks startup.
     try {
-      await supabaseService.initialize();
       // Initialize SyncCoordinator AFTER repositories and supabase
       await syncCoordinator.start();
     } catch (e) {
-      debugPrint('Supabase init failed. Continuing offline. Error: $e');
+      debugPrint('SyncCoordinator start failed. Error: $e');
     }
   }
 }

@@ -43,7 +43,8 @@ class ProductMasterController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _products = await _repository.getAllProducts();
+      final products = await _repository.getAllProducts();
+      _products = products;
       // Apply default sorting: Newest First
       _products.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } catch (e) {
