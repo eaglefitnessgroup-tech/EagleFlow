@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
@@ -313,21 +312,10 @@ class BulkImportService {
     }
 
     final headers = rows.first.map((e) => e.toString().trim()).toList();
-    final expectedHeaders = [
-      'Product Code',
-      'Name',
-      'Category',
-      'Brand',
-      'Selling Price',
-      'Opening Stock',
-      'Min Stock Level',
-      'Unit',
-      'VAT Applicable',
-      'Active',
-      'Description',
-      'Model Number',
-      'Notes',
-    ];
+    // Required headers are checked individually below.
+    // Full header list for reference: Product Code, Name, Category, Brand,
+    // Selling Price, Opening Stock, Min Stock Level, Unit, VAT Applicable,
+    // Active, Description, Model Number, Notes.
 
     // Check minimum required columns
     for (final req in ['Product Code', 'Name', 'Selling Price']) {
@@ -349,8 +337,10 @@ class BulkImportService {
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
-      if (row.isEmpty || (row.length == 1 && row[0].toString().trim().isEmpty))
+      if (row.isEmpty ||
+          (row.length == 1 && row[0].toString().trim().isEmpty)) {
         continue;
+      }
 
       final Map<String, String> rowMap = {};
       for (int j = 0; j < headers.length && j < row.length; j++) {
@@ -440,10 +430,12 @@ class BulkImportService {
       bool? parseBool(String fieldName, String val, bool defaultVal) {
         if (val.isEmpty) return defaultVal;
         final lower = val.toLowerCase();
-        if (lower == 'yes' || lower == 'true' || lower == '1' || lower == 'y')
+        if (lower == 'yes' || lower == 'true' || lower == '1' || lower == 'y') {
           return true;
-        if (lower == 'no' || lower == 'false' || lower == '0' || lower == 'n')
+        }
+        if (lower == 'no' || lower == 'false' || lower == '0' || lower == 'n') {
           return false;
+        }
         errors.add('$fieldName must be Yes, No, True, False, 1, or 0');
         return null;
       }

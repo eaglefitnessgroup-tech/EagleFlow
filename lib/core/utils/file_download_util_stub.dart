@@ -1,7 +1,4 @@
-/// Stub — should never be reached; web or IO impl is always chosen.
-library file_download_util_stub;
-
-import 'dart:typed_data';
+// Stub — should never be reached; web or IO impl is always chosen.
 
 abstract class FileDownloadUtil {
   /// Saves [bytes] with the given [filename].

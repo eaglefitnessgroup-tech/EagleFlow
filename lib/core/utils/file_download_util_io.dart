@@ -1,8 +1,7 @@
-/// IO (Windows / macOS / Linux) implementation.
-///
-/// Saves the file to the system Downloads folder obtained via path_provider.
-/// Falls back to the application documents directory if Downloads is unavailable.
-library file_download_util_io;
+// IO (Windows / macOS / Linux) implementation.
+//
+// Saves the file to the system Downloads folder obtained via path_provider.
+// Falls back to the application documents directory if Downloads is unavailable.
 
 import 'dart:io';
 import 'dart:typed_data';

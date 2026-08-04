@@ -1,8 +1,7 @@
-/// Web implementation — triggers a browser anchor-download.
-///
-/// Uses `package:web` + `dart:js_interop` (Dart 3 / Flutter 3.24+).
-/// The object URL is always revoked after the click to release memory.
-library file_download_util_web;
+// Web implementation — triggers a browser anchor-download.
+//
+// Uses `package:web` + `dart:js_interop` (Dart 3 / Flutter 3.24+).
+// The object URL is always revoked after the click to release memory.
 
 import 'dart:js_interop';
 import 'dart:typed_data';
