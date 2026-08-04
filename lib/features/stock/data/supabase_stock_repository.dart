@@ -138,7 +138,9 @@ class SupabaseStockRepository implements StockRepository {
     } catch (e) {
       // If remote insert fails, delete the locally added movement to rollback.
       await localCache.deleteMovement(movement.id);
-      throw Exception('Failed to sync stock movement to remote. Please try again.');
+      throw Exception(
+        'Failed to sync stock movement to remote. Please try again.',
+      );
     }
 
     return movement;

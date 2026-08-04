@@ -222,7 +222,9 @@ class SupabaseQuotationRepository implements QuotationRepository {
         }
       } catch (e) {
         if (toSave.status != QuotationStatus.draft) {
-          throw Exception('Failed to sync quotation to remote. Please try again.');
+          throw Exception(
+            'Failed to sync quotation to remote. Please try again.',
+          );
         }
         if (toSave.id.isEmpty) {
           final newId = const Uuid().v4();
@@ -285,7 +287,9 @@ class SupabaseQuotationRepository implements QuotationRepository {
         await client.from('quotations').delete().eq('id', id);
       }
     } catch (e) {
-      throw Exception('Failed to delete quotation from remote. Please try again.');
+      throw Exception(
+        'Failed to delete quotation from remote. Please try again.',
+      );
     }
 
     await localCache.deleteQuotation(id);
