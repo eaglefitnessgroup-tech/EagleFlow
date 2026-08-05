@@ -7,6 +7,7 @@ import '../application/quotation_controller.dart';
 import '../application/quotation_validator.dart';
 import '../../../../core/di/service_locator.dart';
 import '../domain/quotation.dart';
+import '../../products/domain/product.dart';
 import 'widgets/create/quotation_page_header.dart';
 import 'widgets/create/customer_information_card.dart';
 import 'widgets/create/quotation_information_card.dart';
@@ -55,6 +56,71 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     super.dispose();
   }
 
+  Future<void> _handleQuantityChanged(String itemId, int qty) async {
+    final item = _controller.quotation.lineItems.where((i) => i.id == itemId).firstOrNull;
+    if (item == null || item.isCustom || item.productId == null) {
+      _controller.updateQuantity(itemId, qty);
+      return;
+    }
+
+    final product = ServiceLocator().productMasterController.products.where(
+      (p) => p.id == item.productId,
+    ).firstOrNull;
+
+    if (product == null) {
+      _controller.updateQuantity(itemId, qty);
+      return;
+    }
+
+    final stock = await ServiceLocator().stockController.getCurrentStock(product);
+
+    if (qty > stock) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Only $stock unit(s) available for ${product.name}.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      
+      int fallbackQty = item.quantity;
+      if (fallbackQty > stock) fallbackQty = stock;
+      if (fallbackQty < 1) fallbackQty = 1;
+      
+      _controller.updateQuantity(itemId, fallbackQty + 1);
+      await Future.delayed(const Duration(milliseconds: 50));
+      _controller.updateQuantity(itemId, fallbackQty);
+      return;
+    }
+
+    _controller.updateQuantity(itemId, qty);
+  }
+
+  Future<void> _handleProductsAdded(List<Product> products) async {
+    for (final product in products) {
+      final existingItemIndex = _controller.quotation.lineItems.indexWhere((i) => i.productId == product.id);
+      final existingQty = existingItemIndex >= 0 ? _controller.quotation.lineItems[existingItemIndex].quantity : 0;
+      final requestedQty = existingQty + 1;
+      
+      final stock = await ServiceLocator().stockController.getCurrentStock(product);
+      
+      if (requestedQty > stock) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Only $stock unit(s) available for ${product.name}.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        continue;
+      }
+      
+      _controller.addProduct(product);
+    }
+  }
+
   Future<void> _handleSave() async {
     if (_isSaving) return;
 
@@ -73,6 +139,34 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     }
 
     setState(() => _isSaving = true);
+
+    // Validate stock before saving
+    final Map<String, int> cachedStock = {};
+    for (final item in _controller.quotation.lineItems) {
+      if (item.isCustom || item.productId == null) continue;
+      
+      final product = ServiceLocator().productMasterController.products.where(
+        (p) => p.id == item.productId,
+      ).firstOrNull;
+      
+      if (product == null) continue;
+      
+      final stock = cachedStock[product.id] ?? await ServiceLocator().stockController.getCurrentStock(product);
+      cachedStock[product.id] = stock;
+      
+      if (item.quantity > stock) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cannot save. Only $stock unit(s) available for ${product.name}.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() => _isSaving = false);
+        }
+        return;
+      }
+    }
 
     try {
       final repo = ServiceLocator().quotationRepository;
@@ -226,11 +320,11 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                     const SizedBox(height: 20),
                     SelectedProductsSection(
                       items: quotation.lineItems,
-                      onQuantityChanged: _controller.updateQuantity,
+                      onQuantityChanged: _handleQuantityChanged,
                       onUnitPriceChanged: _controller.updateUnitPrice,
                       onDiscountChanged: _controller.updateLineDiscount,
                       onRemove: _controller.removeItem,
-                      onProductsAdded: _controller.addProducts,
+                      onProductsAdded: _handleProductsAdded,
                       onCustomItemAdded: _controller.addCustomItem,
                       onCustomItemUpdated: _controller.updateCustomItem,
                     ),
@@ -323,11 +417,11 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
           const SizedBox(height: 20),
           SelectedProductsSection(
             items: quotation.lineItems,
-            onQuantityChanged: _controller.updateQuantity,
+            onQuantityChanged: _handleQuantityChanged,
             onUnitPriceChanged: _controller.updateUnitPrice,
             onDiscountChanged: _controller.updateLineDiscount,
             onRemove: _controller.removeItem,
-            onProductsAdded: _controller.addProducts,
+            onProductsAdded: _handleProductsAdded,
             onCustomItemAdded: _controller.addCustomItem,
             onCustomItemUpdated: _controller.updateCustomItem,
           ),
