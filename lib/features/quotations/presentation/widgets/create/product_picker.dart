@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
 import '../../../../products/domain/product.dart';
+import '../../../../products/presentation/widgets/product_image.dart';
 import '../../../../../../core/di/service_locator.dart';
 
 class ProductPicker {
@@ -317,19 +318,13 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
-              child: product.imageBytes != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.memory(
-                        product.imageBytes!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (ctx, error, stackTrace) {
-                          debugPrint('Product image failed: — $error');
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+              clipBehavior: Clip.antiAlias,
+              child: ProductImage(
+                product: product,
+                width: 64,
+                height: 64,
+                fit: BoxFit.cover,
+              ),
             ),
             const SizedBox(width: 16),
             // Details
@@ -349,7 +344,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${product.brand} • ${product.productCode}',
+                    '${product.brand} â€¢ ${product.productCode}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.mutedText,
