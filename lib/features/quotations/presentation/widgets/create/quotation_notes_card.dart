@@ -1,8 +1,58 @@
 import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
 
-class QuotationNotesCard extends StatelessWidget {
-  const QuotationNotesCard({super.key});
+class QuotationNotesCard extends StatefulWidget {
+  final String initialCustomerNotes;
+  final String initialInternalNotes;
+  final ValueChanged<String>? onCustomerNotesChanged;
+  final ValueChanged<String>? onInternalNotesChanged;
+
+  const QuotationNotesCard({
+    super.key,
+    this.initialCustomerNotes = '',
+    this.initialInternalNotes = '',
+    this.onCustomerNotesChanged,
+    this.onInternalNotesChanged,
+  });
+
+  @override
+  State<QuotationNotesCard> createState() => _QuotationNotesCardState();
+}
+
+class _QuotationNotesCardState extends State<QuotationNotesCard> {
+  late final TextEditingController _customerNotesCtrl;
+  late final TextEditingController _internalNotesCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _customerNotesCtrl = TextEditingController(
+      text: widget.initialCustomerNotes,
+    );
+    _internalNotesCtrl = TextEditingController(
+      text: widget.initialInternalNotes,
+    );
+  }
+
+  @override
+  void didUpdateWidget(QuotationNotesCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialCustomerNotes != widget.initialCustomerNotes &&
+        _customerNotesCtrl.text != widget.initialCustomerNotes) {
+      _customerNotesCtrl.text = widget.initialCustomerNotes;
+    }
+    if (oldWidget.initialInternalNotes != widget.initialInternalNotes &&
+        _internalNotesCtrl.text != widget.initialInternalNotes) {
+      _internalNotesCtrl.text = widget.initialInternalNotes;
+    }
+  }
+
+  @override
+  void dispose() {
+    _customerNotesCtrl.dispose();
+    _internalNotesCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +66,11 @@ class QuotationNotesCard extends StatelessWidget {
               isMobile,
               title: 'Customer Notes',
               subtitle: 'These notes will be printed on the quotation PDF.',
-              child: _buildTextArea('Enter notes for the customer...'),
+              child: _buildTextArea(
+                'Enter notes for the customer...',
+                _customerNotesCtrl,
+                widget.onCustomerNotesChanged,
+              ),
             ),
             const SizedBox(height: 20),
             _buildCard(
@@ -24,7 +78,11 @@ class QuotationNotesCard extends StatelessWidget {
               title: 'Internal Notes',
               subtitle:
                   'These notes are for internal use only and will not be printed.',
-              child: _buildTextArea('Enter internal notes...'),
+              child: _buildTextArea(
+                'Enter internal notes...',
+                _internalNotesCtrl,
+                widget.onInternalNotesChanged,
+              ),
             ),
           ],
         );
@@ -75,8 +133,14 @@ class QuotationNotesCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTextArea(String hint) {
+  Widget _buildTextArea(
+    String hint,
+    TextEditingController controller,
+    ValueChanged<String>? onChanged,
+  ) {
     return TextField(
+      controller: controller,
+      onChanged: onChanged,
       minLines: 5,
       maxLines: 7,
       decoration: InputDecoration(

@@ -235,7 +235,14 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                       onCustomItemUpdated: _controller.updateCustomItem,
                     ),
                     const SizedBox(height: 20),
-                    const QuotationNotesCard(),
+                    QuotationNotesCard(
+                      initialCustomerNotes: quotation.customerNotes,
+                      initialInternalNotes: quotation.internalNotes,
+                      onCustomerNotesChanged: (val) =>
+                          _controller.updateNotes(customerNotes: val),
+                      onInternalNotesChanged: (val) =>
+                          _controller.updateNotes(internalNotes: val),
+                    ),
                   ],
                 ),
               ),
@@ -346,7 +353,14 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
             grandTotal: grandTotal,
           ),
           const SizedBox(height: 20),
-          const QuotationNotesCard(),
+          QuotationNotesCard(
+            initialCustomerNotes: quotation.customerNotes,
+            initialInternalNotes: quotation.internalNotes,
+            onCustomerNotesChanged: (val) =>
+                _controller.updateNotes(customerNotes: val),
+            onInternalNotesChanged: (val) =>
+                _controller.updateNotes(internalNotes: val),
+          ),
         ],
       ),
     );

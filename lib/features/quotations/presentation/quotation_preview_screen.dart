@@ -76,7 +76,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         startIndex: startIndex,
       );
     } else if (pageModel is QuotationInfoPageModel) {
-      return const QuotationInfoPage();
+      return QuotationInfoPage(quotation: _controller!.quotation);
     }
     return const SizedBox.shrink();
   }

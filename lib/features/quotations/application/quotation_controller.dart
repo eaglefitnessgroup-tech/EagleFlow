@@ -41,6 +41,14 @@ class QuotationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateNotes({String? customerNotes, String? internalNotes}) {
+    _quotation = _quotation.copyWith(
+      customerNotes: customerNotes ?? _quotation.customerNotes,
+      internalNotes: internalNotes ?? _quotation.internalNotes,
+    );
+    notifyListeners();
+  }
+
   void updateQuantity(String itemId, int qty) {
     final newQty = math.max(1, qty); // Quantity minimum 1
     _updateLineItem(itemId, (item) => item.copyWith(quantity: newQty));

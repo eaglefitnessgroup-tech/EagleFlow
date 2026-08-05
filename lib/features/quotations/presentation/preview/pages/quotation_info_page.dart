@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/models/company_profile.dart';
+import '../../../domain/quotation.dart';
 import '../quotation_document_theme.dart';
 import '../components/quotation_document_header.dart';
 
 class QuotationInfoPage extends StatelessWidget {
-  const QuotationInfoPage({super.key});
+  final Quotation quotation;
+
+  const QuotationInfoPage({super.key, required this.quotation});
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +114,19 @@ class QuotationInfoPage extends StatelessWidget {
                 '• By issuing a Purchase Order against this quotation, the buyer agrees to all stated terms and conditions.\n'
                     '• Quotation is valid for 15 days from the date of issue.',
               ),
+
+              if (quotation.customerNotes.trim().isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Text('Customer Notes', style: QuotationDocumentTheme.h2),
+                const SizedBox(height: 12),
+                Text(
+                  quotation.customerNotes.trim(),
+                  style: QuotationDocumentTheme.small.copyWith(
+                    fontSize: 9.6,
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
