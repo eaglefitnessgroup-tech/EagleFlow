@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
+import '../../../../products/domain/product.dart';
+import '../../../../products/presentation/widgets/product_image.dart';
 import '../../../domain/quotation_line_item.dart';
 import '../../../application/quotation_calculator.dart';
 
@@ -500,22 +502,28 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
-      child: widget.item.imageBytes != null
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.memory(
-                widget.item.imageBytes!,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: (widget.item.imageId != null || widget.item.imageBytes != null)
+            ? ProductImage(
+                product: Product(
+                  id: widget.item.productId ?? widget.item.id,
+                  productCode: widget.item.productCode ?? '',
+                  name: widget.item.name,
+                  category: '',
+                  brand: widget.item.brand,
+                  sellingPrice: widget.item.unitPrice,
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                  imageId: widget.item.imageId,
+                  imageBytes: widget.item.imageBytes,
+                ),
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  debugPrint('Product image bytes failed: $error');
-                  return const SizedBox.shrink();
-                },
-              ),
-            )
-          : widget.item.imagePath != null
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
+                errorIconSize: 20,
+              )
+            : (widget.item.imagePath != null &&
+                  widget.item.imagePath!.isNotEmpty)
+            ? Image.asset(
                 widget.item.imagePath!,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
@@ -524,9 +532,9 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
                   );
                   return const SizedBox.shrink();
                 },
-              ),
-            )
-          : const SizedBox.shrink(),
+              )
+            : const SizedBox.shrink(),
+      ),
     );
   }
 }

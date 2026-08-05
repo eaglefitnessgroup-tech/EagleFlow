@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../products/domain/product.dart';
+import '../../../../products/presentation/widgets/product_image.dart';
 import '../../../application/quotation_calculator.dart';
 import '../../../domain/quotation_line_item.dart';
 import '../quotation_document_theme.dart';
@@ -139,19 +141,26 @@ class QuotationProductRow extends StatelessWidget {
   }
 
   Widget _buildProductImage(QuotationLineItem item) {
-    if (item.imageBytes != null) {
+    if (item.imageId != null || item.imageBytes != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: Image.memory(
-          item.imageBytes!,
+        child: ProductImage(
+          product: Product(
+            id: item.productId ?? item.id,
+            productCode: item.productCode ?? '',
+            name: item.name,
+            category: '',
+            brand: item.brand,
+            sellingPrice: item.unitPrice,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            imageId: item.imageId,
+            imageBytes: item.imageBytes,
+          ),
           width: QuotationLayoutSpec.productImageSize,
           height: QuotationLayoutSpec.productImageSize,
           fit: BoxFit.contain,
-          filterQuality: FilterQuality.medium,
-          errorBuilder: (_, error, stackTrace) {
-            debugPrint('Product image bytes failed: $error');
-            return const SizedBox.shrink();
-          },
+          errorIconSize: 20,
         ),
       );
     } else if (item.imagePath != null && item.imagePath!.isNotEmpty) {
