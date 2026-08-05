@@ -6,9 +6,12 @@ import '../domain/quotation_defaults.dart';
 import 'preview/models/quotation_preview_page.dart';
 import 'preview/utils/quotation_paginator.dart';
 import 'preview/components/quotation_a4_page.dart';
-
 import 'preview/pages/quotation_products_page.dart';
 import 'preview/pages/quotation_info_page.dart';
+
+import 'package:printing/printing.dart';
+import '../application/quotation_pdf_service.dart';
+import '../../../core/utils/pdf_saver.dart';
 
 class QuotationPreviewScreen extends StatefulWidget {
   const QuotationPreviewScreen({super.key});
@@ -23,6 +26,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
   List<QuotationPreviewPage> _pages = [];
   bool _isError = false;
   String _errorMsg = '';
+  bool _isGeneratingPdf = false;
 
   @override
   void didChangeDependencies() {
@@ -60,6 +64,50 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
 
   void _onEdit() {
     Navigator.pop(context);
+  }
+
+  Future<void> _handlePdfAction(String action) async {
+    if (_controller == null) return;
+
+    setState(() {
+      _isGeneratingPdf = true;
+    });
+
+    try {
+      final service = QuotationPdfService();
+      final pdfBytes = await service.generatePdf(_controller!.quotation);
+      final sanitizedNumber = _controller!.quotation.quotationNumber
+          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final filename = '$sanitizedNumber.pdf';
+
+      if (action == 'pdf') {
+        final outputPath = await savePdf(pdfBytes, filename);
+        if (outputPath != null && mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Saved to $outputPath')));
+        }
+      } else if (action == 'print') {
+        await Printing.layoutPdf(
+          onLayout: (_) async => pdfBytes,
+          name: filename,
+        );
+      } else if (action == 'share') {
+        await Printing.sharePdf(bytes: pdfBytes, filename: filename);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGeneratingPdf = false;
+        });
+      }
+    }
   }
 
   Widget _buildPageContent(QuotationPreviewPage pageModel) {
@@ -147,17 +195,17 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
           ),
           const SizedBox(width: 8),
           PopupMenuButton<String>(
-            onSelected: (value) {},
+            onSelected: (value) {
+              if (value == 'pdf' || value == 'print' || value == 'share') {
+                _handlePdfAction(value);
+              }
+            },
             icon: const Icon(Icons.ios_share, size: 18),
             tooltip: 'Export',
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'pdf',
-                enabled: false,
-                child: Text(
-                  'Export to PDF (Coming Soon)',
-                  style: TextStyle(fontSize: 14),
-                ),
+                child: Text('Export to PDF', style: TextStyle(fontSize: 14)),
               ),
               const PopupMenuItem(
                 value: 'excel',
@@ -170,19 +218,11 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
               const PopupMenuDivider(),
               const PopupMenuItem(
                 value: 'print',
-                enabled: false,
-                child: Text(
-                  'Print (Coming Soon)',
-                  style: TextStyle(fontSize: 14),
-                ),
+                child: Text('Print', style: TextStyle(fontSize: 14)),
               ),
               const PopupMenuItem(
                 value: 'share',
-                enabled: false,
-                child: Text(
-                  'Share Link (Coming Soon)',
-                  style: TextStyle(fontSize: 14),
-                ),
+                child: Text('Share PDF', style: TextStyle(fontSize: 14)),
               ),
             ],
           ),
@@ -190,97 +230,134 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         ],
       ),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 600;
+            Column(
+              children: [
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isMobile = constraints.maxWidth < 600;
 
-                  Widget pageContainer;
-                  if (isMobile) {
-                    final pageWidth = constraints.maxWidth * 0.95;
-                    pageContainer = Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: SizedBox(
-                          width: pageWidth,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.topCenter,
-                            child: QuotationA4Page(
-                              child: Stack(
-                                children: [
-                                  _buildPageContent(_pages[_currentPageIndex]),
-                                ],
+                      Widget pageContainer;
+                      if (isMobile) {
+                        final pageWidth = constraints.maxWidth * 0.95;
+                        pageContainer = Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: SizedBox(
+                              width: pageWidth,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.topCenter,
+                                child: QuotationA4Page(
+                                  child: Stack(
+                                    children: [
+                                      _buildPageContent(
+                                        _pages[_currentPageIndex],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                    );
-                  } else {
-                    pageContainer = Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: Center(
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: 820),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.topCenter,
-                            child: QuotationA4Page(
-                              child: Stack(
-                                children: [
-                                  _buildPageContent(_pages[_currentPageIndex]),
-                                ],
+                        );
+                      } else {
+                        pageContainer = Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          child: Center(
+                            child: Container(
+                              constraints: const BoxConstraints(maxWidth: 820),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.topCenter,
+                                child: QuotationA4Page(
+                                  child: Stack(
+                                    children: [
+                                      _buildPageContent(
+                                        _pages[_currentPageIndex],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                    );
-                  }
+                        );
+                      }
 
-                  return SingleChildScrollView(child: pageContainer);
-                },
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: const Border(top: BorderSide(color: AppColors.border)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: _currentPageIndex > 0 ? _prevPage : null,
-                    icon: const Icon(Icons.chevron_left, size: 24),
-                    color: AppColors.charcoal,
-                    disabledColor: AppColors.mutedText.withValues(alpha: 0.3),
+                      return SingleChildScrollView(child: pageContainer);
+                    },
                   ),
-                  const SizedBox(width: 16),
-                  Text(
-                    'Page ${_currentPageIndex + 1} of ${_pages.length}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                      color: AppColors.charcoal,
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: const Border(
+                      top: BorderSide(color: AppColors.border),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  IconButton(
-                    onPressed: _currentPageIndex < _pages.length - 1
-                        ? _nextPage
-                        : null,
-                    icon: const Icon(Icons.chevron_right, size: 24),
-                    color: AppColors.charcoal,
-                    disabledColor: AppColors.mutedText.withValues(alpha: 0.3),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: _currentPageIndex > 0 ? _prevPage : null,
+                        icon: const Icon(Icons.chevron_left, size: 24),
+                        color: AppColors.charcoal,
+                        disabledColor: AppColors.mutedText.withValues(
+                          alpha: 0.3,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        'Page ${_currentPageIndex + 1} of ${_pages.length}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          color: AppColors.charcoal,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      IconButton(
+                        onPressed: _currentPageIndex < _pages.length - 1
+                            ? _nextPage
+                            : null,
+                        icon: const Icon(Icons.chevron_right, size: 24),
+                        color: AppColors.charcoal,
+                        disabledColor: AppColors.mutedText.withValues(
+                          alpha: 0.3,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            if (_isGeneratingPdf)
+              Container(
+                color: Colors.white.withValues(alpha: 0.8),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Generating PDF...',
+                        style: TextStyle(
+                          color: AppColors.charcoal,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -63,7 +63,12 @@ class SembastQuotationRepository implements QuotationRepository {
     return quotation.copyWith(lineItems: updatedItems);
   }
 
-  Future<String> _generateQuotationNumber(DatabaseClient client) async {
+  Future<String> getNextQuotationNumber() async {
+    final db = await _db;
+    return await generateNextQuotationNumber(db);
+  }
+
+  Future<String> generateNextQuotationNumber(DatabaseClient client) async {
     final currentYear = DateTime.now().year % 100;
     final yearKey = 'seq_$currentYear';
     final currentSeq = await _metadataStore.record(yearKey).get(client) ?? 0;
@@ -82,7 +87,7 @@ class SembastQuotationRepository implements QuotationRepository {
       if (updatedQuotation.id.isEmpty) {
         // Generate new ID and Quotation Number
         final newId = _uuid.v4();
-        final qtNumber = await _generateQuotationNumber(txn);
+        final qtNumber = await generateNextQuotationNumber(txn);
         updatedQuotation = updatedQuotation.copyWith(
           id: newId,
           quotationNumber: qtNumber,
@@ -180,7 +185,7 @@ class SembastQuotationRepository implements QuotationRepository {
     Quotation duplicatedQuotation = sourceQuotation;
     await db.transaction((txn) async {
       final newId = _uuid.v4();
-      final qtNumber = await _generateQuotationNumber(txn);
+      final qtNumber = await generateNextQuotationNumber(txn);
       final now = DateTime.now();
 
       final validityDuration = sourceQuotation.validUntil.difference(

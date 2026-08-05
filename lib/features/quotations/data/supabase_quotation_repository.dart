@@ -187,6 +187,12 @@ class SupabaseQuotationRepository implements QuotationRepository {
 
     Quotation toSave = quotation;
 
+    if (toSave.id.isEmpty) {
+      final newId = const Uuid().v4();
+      final qtNumber = await localCache.getNextQuotationNumber();
+      toSave = toSave.copyWith(id: newId, quotationNumber: qtNumber);
+    }
+
     if (!isConnectedToServer && toSave.status != QuotationStatus.draft) {
       throw Exception('Cannot finalize or save a non-draft quotation offline.');
     }
@@ -213,11 +219,10 @@ class SupabaseQuotationRepository implements QuotationRepository {
           if (response.containsKey('error')) {
             throw Exception(response['error']);
           }
-          if (toSave.id.isEmpty) {
-            toSave = toSave.copyWith(
-              id: response['id'] as String,
-              quotationNumber: response['quotationNumber'] as String,
-            );
+          // Already handled locally, backend just upserts.
+          // Fallback if backend still returns something else (we prefer local though)
+          if (response['quotationNumber'] != null && response['quotationNumber'].toString().isNotEmpty) {
+            toSave = toSave.copyWith(quotationNumber: response['quotationNumber'] as String);
           }
         }
       } catch (e) {
@@ -225,10 +230,6 @@ class SupabaseQuotationRepository implements QuotationRepository {
           throw Exception(
             'Failed to sync quotation to remote. Please try again.',
           );
-        }
-        if (toSave.id.isEmpty) {
-          final newId = const Uuid().v4();
-          toSave = toSave.copyWith(id: newId, quotationNumber: 'DRAFT-$newId');
         }
         final payload = toSave.toJson();
         if (payload['lineItems'] != null) {
@@ -242,10 +243,6 @@ class SupabaseQuotationRepository implements QuotationRepository {
         );
       }
     } else {
-      if (toSave.id.isEmpty) {
-        final newId = const Uuid().v4();
-        toSave = toSave.copyWith(id: newId, quotationNumber: 'DRAFT-$newId');
-      }
       final payload = toSave.toJson();
       if (payload['lineItems'] != null) {
         for (var item in payload['lineItems'] as List<dynamic>) {

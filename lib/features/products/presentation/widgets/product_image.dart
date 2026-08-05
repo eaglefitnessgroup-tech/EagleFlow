@@ -23,13 +23,47 @@ class ProductImage extends StatefulWidget {
     this.testClient,
   });
 
+  static final Map<String, Uint8List> _imageCache = {};
+
+  static Future<void> precacheImage({
+    String? imageId,
+    Uint8List? imageBytes,
+    SupabaseClient? testClient,
+  }) async {
+    // Already have bytes?
+    if (imageBytes != null && imageBytes.isNotEmpty) {
+      return;
+    }
+
+    // No image ID?
+    if (imageId == null || imageId.isEmpty) {
+      return;
+    }
+
+    // Already cached?
+    if (_imageCache.containsKey(imageId)) {
+      return;
+    }
+
+    // Download and cache
+    try {
+      final client = testClient ?? ServiceLocator().supabaseService.client;
+      if (client != null) {
+        final bytes = await client.storage
+            .from('product-images')
+            .download(imageId);
+        _imageCache[imageId] = bytes;
+      }
+    } catch (_) {
+      // Ignore errors silently for precache, it will fall back to error widget when building
+    }
+  }
+
   @override
   State<ProductImage> createState() => _ProductImageState();
 }
 
 class _ProductImageState extends State<ProductImage> {
-  static final Map<String, Uint8List> _imageCache = {};
-
   bool _isLoading = false;
   bool _hasError = false;
   Uint8List? _downloadedBytes;
@@ -74,11 +108,11 @@ class _ProductImageState extends State<ProductImage> {
 
     // 3. Check memory cache
     final imageId = widget.product.imageId!;
-    if (_imageCache.containsKey(imageId)) {
+    if (ProductImage._imageCache.containsKey(imageId)) {
       setState(() {
         _isLoading = false;
         _hasError = false;
-        _downloadedBytes = _imageCache[imageId];
+        _downloadedBytes = ProductImage._imageCache[imageId];
       });
       return;
     }
@@ -102,7 +136,7 @@ class _ProductImageState extends State<ProductImage> {
           .download(imageId);
 
       if (mounted) {
-        _imageCache[imageId] = bytes;
+        ProductImage._imageCache[imageId] = bytes;
         setState(() {
           _downloadedBytes = bytes;
           _isLoading = false;
