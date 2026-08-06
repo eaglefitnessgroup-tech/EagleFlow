@@ -239,7 +239,15 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
     );
   }
 
+  int _getReservedQuantity(String productId) {
+    return _activeReservations
+        .where((r) => r.productId == productId)
+        .fold(0, (sum, r) => sum + r.quantity);
+  }
+
   Widget _buildProductCard(Product product) {
+    final reservedQty = _getReservedQuantity(product.id);
+    final availableQty = product.openingStock - reservedQty;
     return InkWell(
       onTap: () => _onProductTapped(product),
       borderRadius: BorderRadius.circular(12),
@@ -283,15 +291,40 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.charcoal,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.charcoal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (reservedQty > 0)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Reserved',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepOrange,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -306,7 +339,9 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
                     children: [
                       _buildStockPill('Physical', product.openingStock),
                       const SizedBox(width: 8),
-                      _buildStockPill('Available', product.openingStock), // Same as physical for now
+                      _buildStockPill('Reserved', reservedQty),
+                      const SizedBox(width: 8),
+                      _buildStockPill('Available', availableQty),
                     ],
                   ),
                 ],
