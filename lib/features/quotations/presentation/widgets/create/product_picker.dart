@@ -4,6 +4,8 @@ import '../../../../../../app/theme/app_colors.dart';
 import '../../../../products/domain/product.dart';
 import '../../../../products/presentation/widgets/product_image.dart';
 import '../../../../../../core/di/service_locator.dart';
+import '../../../../reservations/domain/reservation.dart';
+import 'package:intl/intl.dart';
 
 class ProductPicker {
   static Future<List<Product>?> show(BuildContext context) {
@@ -43,6 +45,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   final Set<String> _selectedIds = {};
 
   List<Product> _filteredProducts = [];
+  List<Reservation> _activeReservations = [];
   bool _isLoading = true;
   bool _isSubmitting = false;
 
@@ -63,11 +66,15 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     super.dispose();
   }
 
-  void _loadProducts() {
-    setState(() {
-      _isLoading = false;
-      _onSearchChanged();
-    });
+  Future<void> _loadProducts() async {
+    final reservations = await ServiceLocator().reservationRepository.getActiveReservations();
+    if (mounted) {
+      setState(() {
+        _activeReservations = reservations;
+        _isLoading = false;
+        _onSearchChanged();
+      });
+    }
   }
 
   void _onSearchChanged() {
@@ -112,14 +119,115 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     return sorted;
   }
 
-  void _toggleSelection(Product product) {
-    setState(() {
-      if (_selectedIds.contains(product.id)) {
+  Future<void> _toggleSelection(Product product) async {
+    if (_selectedIds.contains(product.id)) {
+      setState(() {
         _selectedIds.remove(product.id);
+      });
+    } else {
+      final reservationsForProduct = _activeReservations.where((r) => r.productId == product.id).toList();
+      if (reservationsForProduct.isNotEmpty) {
+        final reservation = reservationsForProduct.first; // Pick first for warning
+        final shouldAdd = await _showReservationWarning(reservation, product);
+        if (shouldAdd == true && mounted) {
+          setState(() {
+            _selectedIds.add(product.id);
+          });
+        }
       } else {
-        _selectedIds.add(product.id);
+        setState(() {
+          _selectedIds.add(product.id);
+        });
       }
-    });
+    }
+  }
+
+  Future<bool?> _showReservationWarning(Reservation reservation, Product product) {
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm');
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Item Already Reserved',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This item is already reserved by another salesperson.',
+                style: TextStyle(color: AppColors.charcoal),
+              ),
+              const SizedBox(height: 16),
+              _buildWarningRow('Product', product.name),
+              _buildWarningRow('Reserved By', reservation.reservedBy),
+              _buildWarningRow('Reserved Qty', '${reservation.quantity}'),
+              _buildWarningRow('Reference', reservation.reference.isNotEmpty ? reservation.reference : 'N/A'),
+              _buildWarningRow('Expiry Date', dateFormat.format(reservation.expiryDate)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: TextButton.styleFrom(foregroundColor: AppColors.mutedText),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Ignore & Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildWarningRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                color: AppColors.mutedText,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.charcoal,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatCurrency(double amount) {
