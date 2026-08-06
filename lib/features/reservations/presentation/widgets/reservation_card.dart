@@ -7,7 +7,7 @@ import '../../../products/domain/product.dart';
 
 class ReservationCard extends StatelessWidget {
   final Reservation reservation;
-  final VoidCallback onCancel;
+  final VoidCallback? onCancel;
 
   const ReservationCard({
     super.key,
@@ -140,11 +140,12 @@ class ReservationCard extends StatelessWidget {
               _buildInfoColumn('Expiry Date', dateFormat.format(reservation.expiryDate)),
             ],
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: onCancel,
+          if (onCancel != null) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onCancel,
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
                 side: const BorderSide(color: Colors.red),
@@ -159,6 +160,7 @@ class ReservationCard extends StatelessWidget {
               ),
             ),
           ),
+          ],
         ],
       ),
     );

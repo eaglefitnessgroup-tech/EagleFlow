@@ -19,6 +19,7 @@ import '../../features/products/application/bulk_import_service.dart';
 import '../supabase/supabase_service.dart';
 import '../../features/reservations/domain/reservation_repository.dart';
 import '../../features/reservations/data/sembast_reservation_repository.dart';
+import '../../features/reservations/data/supabase_reservation_repository.dart';
 import '../../features/reservations/application/reservation_completion_service.dart';
 
 class ServiceLocator {
@@ -88,7 +89,13 @@ class ServiceLocator {
     supabaseService,
   );
 
-  late final ReservationRepository reservationRepository = SembastReservationRepository();
+  late final SembastReservationRepository _sembastReservationRepository = 
+      SembastReservationRepository();
+
+  late final ReservationRepository reservationRepository = SupabaseReservationRepository(
+    localCache: _sembastReservationRepository,
+    supabase: supabaseService,
+  );
 
   Future<void> init() async {
     try {
@@ -115,6 +122,12 @@ class ServiceLocator {
 
     if (quotationRepository is SupabaseQuotationRepository) {
       await (quotationRepository as SupabaseQuotationRepository).init();
+    }
+
+    try {
+      await reservationRepository.syncFromServer();
+    } catch (e) {
+      debugPrint('Reservation sync failed. Error: $e');
     }
 
     try {

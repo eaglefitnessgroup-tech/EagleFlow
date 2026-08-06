@@ -9,7 +9,7 @@ class ReservationCompletionService {
     final matchingReservations = activeReservations.where((r) => r.productId == productId);
     
     for (final res in matchingReservations) {
-      final completed = res.copyWith(status: 'Completed');
+      final completed = res.copyWith(status: 'COMPLETED');
       await ServiceLocator().reservationRepository.saveReservation(completed);
     }
   }

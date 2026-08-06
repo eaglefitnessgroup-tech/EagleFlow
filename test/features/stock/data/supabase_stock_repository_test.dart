@@ -59,6 +59,7 @@ void main() {
         role: UserRole.admin,
         isActive: true,
         createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
     );
 
@@ -189,9 +190,10 @@ void main() {
           name: 'Sales',
           username: 'sales',
           passwordHash: '',
-          role: UserRole.salesperson,
+          role: UserRole.sales,
           isActive: true,
-          createdAt: DateTime.now(),
+          createdAt: DateTime.parse('2026-08-01T12:00:00Z'),
+          updatedAt: DateTime.parse('2026-08-01T12:00:00Z'),
         ),
       );
 

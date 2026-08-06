@@ -12,9 +12,10 @@ void main() {
       role: UserRole.admin,
       isActive: true,
       createdAt: now,
+      updatedAt: now,
     );
 
-    test('1. JSON round-trip serialization', () {
+    test('1. fromJson correctly parses all fields', () {
       final json = testUser.toJson();
       final fromJsonUser = AppUser.fromJson(json);
 
@@ -47,30 +48,30 @@ void main() {
       expect(user.name, '');
       expect(user.username, '');
       expect(user.passwordHash, '');
-      expect(user.role, UserRole.salesperson); // Default role
+      expect(user.role, UserRole.sales); // Default role
       expect(user.isActive, true); // Default active status
       expect(user.createdAt, isA<DateTime>());
     });
 
-    test('3. Invalid role defaults to salesperson safely', () {
+    test('3. Invalid role defaults to sales safely', () {
       final json = {
         'id': 'USR-003',
         'role': 'super_admin', // Invalid role
       };
 
       final user = AppUser.fromJson(json);
-      expect(user.role, UserRole.salesperson);
+      expect(user.role, UserRole.sales);
     });
 
     test('4. Role getters function correctly', () {
       final admin = testUser.copyWith(role: UserRole.admin);
-      final sales = testUser.copyWith(role: UserRole.salesperson);
+      final sales = testUser.copyWith(role: UserRole.sales);
 
       expect(admin.isAdmin, true);
-      expect(admin.isSalesperson, false);
+      expect(admin.isSales, false);
 
       expect(sales.isAdmin, false);
-      expect(sales.isSalesperson, true);
+      expect(sales.isSales, true);
     });
 
     test('5. copyWith works correctly', () {

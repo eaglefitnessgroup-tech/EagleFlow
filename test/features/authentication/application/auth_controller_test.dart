@@ -17,6 +17,7 @@ class FakeAuthRepository implements AuthRepository {
     passwordHash: 'hashed1',
     role: UserRole.admin,
     createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   );
 
   final _testSales = AppUser(
@@ -24,8 +25,9 @@ class FakeAuthRepository implements AuthRepository {
     name: 'Sales',
     username: 'sales',
     passwordHash: 'hashed2',
-    role: UserRole.salesperson,
+    role: UserRole.sales,
     createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   );
 
   @override
@@ -69,6 +71,11 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> clearRememberedSession() async {
     hasClearedSession = true;
   }
+
+  @override
+  Future<List<AppUser>> getUsers() async {
+    return [_testAdmin, _testSales];
+  }
 }
 
 void main() {
@@ -97,16 +104,16 @@ void main() {
       expect(controller.isAdmin, true);
     });
 
-    test('3. Admin and salesperson getters work', () async {
+    test('3. Admin and sales getters work', () async {
       fakeRepo.simulatedCurrentUser = fakeRepo._testAdmin;
       await controller.initialize();
       expect(controller.isAdmin, true);
-      expect(controller.isSalesperson, false);
+      expect(controller.isSales, false);
 
       fakeRepo.simulatedCurrentUser = fakeRepo._testSales;
       await controller.initialize();
       expect(controller.isAdmin, false);
-      expect(controller.isSalesperson, true);
+      expect(controller.isSales, true);
     });
 
     test('4. Successful login updates state and returns true', () async {

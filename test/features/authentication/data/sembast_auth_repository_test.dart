@@ -61,7 +61,7 @@ void main() {
 
       expect(result.success, true);
       expect(result.user, isNotNull);
-      expect(result.user!.role, UserRole.salesperson);
+      expect(result.user!.role, UserRole.sales);
     });
 
     test('4. Case-insensitive and trimmed username login', () async {

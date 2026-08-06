@@ -315,7 +315,10 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
                 reference: _referenceController.text.trim(),
                 reservedDate: now,
                 expiryDate: now.add(const Duration(days: 7)),
-                reservedBy: ServiceLocator().authController.currentUser?.name ?? 'Unknown User',
+                reservedById: ServiceLocator().authController.currentUser!.id,
+                reservedBy: ServiceLocator().authController.currentUser!.name,
+                createdAt: now,
+                updatedAt: now,
               );
 
               await ServiceLocator().reservationRepository.saveReservation(reservation);

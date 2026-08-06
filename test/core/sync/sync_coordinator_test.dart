@@ -37,7 +37,8 @@ void main() {
         username: 'admin',
         passwordHash: '',
         role: UserRole.admin,
-        createdAt: DateTime.now(),
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
       ),
     );
 

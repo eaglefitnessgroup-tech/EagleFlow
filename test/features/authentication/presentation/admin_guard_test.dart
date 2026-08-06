@@ -22,17 +22,19 @@ AppUser _fakeAdmin() => AppUser(
   username: 'admin',
   passwordHash: 'x',
   role: UserRole.admin,
-  createdAt: DateTime(2024),
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
 );
 
 /// Create a fake salesperson user without touching the DB.
 AppUser _fakeSales() => AppUser(
-  id: 'SALES-001',
-  name: 'Salesperson',
+  id: 'sales123',
+  name: 'Test Sales',
   username: 'sales',
-  passwordHash: 'x',
-  role: UserRole.salesperson,
-  createdAt: DateTime(2024),
+  passwordHash: 'hash',
+  role: UserRole.sales,
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
 );
 
 // ---------------------------------------------------------------------------

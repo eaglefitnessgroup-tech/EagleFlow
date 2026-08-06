@@ -381,12 +381,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onTap: () =>
                   _showComingSoonSnackBar('Low Stock module coming soon.'),
             ),
-            if (ServiceLocator().authController.isAdmin)
+            if (ServiceLocator().authController.canManageStock)
               _buildActionCard(
                 title: 'Stock\nManagement',
                 icon: Icons.admin_panel_settings_outlined,
                 onTap: () =>
                     Navigator.of(context).pushNamed(AppRoutes.stockManagement),
+              ),
+            if (ServiceLocator().authController.canViewReports)
+              _buildActionCard(
+                title: 'Reports',
+                icon: Icons.bar_chart_outlined,
+                onTap: () => _showComingSoonSnackBar('Reports module coming soon.'),
+              ),
+            if (ServiceLocator().authController.canManageUsers)
+              _buildActionCard(
+                title: 'User\nManagement',
+                icon: Icons.group_outlined,
+                onTap: () => _showComingSoonSnackBar('User Management coming soon.'),
+              ),
+            if (ServiceLocator().authController.isAdmin)
+              _buildActionCard(
+                title: 'Settings',
+                icon: Icons.settings_outlined,
+                onTap: () => _showComingSoonSnackBar('Settings coming soon.'),
               ),
           ],
         );

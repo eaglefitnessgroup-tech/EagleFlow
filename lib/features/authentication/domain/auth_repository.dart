@@ -21,6 +21,9 @@ abstract class AuthRepository {
   /// Returns null if no valid session exists.
   Future<AppUser?> getCurrentUser();
 
+  /// Retrieves all users in the system.
+  Future<List<AppUser>> getUsers();
+
   /// Checks if a session has been remembered.
   Future<bool> hasRememberedSession();
 

@@ -31,26 +31,79 @@ class SembastAuthRepository implements AuthRepository {
     final count = await _usersStore.count(db);
 
     if (count == 0) {
-      final admin = AppUser(
-        id: 'ADMIN-001',
-        name: 'Admin',
-        username: 'admin',
-        passwordHash: PasswordUtils.hashPassword('admin123'),
-        role: UserRole.admin,
-        createdAt: DateTime.now(),
-      );
+      final now = DateTime.now();
+      
+      final defaultUsers = [
+        // Admins
+        AppUser(
+          id: 'ADMIN-001',
+          name: 'Anshad',
+          username: 'anshad',
+          passwordHash: PasswordUtils.hashPassword('anshad123'),
+          role: UserRole.admin,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        AppUser(
+          id: 'ADMIN-002',
+          name: 'Faris',
+          username: 'faris',
+          passwordHash: PasswordUtils.hashPassword('faris123'),
+          role: UserRole.admin,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        // Sales
+        AppUser(
+          id: 'SALES-001',
+          name: 'Ajmal',
+          username: 'ajmal',
+          passwordHash: PasswordUtils.hashPassword('ajmal123'),
+          role: UserRole.sales,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        AppUser(
+          id: 'SALES-002',
+          name: 'Harshad',
+          username: 'harshad',
+          passwordHash: PasswordUtils.hashPassword('harshad123'),
+          role: UserRole.sales,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        AppUser(
+          id: 'SALES-003',
+          name: 'Nabeel',
+          username: 'nabeel',
+          passwordHash: PasswordUtils.hashPassword('nabeel123'),
+          role: UserRole.sales,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        AppUser(
+          id: 'SALES-004',
+          name: 'Naser',
+          username: 'naser',
+          passwordHash: PasswordUtils.hashPassword('naser123'),
+          role: UserRole.sales,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        AppUser(
+          id: 'SALES-005',
+          name: 'Shijo',
+          username: 'shijo',
+          passwordHash: PasswordUtils.hashPassword('shijo123'),
+          role: UserRole.sales,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
 
-      final sales = AppUser(
-        id: 'SALES-001',
-        name: 'Salesperson',
-        username: 'sales',
-        passwordHash: PasswordUtils.hashPassword('sales123'),
-        role: UserRole.salesperson,
-        createdAt: DateTime.now(),
-      );
-
-      await _usersStore.record(admin.id).put(db, admin.toJson());
-      await _usersStore.record(sales.id).put(db, sales.toJson());
+      for (var user in defaultUsers) {
+        await _usersStore.record(user.id).put(db, user.toJson());
+      }
     }
   }
 
@@ -121,6 +174,14 @@ class SembastAuthRepository implements AuthRepository {
       }
     }
     return null;
+  }
+
+  @override
+  Future<List<AppUser>> getUsers() async {
+    await _ensureInitialized();
+    final db = await _db;
+    final records = await _usersStore.find(db);
+    return records.map((record) => AppUser.fromJson(record.value)).toList();
   }
 
   @override

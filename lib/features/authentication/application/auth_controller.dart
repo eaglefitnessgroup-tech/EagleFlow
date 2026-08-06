@@ -19,7 +19,13 @@ class AuthController extends ChangeNotifier {
 
   bool get isAuthenticated => _currentUser != null;
   bool get isAdmin => _currentUser?.isAdmin ?? false;
-  bool get isSalesperson => _currentUser?.isSalesperson ?? false;
+  bool get isSales => _currentUser?.isSales ?? false;
+
+  // Permissions
+  bool get canManageStock => _currentUser?.canManageStock ?? false;
+  bool get canViewReports => _currentUser?.canViewReports ?? false;
+  bool get canManageUsers => _currentUser?.canManageUsers ?? false;
+  bool get canCancelAnyReservation => _currentUser?.canCancelAnyReservation ?? false;
 
   @visibleForTesting
   void setCurrentUserForTesting(AppUser? user) {

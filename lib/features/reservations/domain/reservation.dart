@@ -7,8 +7,11 @@ class Reservation {
   final String reference;
   final DateTime reservedDate;
   final DateTime expiryDate;
+  final String reservedById;
   final String reservedBy;
   final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   const Reservation({
     required this.id,
@@ -19,8 +22,11 @@ class Reservation {
     required this.reference,
     required this.reservedDate,
     required this.expiryDate,
+    required this.reservedById,
     required this.reservedBy,
-    this.status = 'Active',
+    this.status = 'ACTIVE',
+    required this.createdAt,
+    required this.updatedAt,
   });
 
   Reservation copyWith({
@@ -32,8 +38,11 @@ class Reservation {
     String? reference,
     DateTime? reservedDate,
     DateTime? expiryDate,
+    String? reservedById,
     String? reservedBy,
     String? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return Reservation(
       id: id ?? this.id,
@@ -44,8 +53,11 @@ class Reservation {
       reference: reference ?? this.reference,
       reservedDate: reservedDate ?? this.reservedDate,
       expiryDate: expiryDate ?? this.expiryDate,
+      reservedById: reservedById ?? this.reservedById,
       reservedBy: reservedBy ?? this.reservedBy,
       status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -59,8 +71,11 @@ class Reservation {
       'reference': reference,
       'reservedDate': reservedDate.toIso8601String(),
       'expiryDate': expiryDate.toIso8601String(),
+      'reservedById': reservedById,
       'reservedBy': reservedBy,
       'status': status,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
@@ -74,8 +89,11 @@ class Reservation {
       reference: json['reference'] as String,
       reservedDate: DateTime.parse(json['reservedDate'] as String),
       expiryDate: DateTime.parse(json['expiryDate'] as String),
+      reservedById: json['reservedById'] as String? ?? '',
       reservedBy: json['reservedBy'] as String,
-      status: json['status'] as String? ?? 'Active',
+      status: json['status'] as String? ?? 'ACTIVE',
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.parse(json['reservedDate'] as String),
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : DateTime.parse(json['reservedDate'] as String),
     );
   }
 }

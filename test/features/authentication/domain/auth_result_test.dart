@@ -12,7 +12,8 @@ void main() {
       passwordHash: 'hashed123',
       role: UserRole.admin,
       isActive: true,
-      createdAt: now,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     test('AuthResult.success creates correct success instance', () {

@@ -169,7 +169,10 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
                             padding: const EdgeInsets.only(bottom: 16),
                             child: ReservationCard(
                               reservation: _activeReservations[index],
-                              onCancel: () => _cancelReservation(_activeReservations[index].id),
+                              onCancel: (ServiceLocator().authController.canCancelAnyReservation || 
+                                         _activeReservations[index].reservedById == ServiceLocator().authController.currentUser?.id)
+                                  ? () => _cancelReservation(_activeReservations[index].id)
+                                  : null,
                             ),
                           );
                         },

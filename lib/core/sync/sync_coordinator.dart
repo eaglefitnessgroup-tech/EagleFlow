@@ -81,6 +81,8 @@ class SyncCoordinator {
         .subscribe();
   }
 
+
+
   void dispose() {
     _subscription?.unsubscribe();
     _subscription = null;
@@ -93,7 +95,7 @@ class SyncCoordinator {
     String type,
     Map<String, dynamic> payload,
   ) async {
-    if (type != 'products' && type != 'quotations') return;
+    if (type != 'products' && type != 'quotations' && type != 'reservations') return;
 
     final db = await DatabaseService().database;
     final id = payload['id'] as String;
@@ -152,9 +154,28 @@ class SyncCoordinator {
             }
             await _queueStore.record(record.key).delete(db);
           }
+        } else if (type == 'reservations') {
+          await client!.from('reservations').upsert(payload);
+          await _queueStore.record(record.key).delete(db);
         }
       } catch (e) {
-        debugPrint('Retry failed for ${record.key}: $e');
+        if (type == 'reservations' && (e.toString().contains('duplicate key value') || e.toString().contains('23505'))) {
+          // Unique constraint violation
+          await _queueStore.record(record.key).delete(db);
+          // Cancel local reservation and notify
+          final id = payload['id'] as String;
+          await ServiceLocator().reservationRepository.cancelReservation(id);
+          
+          // Re-sync from server to refresh cache
+          await ServiceLocator().reservationRepository.syncFromServer();
+          
+          // Show message
+          // Ideally we use a stream or global key to show a snackbar.
+          // For now, we will print it, or if there's a way to show global notification:
+          debugPrint("Another user reserved this product while you were offline.");
+        } else {
+          debugPrint('Retry failed for ${record.key}: $e');
+        }
       }
     }
   }
