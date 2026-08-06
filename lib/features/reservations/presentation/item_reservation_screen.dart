@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
@@ -21,10 +22,22 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
   bool _isLoading = true;
   String _searchQuery = '';
 
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+    // Auto-refresh every 30 seconds to update expired reservations
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _loadReservations();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadData() async {

@@ -22,7 +22,21 @@ class SembastReservationRepository implements ReservationRepository {
       db,
       finder: Finder(filter: Filter.equals('status', 'Active')),
     );
-    return records.map((record) => Reservation.fromJson(record.value)).toList();
+    
+    final now = DateTime.now();
+    final List<Reservation> activeReservations = [];
+    
+    for (final record in records) {
+      final reservation = Reservation.fromJson(record.value);
+      if (now.isAfter(reservation.expiryDate)) {
+        final expired = reservation.copyWith(status: 'Expired');
+        await _store.record(reservation.id).put(db, expired.toJson());
+      } else {
+        activeReservations.add(reservation);
+      }
+    }
+    
+    return activeReservations;
   }
 
   @override
