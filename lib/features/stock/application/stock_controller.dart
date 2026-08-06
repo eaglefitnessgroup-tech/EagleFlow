@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../domain/stock_repository.dart';
 import '../domain/stock_movement.dart';
 import '../../products/domain/product.dart';
+import '../../../../core/di/service_locator.dart';
 
 class StockController extends ChangeNotifier {
   final StockRepository _repository;
@@ -120,6 +121,11 @@ class StockController extends ChangeNotifier {
       await _repository.addMovement(m);
       _errorMessage = null;
       await _refreshCurrentList();
+
+      if (type == StockMovementType.stockOut) {
+        await ServiceLocator().reservationCompletionService.completeReservation(productId);
+      }
+
       return true;
     } catch (e) {
       if (e.toString().contains('negative current stock')) {

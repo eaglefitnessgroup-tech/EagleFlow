@@ -19,6 +19,7 @@ import '../../features/products/application/bulk_import_service.dart';
 import '../supabase/supabase_service.dart';
 import '../../features/reservations/domain/reservation_repository.dart';
 import '../../features/reservations/data/sembast_reservation_repository.dart';
+import '../../features/reservations/application/reservation_completion_service.dart';
 
 class ServiceLocator {
   static ServiceLocator _instance = ServiceLocator._internal();
@@ -69,6 +70,9 @@ class ServiceLocator {
   );
 
   late final StockController stockController = StockController(stockRepository);
+
+  late final ReservationCompletionService reservationCompletionService = 
+      ReservationCompletionService();
 
   late final StockOutByQuotationService stockOutByQuotationService =
       StockOutByQuotationService(quotationRepository: quotationRepository);

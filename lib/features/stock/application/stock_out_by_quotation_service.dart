@@ -4,6 +4,7 @@ import '../../../core/database/database_service.dart';
 import '../../quotations/domain/quotation.dart';
 import '../../quotations/data/quotation_repository.dart';
 import '../domain/stock_movement.dart';
+import '../../../core/di/service_locator.dart';
 
 class StockOutByQuotationResult {
   final bool success;
@@ -158,6 +159,13 @@ class StockOutByQuotationService {
 
         return modifiedQt;
       });
+
+      // Complete reservations for all deducted products
+      for (var item in eligibleItems) {
+        if (item.productId != null) {
+          await ServiceLocator().reservationCompletionService.completeReservation(item.productId!);
+        }
+      }
 
       return StockOutByQuotationResult(
         success: true,
