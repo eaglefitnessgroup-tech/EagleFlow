@@ -321,16 +321,28 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
                 updatedAt: now,
               );
 
-              await ServiceLocator().reservationRepository.saveReservation(reservation);
+              try {
+                await ServiceLocator().reservationRepository.saveReservation(reservation);
 
-              if (mounted) {
-                navigator.pop();
-                scaffoldMessenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Reservation saved successfully.'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                if (mounted) {
+                  navigator.pop();
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Reservation saved successfully.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString().replaceFirst('Exception: ', '')),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
