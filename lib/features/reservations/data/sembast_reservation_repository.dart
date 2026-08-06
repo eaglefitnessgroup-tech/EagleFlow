@@ -4,8 +4,8 @@ import '../domain/reservation.dart';
 import '../domain/reservation_repository.dart';
 
 class SembastReservationRepository implements ReservationRepository {
-  final StoreRef<String, Map<String, dynamic>> _store = 
-      StoreRef<String, Map<String, dynamic>>('reservations');
+  final StoreRef<String, Map<String, Object?>> _store =
+      stringMapStoreFactory.store('reservations');
 
   Future<Database> get _db async => await DatabaseService().database;
 
@@ -27,7 +27,7 @@ class SembastReservationRepository implements ReservationRepository {
     final List<Reservation> activeReservations = [];
     
     for (final record in records) {
-      final reservation = Reservation.fromJson(record.value);
+      final reservation = Reservation.fromJson(Map<String, dynamic>.from(record.value));
       if (now.isAfter(reservation.expiryDate)) {
         final expired = reservation.copyWith(status: 'Expired');
         await _store.record(reservation.id).put(db, expired.toJson());
@@ -44,7 +44,7 @@ class SembastReservationRepository implements ReservationRepository {
     final db = await _db;
     final record = await _store.record(id).get(db);
     if (record != null) {
-      final reservation = Reservation.fromJson(record).copyWith(status: 'Cancelled');
+      final reservation = Reservation.fromJson(Map<String, dynamic>.from(record)).copyWith(status: 'Cancelled');
       await _store.record(id).put(db, reservation.toJson());
     }
   }

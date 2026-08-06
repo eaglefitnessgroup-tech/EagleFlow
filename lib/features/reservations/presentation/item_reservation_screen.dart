@@ -279,6 +279,7 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
           ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 60,
@@ -299,7 +300,7 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
                 errorIconSize: 20,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,7 +317,7 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
                             fontWeight: FontWeight.bold,
                             color: AppColors.charcoal,
                           ),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -347,23 +348,19 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
                       color: AppColors.mutedText,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildStockPill('Physical', product.openingStock),
-                      const SizedBox(width: 8),
-                      _buildStockPill('Reserved', reservedQty),
-                      const SizedBox(width: 8),
-                      _buildStockPill('Available', availableQty),
-                    ],
+                  const SizedBox(height: 16),
+                  _buildStockRow('Physical', product.openingStock),
+                  _buildStockRow('Reserved', reservedQty),
+                  _buildStockRow('Available', availableQty),
+                  const Align(
+                    alignment: Alignment.bottomRight,
+                    child: Icon(
+                      Icons.chevron_right,
+                      color: AppColors.mutedText,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right,
-              color: AppColors.mutedText,
             ),
           ],
         ),
@@ -371,29 +368,33 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
     );
   }
 
-  Widget _buildStockPill(String label, int quantity) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.border),
-      ),
+  Widget _buildStockRow(String label, int quantity) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '$label:',
-            style: const TextStyle(
-              fontSize: 11,
+          SizedBox(
+            width: 70,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.mutedText,
+              ),
+            ),
+          ),
+          const Text(
+            ': ',
+            style: TextStyle(
+              fontSize: 12,
               color: AppColors.mutedText,
             ),
           ),
-          const SizedBox(width: 4),
           Text(
             '$quantity',
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               color: AppColors.charcoal,
             ),
@@ -402,4 +403,6 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
       ),
     );
   }
+
+  // removed _buildStockPill
 }
