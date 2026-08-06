@@ -154,6 +154,60 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     }
   }
 
+  Future<void> _deleteProduct() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Product'),
+          content: const Text(
+            'Are you sure you want to delete this product? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.statusRejectedText),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    final controller = ServiceLocator().productMasterController;
+    final success = await controller.deleteProduct(widget.product!.id);
+
+    if (success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Product deleted successfully'),
+            backgroundColor: AppColors.statusApprovedText,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _errorMessage = controller.error ?? 'Failed to delete product';
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = widget.product == null ? 'Add Product' : 'Edit Product';
@@ -360,6 +414,26 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 value: _isActive,
                 onChanged: (val) => setState(() => _isActive = val),
               ),
+              if (widget.product != null) ...[
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isSaving ? null : _deleteProduct,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete Product'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.statusRejectedText,
+                      side: const BorderSide(color: AppColors.statusRejectedText),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ],
           ),
         ),
