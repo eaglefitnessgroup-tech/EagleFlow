@@ -192,6 +192,18 @@ class SupabaseProductRepository implements ProductRepository {
         });
         updatedProduct = updatedProduct.copyWith(imageId: newImageId);
 
+        // Best-effort image upload to storage
+        try {
+          if (isConnectedToServer) {
+            final uploadPath = newImageId.contains('/') ? newImageId : '$newImageId/main.jpg';
+            await supabase.client!.storage
+                .from('product-images')
+                .uploadBinary(uploadPath, updatedProduct.imageBytes!);
+          }
+        } catch (e) {
+          debugPrint('Failed to upload image $newImageId: $e');
+        }
+
         // Best-effort image_id update on server
         await updateProductOnServer(newId, {'image_id': newImageId});
       }
@@ -237,6 +249,35 @@ class SupabaseProductRepository implements ProductRepository {
       await updateProductOnServer(finalProduct.id, {
         'image_id': finalProduct.imageId,
       });
+
+      // Best-effort image upload and cleanup
+      try {
+        if (isConnectedToServer) {
+          // Upload new image if present
+          if (finalProduct.imageId != null &&
+              finalProduct.imageId!.isNotEmpty &&
+              finalProduct.imageBytes != null) {
+            final uploadPath = finalProduct.imageId!.contains('/')
+                ? finalProduct.imageId!
+                : '${finalProduct.imageId}/main.jpg';
+            await supabase.client!.storage
+                .from('product-images')
+                .uploadBinary(uploadPath, finalProduct.imageBytes!);
+          }
+          // Delete old image if it existed
+          if (updatedProduct.imageId != null &&
+              updatedProduct.imageId!.isNotEmpty) {
+            final removePath = updatedProduct.imageId!.contains('/')
+                ? updatedProduct.imageId!
+                : '${updatedProduct.imageId}/main.jpg';
+            await supabase.client!.storage
+                .from('product-images')
+                .remove([removePath]);
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to sync image changes to storage: $e');
+      }
     }
 
     return finalProduct;
@@ -283,9 +324,30 @@ class SupabaseProductRepository implements ProductRepository {
     // Save to Supabase first (soft delete) or queue
     try {
       if (!isConnectedToServer) throw Exception('Offline');
+
+      final product = await getProductById(id);
+
       await updateProductOnServer(id, {
         'deleted_at': DateTime.now().toUtc().toIso8601String(),
       });
+
+      // Best-effort image cleanup
+      if (product != null &&
+          product.imageId != null &&
+          product.imageId!.isNotEmpty) {
+        try {
+          final removePath = product.imageId!.contains('/')
+              ? product.imageId!
+              : '${product.imageId}/main.jpg';
+          await supabase.client!.storage
+              .from('product-images')
+              .remove([removePath]);
+        } catch (e) {
+          debugPrint(
+            'Failed to delete image ${product.imageId} from storage: $e',
+          );
+        }
+      }
     } catch (e) {
       final p = await getProductById(id);
       if (p != null) {

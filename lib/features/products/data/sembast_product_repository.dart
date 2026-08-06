@@ -185,9 +185,9 @@ class SembastProductRepository implements ProductRepository {
           updatedProduct = updatedProduct.copyWith(
             imageId: '',
             imageBytes: Uint8List(0),
-          ); // copyWith handles empty string as nullifier for imageId? Wait, copyWith doesn't nullify if we pass null. It just keeps the old. Let's see...
-        } else if (updatedProduct.imageId == null ||
-            updatedProduct.imageId!.isEmpty) {
+          );
+        } else {
+          // ALWAYS generate a new imageId to bust frontend cache
           final newImageId = _uuid.v4();
           await _imagesStore
               .record(newImageId)
@@ -197,11 +197,6 @@ class SembastProductRepository implements ProductRepository {
             'ownerId': updatedProduct.id,
           });
           updatedProduct = updatedProduct.copyWith(imageId: newImageId);
-        } else {
-          // Update existing image bytes
-          await _imagesStore
-              .record(updatedProduct.imageId!)
-              .put(txn, Blob(updatedProduct.imageBytes!));
         }
       }
 
