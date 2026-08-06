@@ -49,9 +49,11 @@ class ProductImage extends StatefulWidget {
     try {
       final client = testClient ?? ServiceLocator().supabaseService.client;
       if (client != null) {
+        final downloadPath =
+            imageId.contains('/') ? imageId : '$imageId/main.jpg';
         final bytes = await client.storage
             .from('product-images')
-            .download(imageId);
+            .download(downloadPath);
         _imageCache[imageId] = bytes;
       }
     } catch (_) {
@@ -131,9 +133,11 @@ class _ProductImageState extends State<ProductImage> {
         throw Exception('Supabase client not available');
       }
 
+      final downloadPath =
+          imageId.contains('/') ? imageId : '$imageId/main.jpg';
       final bytes = await client.storage
           .from('product-images')
-          .download(imageId);
+          .download(downloadPath);
 
       if (mounted) {
         ProductImage._imageCache[imageId] = bytes;
