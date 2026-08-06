@@ -116,6 +116,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildSearchField(),
                       const SizedBox(height: 24),
                       _buildPrimaryActionCard(context),
+                      const SizedBox(height: 16),
+                      _buildReservationActionCard(context),
                       const SizedBox(height: 24),
                       _buildQuickActionsGrid(context),
                       const SizedBox(height: 32),
@@ -271,6 +273,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReservationActionCard(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).pushNamed(AppRoutes.itemReservation);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 2,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.bookmark_added_outlined,
+                color: AppColors.primaryBlue,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Item Reservation',
+                    style: TextStyle(
+                      color: AppColors.charcoal,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Reserve products for customers',
+                    style: TextStyle(
+                      color: AppColors.mutedText,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: AppColors.mutedText, size: 16),
           ],
         ),
       ),

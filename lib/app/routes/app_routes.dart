@@ -12,6 +12,7 @@ import '../../features/stock/presentation/stock_management_screen.dart';
 import '../../features/stock/presentation/stock_in_screen.dart';
 import '../../features/stock/presentation/stock_out_screen.dart';
 import '../../features/stock/presentation/stock_out_by_quotation_screen.dart';
+import '../../features/reservations/presentation/item_reservation_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -29,6 +30,7 @@ class AppRoutes {
   static const String stockIn = '/stock-in';
   static const String stockOut = '/stock-out';
   static const String stockOutByQuotation = '/stock-out-by-quotation';
+  static const String itemReservation = '/item-reservation';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -45,6 +47,7 @@ class AppRoutes {
       stockIn: (context) => const StockInScreen(),
       stockOut: (context) => const StockOutScreen(),
       stockOutByQuotation: (context) => const StockOutByQuotationScreen(),
+      itemReservation: (context) => const ItemReservationScreen(),
     };
   }
 }
