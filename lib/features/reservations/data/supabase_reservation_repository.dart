@@ -49,17 +49,21 @@ class SupabaseReservationRepository implements ReservationRepository {
       final db = await _db;
       await db.transaction((txn) async {
         for (var row in serverReservations) {
-          final serverRes = _fromSupabase(row);
+          try {
+            final serverRes = _fromSupabase(row);
 
-          final localRecord = await _store.record(serverRes.id).get(txn);
+            final localRecord = await _store.record(serverRes.id).get(txn);
 
-          if (localRecord == null) {
-            await _store.record(serverRes.id).put(txn, serverRes.toJson());
-          } else {
-            final localRes = Reservation.fromJson(Map<String, dynamic>.from(localRecord));
-            if (serverRes.updatedAt.isAfter(localRes.updatedAt)) {
+            if (localRecord == null) {
               await _store.record(serverRes.id).put(txn, serverRes.toJson());
+            } else {
+              final localRes = Reservation.fromJson(Map<String, dynamic>.from(localRecord));
+              if (serverRes.updatedAt.isAfter(localRes.updatedAt)) {
+                await _store.record(serverRes.id).put(txn, serverRes.toJson());
+              }
             }
+          } catch (e, st) {
+            debugPrint('Error parsing reservation ${row['id']}: $e\n$st');
           }
         }
       });
@@ -96,25 +100,21 @@ class SupabaseReservationRepository implements ReservationRepository {
 
   @override
   Future<void> saveReservation(Reservation reservation) async {
-    // Before save: If online, check Supabase.
-    if (isConnectedToServer) {
-      try {
-        final existing = await supabase.client!
-            .from('reservations')
-            .select('id')
-            .eq('product_id', reservation.productId)
-            .eq('status', 'ACTIVE')
-            .maybeSingle();
+    final product = await ServiceLocator().productRepository.getProductById(reservation.productId);
+    if (product == null) {
+      throw Exception('Product not found.');
+    }
 
-        if (existing != null) {
-          throw Exception('Another user has already reserved this item.');
-        }
-      } catch (e) {
-        if (e.toString().contains('Another user has already reserved')) {
-          rethrow;
-        }
-        // If checking fails for network reasons, we fall through to offline handling.
+    final activeReservations = await getActiveReservations();
+    int totalReserved = 0;
+    for (final r in activeReservations) {
+      if (r.productId == reservation.productId && r.id != reservation.id) {
+        totalReserved += r.quantity;
       }
+    }
+
+    if (totalReserved + reservation.quantity > product.openingStock) {
+      throw Exception('Not enough stock available for reservation.');
     }
 
     final updatedReservation = reservation.copyWith(
@@ -124,13 +124,15 @@ class SupabaseReservationRepository implements ReservationRepository {
     // Save to Supabase first or queue
     try {
       if (!isConnectedToServer) throw Exception('Offline');
+      
+      final payload = _toSupabase(updatedReservation);
+      debugPrint('saveReservation Payload: $payload');
+      
       await supabase.client!
           .from('reservations')
-          .upsert(_toSupabase(updatedReservation));
-    } catch (e) {
-      if (e.toString().contains('duplicate key value') || e.toString().contains('23505')) {
-         throw Exception('Another user has already reserved this item.');
-      }
+          .upsert(payload);
+    } catch (e, st) {
+      debugPrint('saveReservation error: $e\n$st');
       await ServiceLocator().syncCoordinator.queueFailedWrite(
         'reservations',
         _toSupabase(updatedReservation),
@@ -197,11 +199,11 @@ class SupabaseReservationRepository implements ReservationRepository {
       'reference': res.reference,
       'reserved_by_id': res.reservedById,
       'reserved_by_name': res.reservedBy,
-      'reserved_date': res.reservedDate.toIso8601String(),
-      'expiry_date': res.expiryDate.toIso8601String(),
+      'reserved_date': res.reservedDate.toUtc().toIso8601String(),
+      'expiry_date': res.expiryDate.toUtc().toIso8601String(),
       'status': res.status,
-      'created_at': res.createdAt.toIso8601String(),
-      'updated_at': res.updatedAt.toIso8601String(),
+      'created_at': res.createdAt.toUtc().toIso8601String(),
+      'updated_at': res.updatedAt.toUtc().toIso8601String(),
     };
   }
 
@@ -209,17 +211,17 @@ class SupabaseReservationRepository implements ReservationRepository {
     return Reservation(
       id: row['id'] as String,
       productId: row['product_id'] as String,
-      productName: row['product_name'] as String,
-      productCode: row['product_code'] as String,
-      quantity: row['quantity'] as int,
-      reference: row['reference'] as String,
-      reservedById: row['reserved_by_id'] as String,
-      reservedBy: row['reserved_by_name'] as String,
-      reservedDate: DateTime.parse(row['reserved_date'] as String),
-      expiryDate: DateTime.parse(row['expiry_date'] as String),
-      status: row['status'] as String,
-      createdAt: DateTime.parse(row['created_at'] as String),
-      updatedAt: DateTime.parse(row['updated_at'] as String),
+      productName: row['product_name'] as String? ?? '',
+      productCode: row['product_code'] as String? ?? '',
+      quantity: row['quantity'] as int? ?? 1,
+      reference: row['reference'] as String? ?? '',
+      reservedById: row['reserved_by_id'] as String? ?? '',
+      reservedBy: row['reserved_by_name'] as String? ?? '',
+      reservedDate: row['reserved_date'] != null ? DateTime.parse(row['reserved_date'] as String).toLocal() : DateTime.now(),
+      expiryDate: row['expiry_date'] != null ? DateTime.parse(row['expiry_date'] as String).toLocal() : DateTime.now().add(const Duration(days: 7)),
+      status: row['status'] as String? ?? 'ACTIVE',
+      createdAt: row['created_at'] != null ? DateTime.parse(row['created_at'] as String).toLocal() : DateTime.now(),
+      updatedAt: row['updated_at'] != null ? DateTime.parse(row['updated_at'] as String).toLocal() : DateTime.now(),
     );
   }
 
