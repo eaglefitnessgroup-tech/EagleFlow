@@ -3,7 +3,9 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../products/domain/product.dart';
 import '../../products/presentation/widgets/product_image.dart';
+import '../domain/reservation.dart';
 import 'widgets/reservation_bottom_sheet.dart';
+import 'widgets/reservation_card.dart';
 
 class ItemReservationScreen extends StatefulWidget {
   const ItemReservationScreen({super.key});
@@ -15,24 +17,27 @@ class ItemReservationScreen extends StatefulWidget {
 class _ItemReservationScreenState extends State<ItemReservationScreen> {
   List<Product> _allProducts = [];
   List<Product> _filteredProducts = [];
+  List<Reservation> _activeReservations = [];
   bool _isLoading = true;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _loadProducts();
+    _loadData();
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadData() async {
     try {
       final products = await ServiceLocator().productRepository.getAllProducts();
       final activeProducts = products.where((p) => p.isActive).toList();
+      final reservations = await ServiceLocator().reservationRepository.getActiveReservations();
       
       if (mounted) {
         setState(() {
           _allProducts = activeProducts;
           _filteredProducts = activeProducts;
+          _activeReservations = reservations;
           _isLoading = false;
         });
       }
@@ -43,6 +48,24 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
         });
       }
     }
+  }
+
+  Future<void> _loadReservations() async {
+    try {
+      final reservations = await ServiceLocator().reservationRepository.getActiveReservations();
+      if (mounted) {
+        setState(() {
+          _activeReservations = reservations;
+        });
+      }
+    } catch (e) {
+      // Handle silently
+    }
+  }
+
+  Future<void> _cancelReservation(String id) async {
+    await ServiceLocator().reservationRepository.cancelReservation(id);
+    await _loadReservations();
   }
 
   void _onSearchChanged(String query) {
@@ -59,13 +82,15 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
     });
   }
 
-  void _onProductTapped(Product product) {
-    showModalBottomSheet(
+  void _onProductTapped(Product product) async {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => ReservationBottomSheet(product: product),
     );
+    // Refresh reservations after the sheet is closed
+    await _loadReservations();
   }
 
   @override
@@ -87,21 +112,60 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildSearchField(),
-                Expanded(
-                  child: _filteredProducts.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _filteredProducts.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            return _buildProductCard(_filteredProducts[index]);
-                          },
-                        ),
+          : CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _buildSearchField(),
                 ),
+                if (_filteredProducts.isEmpty)
+                  SliverToBoxAdapter(child: _buildEmptyState())
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildProductCard(_filteredProducts[index]),
+                          );
+                        },
+                        childCount: _filteredProducts.length,
+                      ),
+                    ),
+                  ),
+                if (_activeReservations.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                      child: Text(
+                        'Active Reservations',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppColors.charcoal,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: ReservationCard(
+                              reservation: _activeReservations[index],
+                              onCancel: () => _cancelReservation(_activeReservations[index].id),
+                            ),
+                          );
+                        },
+                        childCount: _activeReservations.length,
+                      ),
+                    ),
+                  ),
+                ],
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
               ],
             ),
     );
