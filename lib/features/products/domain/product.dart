@@ -121,8 +121,8 @@ class Product {
       category: json['category'] as String? ?? 'Uncategorized',
       brand: json['brand'] as String? ?? 'Unknown',
       sellingPrice: (json['sellingPrice'] as num?)?.toDouble() ?? 0.0,
-      isVatApplicable: json['isVatApplicable'] as bool? ?? true,
-      isActive: json['isActive'] as bool? ?? true,
+      isVatApplicable: _parseBool(json['isVatApplicable'], true),
+      isActive: _parseBool(json['isActive'], true),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt']).toLocal()
           : DateTime.now(),
@@ -137,5 +137,17 @@ class Product {
       notes: json['notes'] as String?,
       imageId: json['imageId'] as String?,
     );
+  }
+
+  static bool _parseBool(dynamic value, bool defaultValue) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    if (value is String) {
+      final lower = value.toLowerCase();
+      if (lower == 'false' || lower == '0' || lower == 'no') return false;
+      if (lower == 'true' || lower == '1' || lower == 'yes') return true;
+    }
+    return defaultValue;
   }
 }

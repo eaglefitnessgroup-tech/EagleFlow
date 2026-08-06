@@ -10,6 +10,7 @@ import '../domain/quotation_status.dart';
 import '../domain/quotation_line_item.dart';
 import '../domain/customer_info.dart';
 import '../domain/quotation_charges.dart';
+import '../domain/quotation_reservation.dart';
 import 'quotation_repository.dart';
 import 'sembast_quotation_repository.dart';
 
@@ -255,6 +256,34 @@ class SupabaseQuotationRepository implements QuotationRepository {
       );
     }
 
+    // Attempt to sync reservations to Supabase
+    final client = supabase.client;
+    if (isConnectedToServer && client != null) {
+      try {
+        await client.from('quotation_reservations').delete().eq('quotation_id', toSave.id);
+        
+        final resRows = toSave.lineItems
+            .where((item) => !item.isCustom && item.productId != null)
+            .map((item) => {
+                  'id': '${toSave.id}_${item.productId}',
+                  'quotation_id': toSave.id,
+                  'quotation_number': toSave.quotationNumber,
+                  'product_id': item.productId,
+                  'reserved_qty': item.quantity,
+                  'salesman_id': toSave.salespersonId,
+                  'salesman_name': ServiceLocator().authController.currentUser?.name ?? 'Unknown',
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+            .toList();
+            
+        if (resRows.isNotEmpty) {
+          await client.from('quotation_reservations').insert(resRows);
+        }
+      } catch (e) {
+        // Silently ignore if table doesn't exist or offline sync fails.
+      }
+    }
+
     return await localCache.saveQuotation(toSave);
   }
 
@@ -278,15 +307,20 @@ class SupabaseQuotationRepository implements QuotationRepository {
       }
     }
 
-    try {
-      final client = supabase.client;
-      if (client != null) {
-        await client.from('quotations').delete().eq('id', id);
+    final client = supabase.client;
+    if (client != null) {
+      try {
+        await client.from('quotation_reservations').delete().eq('quotation_id', id);
+      } catch (e) {
+        // Silently ignore if table doesn't exist or offline sync fails.
       }
-    } catch (e) {
-      throw Exception(
-        'Failed to delete quotation from remote. Please try again.',
-      );
+      try {
+        await client.from('quotations').delete().eq('id', id);
+      } catch (e) {
+        throw Exception(
+          'Failed to delete quotation from remote. Please try again.',
+        );
+      }
     }
 
     await localCache.deleteQuotation(id);
@@ -321,5 +355,10 @@ class SupabaseQuotationRepository implements QuotationRepository {
     duplicated = duplicated.copyWith(lineItems: newItems);
 
     return await saveQuotation(duplicated);
+  }
+
+  @override
+  Future<ReservationAggregation> getReservationsForProduct(String productId) {
+    return localCache.getReservationsForProduct(productId);
   }
 }

@@ -6,6 +6,8 @@ import '../../../core/database/database_service.dart';
 import '../domain/quotation.dart';
 import '../domain/quotation_status.dart';
 import '../domain/quotation_line_item.dart';
+import '../domain/quotation_reservation.dart';
+import '../../../core/di/service_locator.dart';
 import 'quotation_repository.dart';
 
 class SembastQuotationRepository implements QuotationRepository {
@@ -15,6 +17,8 @@ class SembastQuotationRepository implements QuotationRepository {
   final StoreRef<String, int> _metadataStore = StoreRef<String, int>(
     'metadata',
   );
+  final StoreRef<String, Map<String, dynamic>> _reservationsStore = 
+      StoreRef<String, Map<String, dynamic>>('quotation_reservations');
 
   final Uuid _uuid = const Uuid();
 
@@ -157,6 +161,29 @@ class SembastQuotationRepository implements QuotationRepository {
       }
 
       await _quotationsStore.record(updatedQuotation.id).put(txn, dto);
+
+      // 5. Save reservations
+      final finder = Finder(filter: Filter.equals('quotationId', updatedQuotation.id));
+      final records = await _reservationsStore.find(txn, finder: finder);
+      for (final r in records) {
+        await _reservationsStore.record(r.key).delete(txn);
+      }
+      
+      for (var item in updatedQuotation.lineItems) {
+        if (item.isCustom || item.productId == null) continue;
+        final resId = '${updatedQuotation.id}_${item.productId}';
+        final res = QuotationReservation(
+          id: resId,
+          quotationId: updatedQuotation.id,
+          quotationNumber: updatedQuotation.quotationNumber,
+          productId: item.productId!,
+          reservedQty: item.quantity,
+          salesmanId: updatedQuotation.salespersonId,
+          salesmanName: ServiceLocator().authController.currentUser?.name ?? 'Unknown',
+          updatedAt: DateTime.now(),
+        );
+        await _reservationsStore.record(resId).put(txn, res.toJson());
+      }
     });
 
     return updatedQuotation;
@@ -166,17 +193,34 @@ class SembastQuotationRepository implements QuotationRepository {
   Future<void> deleteQuotation(String id) async {
     final db = await _db;
     await db.transaction((txn) async {
+      // Find quotation to delete its images
       final record = await _quotationsStore.record(id).get(txn);
       if (record != null) {
-        final q = Quotation.fromJson(record);
-        for (var item in q.lineItems) {
+        final quotation = Quotation.fromJson(record);
+        for (var item in quotation.lineItems) {
           if (item.imageId != null && item.imageId!.isNotEmpty) {
             await _imagesStore.record(item.imageId!).delete(txn);
           }
         }
-        await _quotationsStore.record(id).delete(txn);
+      }
+      await _quotationsStore.record(id).delete(txn);
+
+      // Delete reservations
+      final finder = Finder(filter: Filter.equals('quotationId', id));
+      final records = await _reservationsStore.find(txn, finder: finder);
+      for (final r in records) {
+        await _reservationsStore.record(r.key).delete(txn);
       }
     });
+  }
+
+  @override
+  Future<ReservationAggregation> getReservationsForProduct(String productId) async {
+    final db = await _db;
+    final finder = Finder(filter: Filter.equals('productId', productId));
+    final records = await _reservationsStore.find(db, finder: finder);
+    final list = records.map((r) => QuotationReservation.fromJson(r.value)).toList();
+    return ReservationAggregation.fromReservations(list);
   }
 
   @override

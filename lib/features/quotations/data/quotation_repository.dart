@@ -1,4 +1,5 @@
 import '../domain/quotation.dart';
+import '../domain/quotation_reservation.dart';
 
 abstract class QuotationRepository {
   Future<List<Quotation>> getAllQuotations();
@@ -7,4 +8,5 @@ abstract class QuotationRepository {
   Future<Quotation> duplicateQuotation(Quotation sourceQuotation);
   Future<Quotation> getQuotationWithImages(Quotation quotation);
   Future<Quotation?> getQuotationByNumber(String quotationNumber);
+  Future<ReservationAggregation> getReservationsForProduct(String productId);
 }

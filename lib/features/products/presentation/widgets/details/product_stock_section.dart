@@ -4,6 +4,7 @@ import '../../../../../core/di/service_locator.dart';
 import '../../../domain/product.dart';
 import '../../../../stock/domain/stock_movement.dart';
 import '../../../../stock/presentation/widgets/stock_adjustment_bottom_sheet.dart';
+import '../../../../quotations/domain/quotation_reservation.dart';
 
 class ProductStockSection extends StatelessWidget {
   final Product product;
@@ -64,95 +65,134 @@ class ProductStockSection extends StatelessWidget {
   }
 
   Widget _buildStockDetails(BuildContext context) {
-    String statusText;
-    Color statusColor;
+    return FutureBuilder<ReservationAggregation>(
+      future: ServiceLocator().quotationRepository.getReservationsForProduct(product.id),
+      builder: (context, snapshot) {
+        final aggregation = snapshot.data ?? const ReservationAggregation(reservedQty: 0, reservations: []);
+        final availableQty = currentStock - aggregation.reservedQty;
 
-    if (currentStock <= 0) {
-      statusText = 'Out of Stock';
-      statusColor = AppColors.statusRejectedText;
-    } else if (currentStock <= product.minStockLevel) {
-      statusText = 'Low Stock';
-      statusColor = AppColors.statusPendingText;
-    } else {
-      statusText = 'In Stock';
-      statusColor = AppColors.statusApprovedText;
-    }
+        String statusText;
+        Color statusColor;
 
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        if (availableQty <= 0) {
+          statusText = 'Out of Stock';
+          statusColor = AppColors.statusRejectedText;
+        } else if (availableQty <= product.minStockLevel) {
+          statusText = 'Low Stock';
+          statusColor = AppColors.statusPendingText;
+        } else {
+          statusText = 'In Stock';
+          statusColor = AppColors.statusApprovedText;
+        }
+
+        return Column(
           children: [
-            _buildStat(
-              'Current Stock',
-              currentStock.toString(),
-              isHighlight: true,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildStat(
+                  'Actual Stock',
+                  currentStock.toString(),
+                  isHighlight: false,
+                ),
+                _buildStat(
+                  'Reserved',
+                  aggregation.reservedQty.toString(),
+                  isHighlight: false,
+                  valueColor: aggregation.reservedQty > 0 ? Colors.orange : AppColors.charcoal,
+                ),
+                _buildStat(
+                  'Available',
+                  availableQty.toString(),
+                  isHighlight: true,
+                ),
+              ],
             ),
-            _buildStat('Status', statusText, valueColor: statusColor),
-          ],
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12.0),
-          child: Divider(height: 1, color: AppColors.border),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildStat('Opening Stock', product.openingStock.toString()),
-            _buildStat('Minimum Stock', product.minStockLevel.toString()),
-          ],
-        ),
-        if (ServiceLocator().authController.isAdmin) ...[
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    StockAdjustmentBottomSheet.show(
-                      context,
-                      productId: product.id,
-                      initialType: StockMovementType.stockIn,
-                      onSuccess: onStockAdjusted,
-                    );
-                  },
-                  icon: const Icon(Icons.add_circle_outline, size: 18),
-                  label: const Text('Stock In'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.statusApprovedText,
-                    side: const BorderSide(color: AppColors.statusApprovedText),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12.0),
+              child: Divider(height: 1, color: AppColors.border),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildStat('Status', statusText, valueColor: statusColor),
+                _buildStat('Minimum Stock', product.minStockLevel.toString()),
+              ],
+            ),
+            if (aggregation.reservations.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Divider(height: 1, color: AppColors.border),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    StockAdjustmentBottomSheet.show(
-                      context,
-                      productId: product.id,
-                      initialType: StockMovementType.stockOut,
-                      onSuccess: onStockAdjusted,
-                    );
-                  },
-                  icon: const Icon(Icons.remove_circle_outline, size: 18),
-                  label: const Text('Stock Out'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.statusRejectedText,
-                    side: const BorderSide(color: AppColors.statusRejectedText),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Active Reservations', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.charcoal)),
+              ),
+              const SizedBox(height: 8),
+              ...aggregation.reservations.map((r) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('${r.salesmanName} (${r.quotationNumber})', style: const TextStyle(fontSize: 13, color: AppColors.charcoal)),
+                    Text('${r.reservedQty} unit(s)', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primaryBlue)),
+                  ],
+                ),
+              )),
+            ],
+            if (ServiceLocator().authController.isAdmin) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        StockAdjustmentBottomSheet.show(
+                          context,
+                          productId: product.id,
+                          initialType: StockMovementType.stockIn,
+                          onSuccess: onStockAdjusted,
+                        );
+                      },
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('Stock In'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.statusApprovedText,
+                        side: const BorderSide(color: AppColors.statusApprovedText),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        StockAdjustmentBottomSheet.show(
+                          context,
+                          productId: product.id,
+                          initialType: StockMovementType.stockOut,
+                          onSuccess: onStockAdjusted,
+                        );
+                      },
+                      icon: const Icon(Icons.remove_circle_outline, size: 18),
+                      label: const Text('Stock Out'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.statusRejectedText,
+                        side: const BorderSide(color: AppColors.statusRejectedText),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-        ],
-      ],
+          ],
+        );
+      },
     );
   }
 

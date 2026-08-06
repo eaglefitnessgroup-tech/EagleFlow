@@ -338,8 +338,8 @@ class SupabaseProductRepository implements ProductRepository {
       modelNumber: row['model_number'] as String?,
       unit: row['unit'] as String? ?? 'Nos',
       sellingPrice: (row['selling_price'] as num).toDouble(),
-      isVatApplicable: row['is_vat_applicable'] as bool? ?? true,
-      isActive: row['is_active'] as bool? ?? true,
+      isVatApplicable: _parseBool(row['is_vat_applicable'], true),
+      isActive: _parseBool(row['is_active'], true),
       minStockLevel: row['min_stock_level'] as int? ?? 0,
       openingStock: row['opening_stock'] as int? ?? 0,
       notes: row['notes'] as String?,
@@ -351,6 +351,18 @@ class SupabaseProductRepository implements ProductRepository {
           ? DateTime.parse(row['updated_at'] as String)
           : DateTime.now(),
     );
+  }
+
+  static bool _parseBool(dynamic value, bool defaultValue) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    if (value is String) {
+      final lower = value.toLowerCase();
+      if (lower == 'false' || lower == '0' || lower == 'no') return false;
+      if (lower == 'true' || lower == '1' || lower == 'yes') return true;
+    }
+    return defaultValue;
   }
 
   // ── Protected Network Methods for Testing ──────────────────────────────────

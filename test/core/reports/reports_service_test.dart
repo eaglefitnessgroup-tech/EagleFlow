@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:eagleflow/features/quotations/domain/quotation_reservation.dart';
 import 'package:eagleflow/core/reports/reports_service.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/products/domain/product_repository.dart';
@@ -97,6 +98,10 @@ class MockQuotationRepository implements QuotationRepository {
 
   @override
   Future<Quotation?> getQuotationByNumber(String quotationNumber) async => null;
+
+  @override
+  Future<ReservationAggregation> getReservationsForProduct(String productId) async => 
+      const ReservationAggregation(reservedQty: 0, reservations: []);
 }
 
 void main() {

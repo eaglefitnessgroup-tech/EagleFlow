@@ -116,6 +116,20 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
         }
         continue;
       }
+
+      final aggregation = await ServiceLocator().quotationRepository.getReservationsForProduct(product.id);
+      
+      if (aggregation.reservedQty > 0) {
+        if (mounted) {
+           String list = aggregation.reservations.map((r) => '${r.salesmanName} - ${r.reservedQty} - ${r.quotationNumber}').join('\n');
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(
+               content: Text('This item already has ${aggregation.reservedQty} unit(s) reserved.\n$list'),
+               duration: const Duration(seconds: 4),
+             ),
+           );
+        }
+      }
       
       _controller.addProduct(product);
     }

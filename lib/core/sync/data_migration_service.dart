@@ -108,7 +108,7 @@ class DataMigrationService {
             'username': localData['username'],
             'password_hash': localData['passwordHash'],
             'role': localData['role'],
-            'is_active': localData['isActive'],
+            'is_active': localData['isActive'] ?? true,
             'created_at': localData['createdAt'],
           });
         }
