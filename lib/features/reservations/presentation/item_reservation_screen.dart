@@ -1,49 +1,289 @@
 import 'package:flutter/material.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../products/domain/product.dart';
+import '../../products/presentation/widgets/product_image.dart';
+import 'widgets/reservation_bottom_sheet.dart';
 
-class ItemReservationScreen extends StatelessWidget {
+class ItemReservationScreen extends StatefulWidget {
   const ItemReservationScreen({super.key});
+
+  @override
+  State<ItemReservationScreen> createState() => _ItemReservationScreenState();
+}
+
+class _ItemReservationScreenState extends State<ItemReservationScreen> {
+  List<Product> _allProducts = [];
+  List<Product> _filteredProducts = [];
+  bool _isLoading = true;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final products = await ServiceLocator().productRepository.getAllProducts();
+      final activeProducts = products.where((p) => p.isActive).toList();
+      
+      if (mounted) {
+        setState(() {
+          _allProducts = activeProducts;
+          _filteredProducts = activeProducts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+      if (_searchQuery.isEmpty) {
+        _filteredProducts = _allProducts;
+      } else {
+        _filteredProducts = _allProducts.where((p) {
+          return p.name.toLowerCase().contains(_searchQuery) ||
+                 p.productCode.toLowerCase().contains(_searchQuery);
+        }).toList();
+      }
+    });
+  }
+
+  void _onProductTapped(Product product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ReservationBottomSheet(product: product),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Item Reservation'),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.charcoal,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(
+            color: AppColors.border,
+            height: 1.0,
+          ),
+        ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              enabled: false,
-              decoration: InputDecoration(
-                hintText: 'Search products...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                _buildSearchField(),
+                Expanded(
+                  child: _filteredProducts.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _filteredProducts.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            return _buildProductCard(_filteredProducts[index]);
+                          },
+                        ),
                 ),
-              ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: AppColors.surface,
+      child: TextField(
+        onChanged: _onSearchChanged,
+        decoration: InputDecoration(
+          hintText: 'Search by Product Name or Code',
+          prefixIcon: const Icon(Icons.search, color: AppColors.mutedText),
+          filled: true,
+          fillColor: AppColors.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48.0, horizontal: 24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Icon(
+              Icons.search_off_outlined,
+              size: 48,
+              color: AppColors.mutedText,
             ),
           ),
-          const Expanded(
-            child: Center(
+          const SizedBox(height: 24),
+          Text(
+            _searchQuery.isNotEmpty
+                ? 'No matches for "$_searchQuery"'
+                : 'No products found',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.charcoal,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _searchQuery.isNotEmpty
+                ? 'Check the spelling or try a different search term.'
+                : 'There are no active products available.',
+            style: const TextStyle(
+              color: AppColors.mutedText,
+              fontSize: 15,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductCard(Product product) {
+    return InkWell(
+      onTap: () => _onProductTapped(product),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 2,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: ProductImage(
+                product: product,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+                errorIconSize: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.bookmark_added_outlined,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
                   Text(
-                    'Reservation module coming soon',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey,
+                    product.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.charcoal,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product.productCode,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.mutedText,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _buildStockPill('Physical', product.openingStock),
+                      const SizedBox(width: 8),
+                      _buildStockPill('Available', product.openingStock), // Same as physical for now
+                    ],
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.chevron_right,
+              color: AppColors.mutedText,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockPill(String label, int quantity) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.mutedText,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$quantity',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppColors.charcoal,
             ),
           ),
         ],

@@ -17,6 +17,8 @@ import '../../features/authentication/data/sembast_auth_repository.dart';
 import '../../features/authentication/application/auth_controller.dart';
 import '../../features/products/application/bulk_import_service.dart';
 import '../supabase/supabase_service.dart';
+import '../../features/reservations/domain/reservation_repository.dart';
+import '../../features/reservations/data/sembast_reservation_repository.dart';
 
 class ServiceLocator {
   static ServiceLocator _instance = ServiceLocator._internal();
@@ -81,6 +83,8 @@ class ServiceLocator {
     productRepository,
     supabaseService,
   );
+
+  late final ReservationRepository reservationRepository = SembastReservationRepository();
 
   Future<void> init() async {
     try {
