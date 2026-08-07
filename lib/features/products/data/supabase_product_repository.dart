@@ -201,7 +201,7 @@ class SupabaseProductRepository implements ProductRepository {
                 .uploadBinary(uploadPath, updatedProduct.imageBytes!);
           }
         } catch (e) {
-          debugPrint('Failed to upload image $newImageId: $e');
+          // Ignore image upload errors
         }
 
         // Best-effort image_id update on server
@@ -276,7 +276,7 @@ class SupabaseProductRepository implements ProductRepository {
           }
         }
       } catch (e) {
-        debugPrint('Failed to sync image changes to storage: $e');
+        // Ignore image sync errors
       }
     }
 
@@ -343,9 +343,7 @@ class SupabaseProductRepository implements ProductRepository {
               .from('product-images')
               .remove([removePath]);
         } catch (e) {
-          debugPrint(
-            'Failed to delete image ${product.imageId} from storage: $e',
-          );
+          // Ignore deletion errors
         }
       }
     } catch (e) {

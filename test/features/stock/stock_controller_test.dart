@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/stock/application/stock_controller.dart';
 import 'package:eagleflow/features/stock/domain/stock_movement.dart';
 import 'package:eagleflow/features/stock/domain/stock_repository.dart';
-import 'package:eagleflow/features/products/domain/product.dart';
 
 class MockStockRepository implements StockRepository {
   List<StockMovement> movements = [];

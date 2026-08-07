@@ -191,7 +191,7 @@ class FakePostgrestTransformBuilder<T> extends Fake
         finalResult = list.isEmpty ? null : list.first;
       }
       if (onValue != null) {
-        return onValue(finalResult as T) as FutureOr<U>;
+        return onValue(finalResult as T);
       }
       return finalResult as U;
     }, onError: onError);

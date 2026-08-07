@@ -30,16 +30,11 @@ class SupabaseQuotationRepository implements QuotationRepository {
   bool get isConnectedToServer => supabase.isConnected;
 
  Future<void> init() async {
-  print('Quotation repository init started');
-
   if (!isConnectedToServer) {
-    print('Supabase not connected');
     return;
   }
 
-  print('Starting quotation sync down');
   await _syncQuotationsDown();
-  print('Quotation sync completed');
 }
 
   @visibleForTesting
@@ -70,7 +65,6 @@ class SupabaseQuotationRepository implements QuotationRepository {
   Future<void> _doSyncQuotationsDown() async {
     try {
       final serverQuotations = await fetchQuotationsFromServer();
-      debugPrint('SyncDown: Fetched ${serverQuotations.length} quotations from server');
 
       final db = await _db;
       await db.transaction((txn) async {
@@ -82,26 +76,24 @@ class SupabaseQuotationRepository implements QuotationRepository {
                 .get(txn);
 
             if (localRecord == null) {
-              debugPrint('SyncDown: Inserting new quotation ${serverQ.id} into Sembast');
               await _quotationsStore
                   .record(serverQ.id)
                   .put(txn, serverQ.toJson());
             } else {
               final localQ = Quotation.fromJson(localRecord);
               if (serverQ.modifiedDate.isAfter(localQ.modifiedDate)) {
-                debugPrint('SyncDown: Updating existing quotation ${serverQ.id} in Sembast');
                 await _quotationsStore
                     .record(serverQ.id)
                     .put(txn, serverQ.toJson());
               }
             }
-          } catch (e, st) {
-            debugPrint('SyncDown: Error parsing quotation ${row['id']}: $e\n$st');
+          } catch (e) {
+            // Ignore parse errors for individual rows
           }
         }
       });
     } catch (e) {
-      debugPrint('Error syncing quotations down: $e');
+      // Ignore sync errors
     }
   }
 
@@ -235,13 +227,11 @@ Future<List<Quotation>> getAllQuotations() async {
           throw Exception('Supabase client is null while connected');
         }
         final payload = _buildQuotationPayload(toSave);
-        debugPrint('saveQuotation RPC Payload: $payload');
 
         final response = await client.rpc(
           'save_quotation',
           params: {'p_payload': payload},
         );
-        debugPrint('saveQuotation RPC Response: $response');
 
         if (response != null && response is Map<String, dynamic>) {
           if (response.containsKey('error')) {
@@ -253,8 +243,7 @@ Future<List<Quotation>> getAllQuotations() async {
             toSave = toSave.copyWith(quotationNumber: response['quotationNumber'] as String);
           }
         }
-      } catch (e, st) {
-        debugPrint('saveQuotation RPC Exception: $e\n$st');
+      } catch (e) {
         if (toSave.status != QuotationStatus.draft) {
           throw Exception(
             'Failed to sync quotation to remote. Please try again.',

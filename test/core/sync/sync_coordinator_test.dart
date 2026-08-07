@@ -12,7 +12,6 @@ import 'package:eagleflow/features/quotations/data/supabase_quotation_repository
 import 'package:eagleflow/features/quotations/domain/quotation.dart';
 import 'package:eagleflow/features/quotations/domain/customer_info.dart';
 import 'package:eagleflow/core/supabase/supabase_service.dart';
-import 'package:uuid/uuid.dart';
 
 // Since we cannot mock SupabaseClient effectively without a full mock suite,
 // we'll test the queue directly and the repositories' offline behavior.

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sembast/sembast.dart';
 import '../../../core/database/database_service.dart';
@@ -62,15 +61,15 @@ class SupabaseReservationRepository implements ReservationRepository {
                 await _store.record(serverRes.id).put(txn, serverRes.toJson());
               }
             }
-          } catch (e, st) {
-            debugPrint('Error parsing reservation ${row['id']}: $e\n$st');
+          } catch (e) {
+            // Ignore parse errors for individual rows
           }
         }
       });
       
       _setupRealtime();
     } catch (e) {
-      debugPrint('Sync failed: $e');
+      // Ignore sync errors
     }
   }
 
@@ -126,13 +125,11 @@ class SupabaseReservationRepository implements ReservationRepository {
       if (!isConnectedToServer) throw Exception('Offline');
       
       final payload = _toSupabase(updatedReservation);
-      debugPrint('saveReservation Payload: $payload');
       
       await supabase.client!
           .from('reservations')
           .upsert(payload);
-    } catch (e, st) {
-      debugPrint('saveReservation error: $e\n$st');
+    } catch (e) {
       await ServiceLocator().syncCoordinator.queueFailedWrite(
         'reservations',
         _toSupabase(updatedReservation),

@@ -538,7 +538,7 @@ class _StockInScreenState extends State<StockInScreen> {
                             ? () {
                                 final current = _selectedProductStock ?? 0;
                                 _showConfirmationDialog(
-                                  qty!,
+                                  qty,
                                   current,
                                   current + qty,
                                 );

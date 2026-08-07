@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:sembast/blob.dart';
 import 'package:eagleflow/core/database/database_service.dart';

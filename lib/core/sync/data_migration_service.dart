@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/products/domain/product.dart';
 import '../../features/stock/domain/stock_movement.dart';
 import '../../features/quotations/domain/quotation.dart';
-import '../../features/quotations/domain/quotation_status.dart';
 
 class MigrationReport {
   int usersFound = 0;

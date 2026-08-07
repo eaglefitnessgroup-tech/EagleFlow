@@ -84,7 +84,7 @@ class SupabaseStockRepository implements StockRepository {
         }
       });
     } catch (e) {
-      debugPrint('Error syncing stock movements down: $e');
+      // Ignore sync errors
     } finally {
       _syncing = false;
     }

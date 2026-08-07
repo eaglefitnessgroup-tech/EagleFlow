@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../domain/quotation.dart';
 import '../domain/quotation_status.dart';
-import '../domain/customer_info.dart';
-import '../domain/quotation_charges.dart';
 import 'widgets/previous/quotations_summary_row.dart';
 import 'widgets/previous/quotation_filter_bar.dart';
 import 'widgets/previous/quotation_list_view.dart';
