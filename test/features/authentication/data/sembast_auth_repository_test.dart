@@ -28,24 +28,24 @@ void main() {
         final usersStore = stringMapStoreFactory.store('users');
         final records = await usersStore.find(db);
 
-        expect(records.length, 2);
+        expect(records.length, 7);
 
         final admin = records.firstWhere((r) => r.key == 'ADMIN-001').value;
         final sales = records.firstWhere((r) => r.key == 'SALES-001').value;
 
-        expect(admin['username'], 'admin');
-        expect(sales['username'], 'sales');
+        expect(admin['username'], 'anshad');
+        expect(sales['username'], 'ajmal');
 
-        expect(admin['passwordHash'], isNot('admin123'));
-        expect(sales['passwordHash'], isNot('sales123'));
+        expect(admin['passwordHash'], isNot('anshad123'));
+        expect(sales['passwordHash'], isNot('ajmal123'));
         expect(admin['password'], isNull);
       },
     );
 
     test('2. Admin login success', () async {
       final result = await repository.login(
-        username: 'admin',
-        password: 'admin123',
+        username: 'anshad',
+        password: 'anshad123',
       );
 
       expect(result.success, true);
@@ -55,8 +55,8 @@ void main() {
 
     test('3. Salesperson login success', () async {
       final result = await repository.login(
-        username: 'sales',
-        password: 'sales123',
+        username: 'ajmal',
+        password: 'ajmal123',
       );
 
       expect(result.success, true);
@@ -66,17 +66,17 @@ void main() {
 
     test('4. Case-insensitive and trimmed username login', () async {
       final result = await repository.login(
-        username: '  aDmiN  ',
-        password: 'admin123',
+        username: '  aNshaD  ',
+        password: 'anshad123',
       );
 
       expect(result.success, true);
-      expect(result.user!.username, 'admin');
+      expect(result.user!.username, 'anshad');
     });
 
     test('5. Invalid password rejection', () async {
       final result = await repository.login(
-        username: 'admin',
+        username: 'anshad',
         password: 'wrongpassword',
       );
 
@@ -94,8 +94,8 @@ void main() {
       await usersStore.record('ADMIN-001').put(db, updatedAdmin);
 
       final result = await repository.login(
-        username: 'admin',
-        password: 'admin123',
+        username: 'anshad',
+        password: 'anshad123',
       );
 
       expect(result.success, false);
@@ -104,14 +104,14 @@ void main() {
     });
 
     test('7. Session persistence after successful login', () async {
-      await repository.login(username: 'sales', password: 'sales123');
+      await repository.login(username: 'ajmal', password: 'ajmal123');
 
       final hasSession = await repository.hasRememberedSession();
       expect(hasSession, true);
 
       final user = await repository.getCurrentUser();
       expect(user, isNotNull);
-      expect(user!.username, 'sales');
+      expect(user!.username, 'ajmal');
 
       // Verify passwordHash is not stored in session
       final sessionStore = stringMapStoreFactory.store('auth_session');
@@ -120,7 +120,7 @@ void main() {
     });
 
     test('8. Logout clears session', () async {
-      await repository.login(username: 'admin', password: 'admin123');
+      await repository.login(username: 'anshad', password: 'anshad123');
       expect(await repository.hasRememberedSession(), true);
 
       await repository.logout();

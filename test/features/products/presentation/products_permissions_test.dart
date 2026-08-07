@@ -54,8 +54,8 @@ void main() {
     testWidgets('Admin sees Add Product', (WidgetTester tester) async {
       await tester.runAsync(() async {
         await ServiceLocator().authController.login(
-          username: 'admin',
-          password: 'admin123',
+          username: 'anshad',
+          password: 'anshad123',
           rememberMe: true,
         );
       });
@@ -71,8 +71,8 @@ void main() {
     ) async {
       await tester.runAsync(() async {
         await ServiceLocator().authController.login(
-          username: 'sales',
-          password: 'sales123',
+          username: 'ajmal',
+          password: 'ajmal123',
           rememberMe: true,
         );
       });
@@ -101,8 +101,8 @@ void main() {
     ) async {
       await tester.runAsync(() async {
         await ServiceLocator().authController.login(
-          username: 'admin',
-          password: 'admin123',
+          username: 'anshad',
+          password: 'anshad123',
           rememberMe: true,
         );
       });
@@ -131,8 +131,8 @@ void main() {
     ) async {
       await tester.runAsync(() async {
         await ServiceLocator().authController.login(
-          username: 'sales',
-          password: 'sales123',
+          username: 'ajmal',
+          password: 'ajmal123',
           rememberMe: true,
         );
       });

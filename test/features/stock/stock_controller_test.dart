@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/stock/application/stock_controller.dart';
 import 'package:eagleflow/features/stock/domain/stock_movement.dart';
 import 'package:eagleflow/features/stock/domain/stock_repository.dart';
+import 'package:eagleflow/core/di/service_locator.dart';
+import 'package:eagleflow/core/database/database_service.dart';
+import 'package:sembast/sembast_memory.dart';
 
 class MockStockRepository implements StockRepository {
   List<StockMovement> movements = [];
@@ -67,9 +70,23 @@ void main() {
     late MockStockRepository repo;
     late StockController controller;
 
-    setUp(() {
+    late Database db;
+
+    setUp(() async {
+      ServiceLocator.resetForTesting();
+      final dbName = 'test_stock_controller_${DateTime.now().microsecondsSinceEpoch}.db';
+      db = await databaseFactoryMemory.openDatabase(dbName);
+      DatabaseService().setDatabaseForTesting(db);
+      await ServiceLocator().init();
+
       repo = MockStockRepository();
       controller = StockController(repo);
+    });
+
+    tearDown(() async {
+      await Future.delayed(const Duration(milliseconds: 100));
+      await DatabaseService().closeAndResetForTesting();
+      ServiceLocator.resetForTesting();
     });
 
     test('load movements and loading state transitions', () async {
@@ -133,6 +150,7 @@ void main() {
     });
 
     test('add Stock Out updates list and saving state', () async {
+      repo.currentStock = 10;
       final result = await controller.addStockOut(
         productId: 'p1',
         quantity: 5,

@@ -60,8 +60,8 @@ void main() {
       // Simulate active session
       await tester.runAsync(() async {
         await ServiceLocator().authController.login(
-          username: 'admin',
-          password: 'admin123',
+          username: 'anshad',
+          password: 'anshad123',
           rememberMe: true,
         );
       });

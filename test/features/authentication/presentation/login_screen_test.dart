@@ -75,8 +75,8 @@ void main() {
     await tester.pumpWidget(buildTestableWidget());
 
     // Enter admin credentials (based on default seed)
-    await tester.enterText(find.byType(TextFormField).first, 'admin');
-    await tester.enterText(find.byType(TextFormField).last, 'admin123');
+    await tester.enterText(find.byType(TextFormField).first, 'anshad');
+    await tester.enterText(find.byType(TextFormField).last, 'anshad123');
 
     // Tap login
     await tester.tap(find.text('Secure Login'));
@@ -93,8 +93,8 @@ void main() {
   ) async {
     await tester.pumpWidget(buildTestableWidget());
 
-    await tester.enterText(find.byType(TextFormField).first, 'admin');
-    await tester.enterText(find.byType(TextFormField).last, 'admin123');
+    await tester.enterText(find.byType(TextFormField).first, 'anshad');
+    await tester.enterText(find.byType(TextFormField).last, 'anshad123');
 
     // Tap login
     await tester.tap(find.text('Secure Login'));

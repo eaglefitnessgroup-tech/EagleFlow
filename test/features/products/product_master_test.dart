@@ -57,10 +57,10 @@ void main() {
       await db.close();
     });
 
-    test('One-time sample-product seed migration', () async {
+    test('Initializes with empty products without dummy seed', () async {
       await repo.init();
       final products = await repo.getAllProducts();
-      expect(products.isNotEmpty, true); // Since sample products are seeded
+      expect(products.isEmpty, true);
     });
 
     test(

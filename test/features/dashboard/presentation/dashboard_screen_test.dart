@@ -47,8 +47,8 @@ void main() {
   ) async {
     await tester.runAsync(() async {
       await ServiceLocator().authController.login(
-        username: 'admin',
-        password: 'admin123',
+        username: 'anshad',
+        password: 'anshad123',
         rememberMe: true,
       );
     });
@@ -56,7 +56,7 @@ void main() {
     await tester.pumpWidget(buildTestableWidget());
 
     // Greeting
-    expect(find.text('Admin'), findsOneWidget);
+    expect(find.text('Anshad'), findsOneWidget);
 
     // Admin specific card
     expect(find.textContaining('Stock\nManagement'), findsOneWidget);
@@ -72,8 +72,8 @@ void main() {
   ) async {
     await tester.runAsync(() async {
       await ServiceLocator().authController.login(
-        username: 'sales',
-        password: 'sales123',
+        username: 'ajmal',
+        password: 'ajmal123',
         rememberMe: true,
       );
     });
@@ -81,7 +81,7 @@ void main() {
     await tester.pumpWidget(buildTestableWidget());
 
     // Greeting
-    expect(find.text('Salesperson'), findsOneWidget);
+    expect(find.text('Ajmal'), findsOneWidget);
 
     // Admin specific card
     expect(find.textContaining('Stock\nManagement'), findsNothing);

@@ -51,16 +51,17 @@ void main() {
   testWidgets('Current admin details display', (WidgetTester tester) async {
     await tester.runAsync(() async {
       await ServiceLocator().authController.login(
-        username: 'admin',
-        password: 'admin123',
+        username: 'anshad',
+        password: 'anshad123',
         rememberMe: true,
       );
     });
 
     await tester.pumpWidget(buildTestableWidget());
 
-    expect(find.text('Admin'), findsNWidgets(2)); // Name and Role
-    expect(find.text('@admin'), findsOneWidget);
+    expect(find.text('Anshad'), findsOneWidget); // Name
+    expect(find.text('Admin'), findsOneWidget); // Role
+    expect(find.text('@anshad'), findsOneWidget);
     expect(find.text('ADMIN-001'), findsOneWidget);
   });
 
@@ -69,16 +70,17 @@ void main() {
   ) async {
     await tester.runAsync(() async {
       await ServiceLocator().authController.login(
-        username: 'sales',
-        password: 'sales123',
+        username: 'ajmal',
+        password: 'ajmal123',
         rememberMe: true,
       );
     });
 
     await tester.pumpWidget(buildTestableWidget());
 
-    expect(find.text('Salesperson'), findsNWidgets(2)); // Name and Role
-    expect(find.text('@sales'), findsOneWidget);
+    expect(find.text('Ajmal'), findsOneWidget); // Name
+    expect(find.text('Salesperson'), findsOneWidget); // Role
+    expect(find.text('@ajmal'), findsOneWidget);
     expect(find.text('SALES-001'), findsOneWidget);
   });
 
@@ -87,8 +89,8 @@ void main() {
   ) async {
     await tester.runAsync(() async {
       await ServiceLocator().authController.login(
-        username: 'admin',
-        password: 'admin123',
+        username: 'anshad',
+        password: 'anshad123',
         rememberMe: true,
       );
     });
@@ -116,8 +118,8 @@ void main() {
   ) async {
     await tester.runAsync(() async {
       await ServiceLocator().authController.login(
-        username: 'admin',
-        password: 'admin123',
+        username: 'anshad',
+        password: 'anshad123',
         rememberMe: true,
       );
     });

@@ -24,18 +24,18 @@ void main() {
   setUp(() async {
     final factory = databaseFactoryMemory;
     db = await factory.openDatabase(
-      'test_sync_coordinator_\${DateTime.now().millisecondsSinceEpoch}.db',
+      'test_sync_coordinator_${DateTime.now().millisecondsSinceEpoch}.db',
     );
     DatabaseService().setDatabaseForTesting(db);
 
     // Mock locator components
     ServiceLocator().authController.setCurrentUserForTesting(
-      AppUser(
-        id: 'ADMIN-001',
-        name: 'Admin',
-        username: 'admin',
-        passwordHash: '',
-        role: UserRole.admin,
+        AppUser(
+          id: 'ADMIN-001',
+          name: 'Anshad',
+          username: 'anshad',
+          passwordHash: '',
+          role: UserRole.admin,
         createdAt: DateTime(2026),
         updatedAt: DateTime(2026),
       ),
@@ -46,6 +46,7 @@ void main() {
   });
 
   tearDown(() async {
+    await Future.delayed(const Duration(milliseconds: 100));
     await db.close();
   });
 
@@ -156,7 +157,7 @@ void main() {
       );
 
       final saved = await qRepo.saveQuotation(q);
-      expect(saved.quotationNumber.startsWith('DRAFT-'), isTrue);
+      expect(saved.quotationNumber.startsWith('QT-'), isTrue);
 
       final queue = await coordinator.getQueueForTesting();
       expect(queue.length, 1);
