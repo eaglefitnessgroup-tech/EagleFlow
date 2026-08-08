@@ -40,7 +40,7 @@ void main() {
 
     test('2. Admin login success (now fails offline)', () async {
       final result = await repository.login(
-        username: 'anshad',
+        email: 'anshad@eagleflow.com',
         password: 'anshad123',
       );
 
@@ -53,7 +53,7 @@ void main() {
 
     test('3. Salesperson login success (now fails offline)', () async {
       final result = await repository.login(
-        username: 'ajmal',
+        email: 'ajmal@eagleflow.com',
         password: 'ajmal123',
       );
 
@@ -68,7 +68,7 @@ void main() {
       '4. Case-insensitive and trimmed username login (now fails offline)',
       () async {
         final result = await repository.login(
-          username: '  aNshaD  ',
+          email: '  aNshaD@eagleflow.com  ',
           password: 'anshad123',
         );
 
@@ -82,7 +82,7 @@ void main() {
 
     test('5. Invalid password rejection (now fails offline)', () async {
       final result = await repository.login(
-        username: 'anshad',
+        email: 'anshad@eagleflow.com',
         password: 'wrongpassword',
       );
 
@@ -102,7 +102,7 @@ void main() {
       await usersStore.record('ADMIN-001').put(db, updatedAdmin);
 
       final result = await repository.login(
-        username: 'anshad',
+        email: 'anshad@eagleflow.com',
         password: 'anshad123',
       );
 

@@ -62,7 +62,7 @@ void main() {
       // Simulate active session
       await tester.runAsync(() async {
         await ServiceLocator().authController.login(
-          username: 'anshad',
+          email: 'anshad@eagleflow.com',
           password: 'anshad123',
           rememberMe: true,
         );

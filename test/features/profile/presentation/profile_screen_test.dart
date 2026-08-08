@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/profile/presentation/profile_screen.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
@@ -52,8 +52,7 @@ void main() {
 
   testWidgets('Current admin details display', (WidgetTester tester) async {
     await tester.runAsync(() async {
-      await ServiceLocator().authController.login(
-        username: 'anshad',
+      await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
         password: 'anshad123',
         rememberMe: true,
       );
@@ -71,8 +70,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.runAsync(() async {
-      await ServiceLocator().authController.login(
-        username: 'ajmal',
+      await ServiceLocator().authController.login(email: 'ajmal@eagleflow.com',
         password: 'ajmal123',
         rememberMe: true,
       );
@@ -90,8 +88,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.runAsync(() async {
-      await ServiceLocator().authController.login(
-        username: 'anshad',
+      await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
         password: 'anshad123',
         rememberMe: true,
       );
@@ -119,8 +116,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.runAsync(() async {
-      await ServiceLocator().authController.login(
-        username: 'anshad',
+      await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
         password: 'anshad123',
         rememberMe: true,
       );

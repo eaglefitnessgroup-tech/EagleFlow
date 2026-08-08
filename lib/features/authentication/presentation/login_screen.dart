@@ -13,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -36,11 +36,11 @@ class _LoginScreenState extends State<LoginScreen> {
     // Hide keyboard
     FocusScope.of(context).unfocus();
 
-    final username = _usernameController.text.trim().toLowerCase();
+    final email = _emailController.text.trim().toLowerCase();
     final password = _passwordController.text;
 
     final success = await _authController.login(
-      username: username,
+      email: email,
       password: password,
       rememberMe: _rememberMe,
     );
@@ -142,21 +142,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                             ),
                             TextFormField(
-                              controller: _usernameController,
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
                               autocorrect: false,
                               enableSuggestions: false,
                               textInputAction: TextInputAction.next,
                               decoration: InputDecoration(
-                                labelText: 'Username *',
-                                hintText: 'Enter your username',
-                                prefixIcon: const Icon(Icons.person_outline),
+                                labelText: 'Email *',
+                                hintText: 'Enter your email',
+                                prefixIcon: const Icon(Icons.email_outlined),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
-                                  return 'Username is required';
+                                  return 'Email is required';
+                                }
+                                if (!value.contains('@')) {
+                                  return 'Enter a valid email';
                                 }
                                 return null;
                               },

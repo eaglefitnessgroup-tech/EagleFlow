@@ -41,8 +41,7 @@ void main() {
     });
 
     test('4. Successful login updates state and returns true', () async {
-      final result = await controller.login(
-        username: 'admin',
+      final result = await controller.login(email: 'admin@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );
@@ -55,8 +54,7 @@ void main() {
     });
 
     test('5. Failed login sets error message and keeps user null', () async {
-      final result = await controller.login(
-        username: 'wrong',
+      final result = await controller.login(email: 'wrong@eagleflow.com',
         password: 'wrong',
         rememberMe: true,
       );
@@ -64,15 +62,14 @@ void main() {
       expect(result, false);
       expect(controller.currentUser, isNull);
       expect(controller.isAuthenticated, false);
-      expect(controller.errorMessage, 'Invalid username or password.');
+      expect(controller.errorMessage, 'Invalid email or password.');
     });
 
     test('6. Duplicate login prevention', () async {
       fakeRepo.shouldThrowOnLogin = false;
 
       // Start first request
-      final future1 = controller.login(
-        username: 'admin',
+      final future1 = controller.login(email: 'admin@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );
@@ -81,8 +78,7 @@ void main() {
       expect(controller.isLoading, true);
 
       // Start second request
-      final future2 = controller.login(
-        username: 'sales',
+      final future2 = controller.login(email: 'sales@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );
@@ -96,8 +92,7 @@ void main() {
     });
 
     test('7. rememberMe false no longer clears persisted session', () async {
-      final result = await controller.login(
-        username: 'sales',
+      final result = await controller.login(email: 'sales@eagleflow.com',
         password: 'pass',
         rememberMe: false,
       );
@@ -111,8 +106,7 @@ void main() {
     });
 
     test('8. Logout clears current user and notifies', () async {
-      await controller.login(
-        username: 'admin',
+      await controller.login(email: 'admin@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );
@@ -126,8 +120,7 @@ void main() {
 
     test('9. Unexpected exception sets generic error message', () async {
       fakeRepo.shouldThrowOnLogin = true;
-      final result = await controller.login(
-        username: 'admin',
+      final result = await controller.login(email: 'admin@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );

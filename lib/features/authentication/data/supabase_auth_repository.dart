@@ -16,14 +16,14 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String username,
+    required String email,
     required String password,
   }) async {
-    final cleanUsername = username.trim().toLowerCase();
+    final cleanEmail = email.trim().toLowerCase();
     final cleanPassword = password.trim();
 
-    if (cleanUsername.isEmpty || cleanPassword.isEmpty) {
-      return AuthResult.failure('Invalid username or password.');
+    if (cleanEmail.isEmpty || cleanPassword.isEmpty) {
+      return AuthResult.failure('Invalid email or password.');
     }
 
     final client = _supabaseService.client;
@@ -34,77 +34,60 @@ class SupabaseAuthRepository implements AuthRepository {
     }
 
     try {
-      // 1. Resolve username to email using the app_users table
-      final userResponse = await client
-          .from('app_users')
-          .select('email, id, name, role, is_active, created_at')
-          .eq('username', cleanUsername)
-          .maybeSingle();
-
-      if (userResponse == null || userResponse['email'] == null) {
-        return AuthResult.failure('Invalid username or password.');
-      }
-
-      if (userResponse['is_active'] != true) {
-        return AuthResult.failure('This account is inactive.');
-      }
-
-      final email = userResponse['email'] as String;
-
-      // 2. Authenticate with Supabase Auth
+      // 1. Authenticate with Supabase Auth
       final authResponse = await client.auth.signInWithPassword(
-        email: email,
+        email: cleanEmail,
         password: cleanPassword,
       );
 
       if (authResponse.user == null) {
-        return AuthResult.failure('Invalid username or password.');
+        return AuthResult.failure('Invalid email or password.');
       }
 
       final supabaseUid = authResponse.user!.id;
 
-      // 3. Fetch app_users by supabase_uid
+      // 2. Fetch app_users by supabase_uid safely
       final mappedUserResponse = await client
           .from('app_users')
-          .select()
+          .select('id, name, email, username, role, is_active, created_at')
           .eq('supabase_uid', supabaseUid)
           .maybeSingle();
 
       if (mappedUserResponse == null) {
-        // Fallback to the one we fetched initially if mapped is not found
-        // This is safe since we already validated the email.
-        await client
-            .from('app_users')
-            .update({'supabase_uid': supabaseUid})
-            .eq('id', userResponse['id']);
+        await logout();
+        return AuthResult.failure('Account mapping not found.');
       }
 
-      final finalUserData = mappedUserResponse ?? userResponse;
-
-      if (finalUserData['is_active'] != true) {
-        await client.auth.signOut();
+      if (mappedUserResponse['is_active'] != true) {
+        await logout();
         return AuthResult.failure('This account is inactive.');
+      }
+      
+      final roleStr = mappedUserResponse['role'] as String?;
+      if (roleStr == null || (roleStr != 'admin' && roleStr != 'salesperson')) {
+        await logout();
+        return AuthResult.failure('Invalid account role.');
       }
 
       final appUser = AppUser(
-        id: finalUserData['id'] as String,
-        name: finalUserData['name'] as String,
-        username: cleanUsername,
+        id: mappedUserResponse['id'] as String,
+        name: mappedUserResponse['name'] as String,
+        username: mappedUserResponse['username'] as String? ?? cleanEmail,
         passwordHash: '',
-        role: UserRole.fromJson(finalUserData['role'] as String?),
-        isActive: finalUserData['is_active'] == true,
-        createdAt: finalUserData['created_at'] != null
-            ? DateTime.parse(finalUserData['created_at'] as String).toLocal()
+        role: UserRole.fromJson(roleStr),
+        isActive: mappedUserResponse['is_active'] == true,
+        createdAt: mappedUserResponse['created_at'] != null
+            ? DateTime.parse(mappedUserResponse['created_at'] as String).toLocal()
             : DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      // 4. Cache session locally
+      // 3. Cache session locally
       await _localCache.cacheSession(appUser);
 
       return AuthResult.success(appUser);
     } on AuthException catch (_) {
-      return AuthResult.failure('Invalid username or password.');
+      return AuthResult.failure('Invalid email or password.');
     } catch (e) {
       return AuthResult.failure(
         'Unable to complete authentication. Please try again.',
@@ -127,53 +110,57 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<AppUser?> getCurrentUser() async {
-    // 1. Fast path: Restore immediately from local cache if available
-    final localUser = await _localCache.getCurrentUser();
-    if (localUser != null) {
-      return localUser;
-    }
-
-    // 2. Slow path: No local cache, attempt to restore from Supabase network
     final client = _supabaseService.client;
-    if (client != null && client.auth.currentUser != null) {
-      final supabaseUid = client.auth.currentUser!.id;
-
-      try {
-        final response = await client
-            .from('app_users')
-            .select()
-            .eq('supabase_uid', supabaseUid)
-            .maybeSingle()
-            .timeout(const Duration(seconds: 5));
-
-        if (response != null && response['is_active'] == true) {
-          final appUser = AppUser(
-            id: response['id'] as String,
-            name: response['name'] as String,
-            username: response['username'] as String,
-            passwordHash: '',
-            role: UserRole.fromJson(response['role'] as String?),
-            isActive: response['is_active'] == true,
-            createdAt: response['created_at'] != null
-                ? DateTime.parse(response['created_at'] as String).toLocal()
-                : DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-
-          // Update local cache with fresh data
-          await _localCache.cacheSession(appUser);
-          return appUser;
-        } else if (response != null && response['is_active'] != true) {
-          await logout();
-          return null;
-        }
-      } catch (e) {
-        // Fallback to local cache if network request fails
-      }
+    
+    // Fail-closed session revalidation
+    if (client == null || client.auth.currentUser == null) {
+      await logout();
+      return null;
     }
 
-    // Fallback to offline Sembast cache
-    return await _localCache.getCurrentUser();
+    final supabaseUid = client.auth.currentUser!.id;
+
+    try {
+      final response = await client
+          .from('app_users')
+          .select('id, name, email, username, role, is_active, created_at')
+          .eq('supabase_uid', supabaseUid)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 5));
+
+      if (response == null || response['is_active'] != true) {
+        await logout();
+        return null;
+      }
+      
+      final roleStr = response['role'] as String?;
+      if (roleStr == null || (roleStr != 'admin' && roleStr != 'salesperson')) {
+        await logout();
+        return null;
+      }
+
+      final appUser = AppUser(
+        id: response['id'] as String,
+        name: response['name'] as String,
+        username: response['username'] as String? ?? '',
+        passwordHash: '',
+        role: UserRole.fromJson(roleStr),
+        isActive: response['is_active'] == true,
+        createdAt: response['created_at'] != null
+            ? DateTime.parse(response['created_at'] as String).toLocal()
+            : DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // Update local cache with fresh data
+      await _localCache.cacheSession(appUser);
+      return appUser;
+    } catch (e) {
+      // Offline or network failure: Fail-closed.
+      // We must NOT restore access from an unverified offline cache.
+      await logout();
+      return null;
+    }
   }
 
   @override

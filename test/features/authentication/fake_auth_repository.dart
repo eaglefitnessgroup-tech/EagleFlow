@@ -35,7 +35,7 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String username,
+    required String email,
     required String password,
   }) async {
     await Future.delayed(
@@ -45,16 +45,16 @@ class FakeAuthRepository implements AuthRepository {
     if (shouldThrowOnLogin) {
       throw Exception('Simulated network error');
     }
-    if (username == 'admin' && password == 'pass') {
+    if (email == 'admin@eagleflow.com' && password == 'pass') {
       return AuthResult.success(testAdmin);
-    } else if (username == 'sales' && password == 'pass') {
+    } else if (email == 'sales@eagleflow.com' && password == 'pass') {
       return AuthResult.success(testSales);
-    } else if (username == 'anshad' && password == 'anshad123') {
+    } else if (email == 'anshad@eagleflow.com' && password == 'anshad123') {
       return AuthResult.success(testAdmin);
-    } else if (username == 'ajmal' && password == 'ajmal123') {
+    } else if (email == 'ajmal@eagleflow.com' && password == 'ajmal123') {
       return AuthResult.success(testSales);
     } else {
-      return AuthResult.failure('Invalid username or password.');
+      return AuthResult.failure('Invalid email or password.');
     }
   }
 

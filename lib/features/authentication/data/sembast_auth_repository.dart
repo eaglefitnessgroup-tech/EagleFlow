@@ -108,7 +108,7 @@ class SembastAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String username,
+    required String email,
     required String password,
   }) async {
     // SembastAuthRepository no longer handles credentials.

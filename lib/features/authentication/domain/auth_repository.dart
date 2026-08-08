@@ -3,14 +3,15 @@ import 'auth_result.dart';
 
 /// Abstract repository for Authentication operations.
 abstract class AuthRepository {
-  /// Attempts to authenticate a user with [username] and [password].
+  /// Attempts to authenticate a user with [email] and [password].
   ///
-  /// Implementations MUST:
-  /// - Perform case-insensitive username comparison.
-  /// - Ignore leading/trailing spaces on the username.
-  /// - Deny login to inactive users (isActive == false).
+  /// The implementation should:
+  /// - Perform case-insensitive email comparison.
+  /// - Ignore leading/trailing spaces on the email.
+  ///
+  /// Returns an [AuthResult] containing the user if successful, or an error message.
   Future<AuthResult> login({
-    required String username,
+    required String email,
     required String password,
   });
 

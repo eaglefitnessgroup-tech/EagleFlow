@@ -51,7 +51,7 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<bool> login({
-    required String username,
+    required String email,
     required String password,
     required bool rememberMe,
   }) async {
@@ -63,7 +63,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       final result = await _repository.login(
-        username: username,
+        email: email,
         password: password,
       );
 

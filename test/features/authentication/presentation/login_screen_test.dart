@@ -51,7 +51,7 @@ void main() {
     await tester.pump();
 
     // Expect validation errors
-    expect(find.text('Username is required'), findsOneWidget);
+    expect(find.text('Email is required'), findsOneWidget);
     expect(find.text('Password is required'), findsOneWidget);
   });
 
@@ -59,7 +59,7 @@ void main() {
     await tester.pumpWidget(buildTestableWidget());
 
     // Enter wrong credentials
-    await tester.enterText(find.byType(TextFormField).first, 'wronguser');
+    await tester.enterText(find.byType(TextFormField).first, 'wrong@user.com');
     await tester.enterText(find.byType(TextFormField).last, 'wrongpass');
 
     // Tap login
@@ -69,17 +69,17 @@ void main() {
     await tester.pumpAndSettle(); // Finish animation
 
     // Expect error message
-    expect(find.text('Invalid username or password.'), findsOneWidget);
+    expect(find.text('Invalid email or password.'), findsOneWidget);
 
     // Expect fields to retain their values
-    expect(find.text('wronguser'), findsOneWidget);
+    expect(find.text('wrong@user.com'), findsOneWidget);
   });
 
   testWidgets('Successful admin login navigation', (WidgetTester tester) async {
     await tester.pumpWidget(buildTestableWidget());
 
     // Enter admin credentials (based on default seed)
-    await tester.enterText(find.byType(TextFormField).first, 'anshad');
+    await tester.enterText(find.byType(TextFormField).first, 'anshad@eagleflow.com');
     await tester.enterText(find.byType(TextFormField).last, 'anshad123');
 
     // Tap login
@@ -97,7 +97,7 @@ void main() {
   ) async {
     await tester.pumpWidget(buildTestableWidget());
 
-    await tester.enterText(find.byType(TextFormField).first, 'anshad');
+    await tester.enterText(find.byType(TextFormField).first, 'anshad@eagleflow.com');
     await tester.enterText(find.byType(TextFormField).last, 'anshad123');
 
     // Tap login
