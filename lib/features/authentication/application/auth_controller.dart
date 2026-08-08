@@ -25,7 +25,8 @@ class AuthController extends ChangeNotifier {
   bool get canManageStock => _currentUser?.canManageStock ?? false;
   bool get canViewReports => _currentUser?.canViewReports ?? false;
   bool get canManageUsers => _currentUser?.canManageUsers ?? false;
-  bool get canCancelAnyReservation => _currentUser?.canCancelAnyReservation ?? false;
+  bool get canCancelAnyReservation =>
+      _currentUser?.canCancelAnyReservation ?? false;
 
   @visibleForTesting
   void setCurrentUserForTesting(AppUser? user) {
@@ -68,11 +69,6 @@ class AuthController extends ChangeNotifier {
 
       if (result.success && result.user != null) {
         _currentUser = result.user;
-
-        if (!rememberMe) {
-          // Keep the runtime user, but remove from persistent storage
-          await _repository.clearRememberedSession();
-        }
 
         return true;
       } else {

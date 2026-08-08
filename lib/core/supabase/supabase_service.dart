@@ -139,7 +139,7 @@ class SupabaseService extends ChangeNotifier {
           .from('app_users')
           .select('id')
           .limit(1)
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 2));
       return true;
     } catch (_) {
       return false;

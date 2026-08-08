@@ -14,6 +14,7 @@ import '../../features/stock/application/stock_controller.dart';
 import '../../features/stock/application/stock_out_by_quotation_service.dart';
 import '../../features/authentication/domain/auth_repository.dart';
 import '../../features/authentication/data/sembast_auth_repository.dart';
+import '../../features/authentication/data/supabase_auth_repository.dart';
 import '../../features/authentication/application/auth_controller.dart';
 import '../../features/products/application/bulk_import_service.dart';
 import '../supabase/supabase_service.dart';
@@ -32,7 +33,18 @@ class ServiceLocator {
     _instance = ServiceLocator._internal();
   }
 
-  late final AuthRepository authRepository = SembastAuthRepository();
+  @visibleForTesting
+  AuthRepository? mockAuthRepository;
+
+  late final SembastAuthRepository _sembastAuthRepository =
+      SembastAuthRepository();
+
+  late final AuthRepository authRepository =
+      mockAuthRepository ??
+      SupabaseAuthRepository(
+        supabaseService: supabaseService,
+        localCache: _sembastAuthRepository,
+      );
 
   late final AuthController authController = AuthController(authRepository);
 
@@ -72,7 +84,7 @@ class ServiceLocator {
 
   late final StockController stockController = StockController(stockRepository);
 
-  late final ReservationCompletionService reservationCompletionService = 
+  late final ReservationCompletionService reservationCompletionService =
       ReservationCompletionService();
 
   late final StockOutByQuotationService stockOutByQuotationService =
@@ -89,21 +101,16 @@ class ServiceLocator {
     supabaseService,
   );
 
-  late final SembastReservationRepository _sembastReservationRepository = 
+  late final SembastReservationRepository _sembastReservationRepository =
       SembastReservationRepository();
 
-  late final ReservationRepository reservationRepository = SupabaseReservationRepository(
-    localCache: _sembastReservationRepository,
-    supabase: supabaseService,
-  );
+  late final ReservationRepository reservationRepository =
+      SupabaseReservationRepository(
+        localCache: _sembastReservationRepository,
+        supabase: supabaseService,
+      );
 
   Future<void> init() async {
-    try {
-      await authController.initialize();
-    } catch (e) {
-      // Safely ignore failures to prevent blocking app startup
-    }
-
     // Phase 7: Initialize Supabase connection.
     // Runs before repository inits so that remote data can be synced on startup.
     // A Supabase failure never blocks startup (fallback to local Sembast).
@@ -111,6 +118,12 @@ class ServiceLocator {
       await supabaseService.initialize();
     } catch (e) {
       debugPrint('Supabase init failed. Continuing offline. Error: $e');
+    }
+
+    try {
+      await authController.initialize();
+    } catch (e) {
+      // Safely ignore failures to prevent blocking app startup
     }
 
     await productRepository.init();

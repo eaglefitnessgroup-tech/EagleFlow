@@ -22,70 +22,78 @@ void main() {
       await db.close();
     });
 
-    test(
-      '1. Default users are seeded correctly and only hashes are stored',
-      () async {
-        final usersStore = stringMapStoreFactory.store('users');
-        final records = await usersStore.find(db);
+    test('1. Default users are seeded correctly with empty hashes', () async {
+      final usersStore = stringMapStoreFactory.store('users');
+      final records = await usersStore.find(db);
 
-        expect(records.length, 7);
+      expect(records.length, 7);
 
-        final admin = records.firstWhere((r) => r.key == 'ADMIN-001').value;
-        final sales = records.firstWhere((r) => r.key == 'SALES-001').value;
+      final admin = records.firstWhere((r) => r.key == 'ADMIN-001').value;
+      final sales = records.firstWhere((r) => r.key == 'SALES-001').value;
 
-        expect(admin['username'], 'anshad');
-        expect(sales['username'], 'ajmal');
+      expect(admin['username'], 'anshad');
+      expect(sales['username'], 'ajmal');
 
-        expect(admin['passwordHash'], isNot('anshad123'));
-        expect(sales['passwordHash'], isNot('ajmal123'));
-        expect(admin['password'], isNull);
-      },
-    );
+      expect(admin['passwordHash'], '');
+      expect(sales['passwordHash'], '');
+    });
 
-    test('2. Admin login success', () async {
+    test('2. Admin login success (now fails offline)', () async {
       final result = await repository.login(
         username: 'anshad',
         password: 'anshad123',
       );
 
-      expect(result.success, true);
-      expect(result.user, isNotNull);
-      expect(result.user!.role, UserRole.admin);
+      expect(result.success, false);
+      expect(
+        result.message,
+        'Offline login not supported. Please connect to the internet.',
+      );
     });
 
-    test('3. Salesperson login success', () async {
+    test('3. Salesperson login success (now fails offline)', () async {
       final result = await repository.login(
         username: 'ajmal',
         password: 'ajmal123',
       );
 
-      expect(result.success, true);
-      expect(result.user, isNotNull);
-      expect(result.user!.role, UserRole.sales);
-    });
-
-    test('4. Case-insensitive and trimmed username login', () async {
-      final result = await repository.login(
-        username: '  aNshaD  ',
-        password: 'anshad123',
+      expect(result.success, false);
+      expect(
+        result.message,
+        'Offline login not supported. Please connect to the internet.',
       );
-
-      expect(result.success, true);
-      expect(result.user!.username, 'anshad');
     });
 
-    test('5. Invalid password rejection', () async {
+    test(
+      '4. Case-insensitive and trimmed username login (now fails offline)',
+      () async {
+        final result = await repository.login(
+          username: '  aNshaD  ',
+          password: 'anshad123',
+        );
+
+        expect(result.success, false);
+        expect(
+          result.message,
+          'Offline login not supported. Please connect to the internet.',
+        );
+      },
+    );
+
+    test('5. Invalid password rejection (now fails offline)', () async {
       final result = await repository.login(
         username: 'anshad',
         password: 'wrongpassword',
       );
 
       expect(result.success, false);
-      expect(result.message, 'Invalid username or password.');
-      expect(result.user, isNull);
+      expect(
+        result.message,
+        'Offline login not supported. Please connect to the internet.',
+      );
     });
 
-    test('6. Inactive user rejection', () async {
+    test('6. Inactive user rejection (now fails offline)', () async {
       // Deactivate admin manually
       final usersStore = stringMapStoreFactory.store('users');
       final adminRecord = await usersStore.record('ADMIN-001').get(db);
@@ -99,19 +107,32 @@ void main() {
       );
 
       expect(result.success, false);
-      expect(result.message, 'This account is inactive.');
-      expect(result.user, isNull);
+      expect(
+        result.message,
+        'Offline login not supported. Please connect to the internet.',
+      );
     });
 
-    test('7. Session persistence after successful login', () async {
-      await repository.login(username: 'ajmal', password: 'ajmal123');
+    test('7. Session caching and retrieval via cacheSession', () async {
+      final now = DateTime.now();
+      final user = AppUser(
+        id: 'ADMIN-001',
+        name: 'Anshad',
+        username: 'anshad',
+        passwordHash: '',
+        role: UserRole.admin,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await repository.cacheSession(user);
 
       final hasSession = await repository.hasRememberedSession();
       expect(hasSession, true);
 
-      final user = await repository.getCurrentUser();
-      expect(user, isNotNull);
-      expect(user!.username, 'ajmal');
+      final cachedUser = await repository.getCurrentUser();
+      expect(cachedUser, isNotNull);
+      expect(cachedUser!.username, 'anshad');
 
       // Verify passwordHash is not stored in session
       final sessionStore = stringMapStoreFactory.store('auth_session');
@@ -120,7 +141,18 @@ void main() {
     });
 
     test('8. Logout clears session', () async {
-      await repository.login(username: 'anshad', password: 'anshad123');
+      final now = DateTime.now();
+      final user = AppUser(
+        id: 'ADMIN-001',
+        name: 'Anshad',
+        username: 'anshad',
+        passwordHash: '',
+        role: UserRole.admin,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await repository.cacheSession(user);
       expect(await repository.hasRememberedSession(), true);
 
       await repository.logout();

@@ -167,7 +167,7 @@ class BackupService {
     for (var r in records) {
       final map = Map<String, dynamic>.from(r.value);
       map.remove('passwordHash');
-      map.remove('auth_uid'); // Supabase UID if present
+      map.remove('supabase_uid'); // Supabase UID if present
       result[r.key] = map;
     }
     return result;
@@ -198,8 +198,8 @@ class BackupService {
         if (existing.containsKey('passwordHash')) {
           updatedData['passwordHash'] = existing['passwordHash'];
         }
-        if (existing.containsKey('auth_uid')) {
-          updatedData['auth_uid'] = existing['auth_uid'];
+        if (existing.containsKey('supabase_uid')) {
+          updatedData['supabase_uid'] = existing['supabase_uid'];
         }
 
         await store.record(entry.key).put(txn, updatedData);

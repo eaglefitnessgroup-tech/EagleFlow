@@ -7,6 +7,7 @@ import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
+import '../../../../../features/authentication/fake_auth_repository.dart';
 
 void main() {
   group('ProductPicker Widget Tests', () {
@@ -16,14 +17,15 @@ void main() {
       final dbName = 'test_picker_${DateTime.now().millisecondsSinceEpoch}.db';
       db = await databaseFactoryMemory.openDatabase(dbName);
       DatabaseService().setDatabaseForTesting(db);
-      
+
       ServiceLocator.resetForTesting();
       final localRepo = SembastProductRepository();
       for (var product in sampleProducts) {
         await localRepo.addProduct(product);
       }
       ServiceLocator().mockProductRepository = localRepo;
-      
+
+      ServiceLocator().mockAuthRepository = FakeAuthRepository();
       await ServiceLocator().init();
     });
 

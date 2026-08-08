@@ -277,27 +277,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                             ),
                             const SizedBox(height: 32),
-                            const Divider(),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Demo accounts',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Admin: admin / admin123\nSalesperson: sales / sales123',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.secondaryText,
-                                height: 1.5,
-                              ),
-                            ),
                           ],
                         ),
                       ),

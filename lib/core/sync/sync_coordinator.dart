@@ -13,6 +13,8 @@ class SyncCoordinator {
 
   RealtimeChannel? _subscription;
   bool _isStarted = false;
+  bool _isProcessingQueue = false;
+  Timer? _fallbackTimer;
 
   final StoreRef<String, Map<String, dynamic>> _queueStore =
       stringMapStoreFactory.store('pending_sync_queue');
@@ -25,9 +27,12 @@ class SyncCoordinator {
 
     if (client == null) return;
 
-    await _ensureSupabaseAuth();
-    _setupRealtime();
-    await processRetryQueue();
+    // Run network tasks asynchronously to avoid blocking app startup
+    _ensureSupabaseAuth().then((_) {
+      _setupRealtime();
+      _startFallbackTimer();
+      processRetryQueue();
+    });
   }
 
   Future<void> _ensureSupabaseAuth() async {
@@ -50,15 +55,51 @@ class SyncCoordinator {
         // Map local business ID to Supabase Auth UUID directly.
         await client!
             .from('app_users')
-            .update({'auth_uid': uid})
-            .eq('id', localUser.id);
+            .update({'supabase_uid': uid})
+            .eq('id', localUser.id)
+            .timeout(const Duration(seconds: 5));
       } catch (e) {
-        debugPrint('Failed to map user auth_uid: $e');
+        debugPrint('Failed to map user supabase_uid: $e');
       }
     }
   }
 
+  void _startFallbackTimer() {
+    _fallbackTimer?.cancel();
+    _fallbackTimer = Timer.periodic(const Duration(seconds: 10), (_) => _onFallbackTick());
+  }
+
+  Future<void> _onFallbackTick() async {
+    if (client == null || _isProcessingQueue) return;
+
+    try {
+      final db = await DatabaseService().database;
+      final count = await _queueStore.count(db);
+      if (count == 0) return;
+
+      // Perform lightweight health check
+      await client!
+          .from('app_users')
+          .select('id')
+          .limit(1)
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // Network or auth error, skip processing
+      return;
+    }
+
+    await processRetryQueue();
+  }
+
+  @visibleForTesting
+  Future<void> triggerFallbackTickForTesting() => _onFallbackTick();
+
   void _setupRealtime() {
+    if (_subscription != null) {
+      client?.removeChannel(_subscription!);
+      _subscription = null;
+    }
+
     _subscription = client!
         .channel('public:sync')
         .onPostgresChanges(
@@ -78,14 +119,22 @@ class SyncCoordinator {
             }
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) {
+          debugPrint('SyncCoordinator Realtime Status: $status, error: $error');
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            debugPrint('SyncCoordinator: Realtime reconnected, triggering processRetryQueue()');
+            processRetryQueue();
+          }
+        });
   }
 
-
-
   void dispose() {
-    _subscription?.unsubscribe();
-    _subscription = null;
+    _fallbackTimer?.cancel();
+    _fallbackTimer = null;
+    if (_subscription != null) {
+      client?.removeChannel(_subscription!);
+      _subscription = null;
+    }
     _isStarted = false;
   }
 
@@ -95,11 +144,15 @@ class SyncCoordinator {
     String type,
     Map<String, dynamic> payload,
   ) async {
-    if (type != 'products' && type != 'quotations' && type != 'reservations') return;
+    if (type != 'products' && type != 'quotations' && type != 'reservations') {
+      return;
+    }
 
     final db = await DatabaseService().database;
     final id = payload['id'] as String;
     final key = '${type}_$id';
+
+    debugPrint('SyncCoordinator: queueFailedWrite triggered for type: $type, id: $id');
 
     await _queueStore.record(key).put(db, {
       'type': type,
@@ -109,19 +162,32 @@ class SyncCoordinator {
   }
 
   Future<void> processRetryQueue() async {
-    if (client == null) return;
+    debugPrint('SyncCoordinator: processRetryQueue() called');
+    if (client == null) {
+      debugPrint('SyncCoordinator: client is null, aborting processRetryQueue');
+      return;
+    }
+    if (_isProcessingQueue) {
+      debugPrint('SyncCoordinator: _isProcessingQueue is true, aborting processRetryQueue');
+      return;
+    }
 
-    final db = await DatabaseService().database;
-    final records = await _queueStore.find(db);
+    _isProcessingQueue = true;
+    try {
+      final db = await DatabaseService().database;
+      final records = await _queueStore.find(db);
+      debugPrint('SyncCoordinator: processRetryQueue found ${records.length} items in queue');
 
     for (var record in records) {
       final type = record.value['type'] as String;
       final payload = record.value['payload'] as Map<String, dynamic>;
 
+      debugPrint('SyncCoordinator: Processing record ${record.key} of type $type');
       try {
         if (type == 'products') {
           await client!.from('products').upsert(payload);
           await _queueStore.record(record.key).delete(db);
+          debugPrint('SyncCoordinator: Successfully processed and deleted ${record.key}');
         } else if (type == 'quotations') {
           // Remove imageBytes if present, just in case
           if (payload['lineItems'] != null) {
@@ -153,30 +219,40 @@ class SyncCoordinator {
               }
             }
             await _queueStore.record(record.key).delete(db);
+            debugPrint('SyncCoordinator: Successfully processed and deleted ${record.key}');
           }
         } else if (type == 'reservations') {
           await client!.from('reservations').upsert(payload);
           await _queueStore.record(record.key).delete(db);
+          debugPrint('SyncCoordinator: Successfully processed and deleted ${record.key}');
         }
       } catch (e) {
-        if (type == 'reservations' && (e.toString().contains('duplicate key value') || e.toString().contains('23505'))) {
+        debugPrint('SyncCoordinator: Exception during processing ${record.key}: $e');
+        if (type == 'reservations' &&
+            (e.toString().contains('duplicate key value') ||
+                e.toString().contains('23505'))) {
           // Unique constraint violation
           await _queueStore.record(record.key).delete(db);
           // Cancel local reservation and notify
           final id = payload['id'] as String;
           await ServiceLocator().reservationRepository.cancelReservation(id);
-          
+
           // Re-sync from server to refresh cache
           await ServiceLocator().reservationRepository.syncFromServer();
-          
+
           // Show message
           // Ideally we use a stream or global key to show a snackbar.
           // For now, we will print it, or if there's a way to show global notification:
-          debugPrint("Another user reserved this product while you were offline.");
+          debugPrint(
+            "Another user reserved this product while you were offline.",
+          );
         } else {
           debugPrint('Retry failed for ${record.key}: $e');
         }
       }
+    }
+    } finally {
+      _isProcessingQueue = false;
     }
   }
 

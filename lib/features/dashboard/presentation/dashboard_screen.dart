@@ -350,64 +350,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-        return GridView.count(
-          crossAxisCount: crossAxisCount,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.15,
-          children: [
+        final children = [
+          _buildActionCard(
+            title: 'Products',
+            icon: Icons.inventory_2_outlined,
+            onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+          ),
+          _buildActionCard(
+            title: 'Previous\nQuotations',
+            icon: Icons.history_outlined,
+            onTap: () =>
+                Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
+          ),
+          _buildActionCard(
+            title: 'Stock',
+            icon: Icons.warehouse_outlined,
+            onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+          ),
+          _buildActionCard(
+            title: 'Low Stock',
+            icon: Icons.warning_amber_rounded,
+            iconColor: Colors.amber.shade700,
+            onTap: () =>
+                _showComingSoonSnackBar('Low Stock module coming soon.'),
+          ),
+          if (ServiceLocator().authController.canManageStock)
             _buildActionCard(
-              title: 'Products',
-              icon: Icons.inventory_2_outlined,
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
-            ),
-            _buildActionCard(
-              title: 'Previous\nQuotations',
-              icon: Icons.history_outlined,
+              title: 'Stock\nManagement',
+              icon: Icons.admin_panel_settings_outlined,
               onTap: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
+                  Navigator.of(context).pushNamed(AppRoutes.stockManagement),
             ),
+          if (ServiceLocator().authController.canViewReports)
             _buildActionCard(
-              title: 'Stock',
-              icon: Icons.warehouse_outlined,
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+              title: 'Reports',
+              icon: Icons.bar_chart_outlined,
+              onTap: () => _showComingSoonSnackBar('Reports module coming soon.'),
             ),
+          if (ServiceLocator().authController.canManageUsers)
             _buildActionCard(
-              title: 'Low Stock',
-              icon: Icons.warning_amber_rounded,
-              iconColor: Colors.amber.shade700,
-              onTap: () =>
-                  _showComingSoonSnackBar('Low Stock module coming soon.'),
+              title: 'User\nManagement',
+              icon: Icons.group_outlined,
+              onTap: () => _showComingSoonSnackBar('User Management coming soon.'),
             ),
-            if (ServiceLocator().authController.canManageStock)
-              _buildActionCard(
-                title: 'Stock\nManagement',
-                icon: Icons.admin_panel_settings_outlined,
-                onTap: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.stockManagement),
+          if (ServiceLocator().authController.isAdmin)
+            _buildActionCard(
+              title: 'Settings',
+              icon: Icons.settings_outlined,
+              onTap: () => _showComingSoonSnackBar('Settings coming soon.'),
+            ),
+        ];
+
+        final rows = <Widget>[];
+        for (var i = 0; i < children.length; i += crossAxisCount) {
+          final rowChildren = <Widget>[];
+          for (var j = 0; j < crossAxisCount; j++) {
+            if (i + j < children.length) {
+              rowChildren.add(Expanded(child: children[i + j]));
+            } else {
+              rowChildren.add(Expanded(child: const SizedBox()));
+            }
+            if (j < crossAxisCount - 1) {
+              rowChildren.add(const SizedBox(width: 16));
+            }
+          }
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: rowChildren,
               ),
-            if (ServiceLocator().authController.canViewReports)
-              _buildActionCard(
-                title: 'Reports',
-                icon: Icons.bar_chart_outlined,
-                onTap: () => _showComingSoonSnackBar('Reports module coming soon.'),
-              ),
-            if (ServiceLocator().authController.canManageUsers)
-              _buildActionCard(
-                title: 'User\nManagement',
-                icon: Icons.group_outlined,
-                onTap: () => _showComingSoonSnackBar('User Management coming soon.'),
-              ),
-            if (ServiceLocator().authController.isAdmin)
-              _buildActionCard(
-                title: 'Settings',
-                icon: Icons.settings_outlined,
-                onTap: () => _showComingSoonSnackBar('Settings coming soon.'),
-              ),
-          ],
-        );
+            ),
+          );
+          if (i + crossAxisCount < children.length) {
+            rows.add(const SizedBox(height: 16));
+          }
+        }
+
+        return Column(children: rows);
       },
     );
   }
@@ -436,11 +456,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, color: iconColor ?? AppColors.primaryBlue, size: 28),
-            const Spacer(),
+            const SizedBox(height: 16),
             Text(
               title,
               style: const TextStyle(

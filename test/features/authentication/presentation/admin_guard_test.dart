@@ -10,6 +10,7 @@ import 'package:eagleflow/features/stock/presentation/stock_out_by_quotation_scr
 import 'package:eagleflow/features/products/presentation/add_edit_product_screen.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
+import '../fake_auth_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -49,6 +50,9 @@ void main() {
       'guard_test_${DateTime.now().microsecondsSinceEpoch}.db',
     );
     DatabaseService().setDatabaseForTesting(db);
+
+    // Inject fake repository
+    ServiceLocator().mockAuthRepository = FakeAuthRepository();
 
     // Initialize only the auth controller so that SembastAuthRepository's
     // _initDefaultUsers() async write completes (draining its Sembast timer)

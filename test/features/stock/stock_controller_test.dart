@@ -5,6 +5,7 @@ import 'package:eagleflow/features/stock/domain/stock_repository.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
+import '../../features/authentication/fake_auth_repository.dart';
 
 class MockStockRepository implements StockRepository {
   List<StockMovement> movements = [];
@@ -74,9 +75,11 @@ void main() {
 
     setUp(() async {
       ServiceLocator.resetForTesting();
-      final dbName = 'test_stock_controller_${DateTime.now().microsecondsSinceEpoch}.db';
+      final dbName =
+          'test_stock_controller_${DateTime.now().microsecondsSinceEpoch}.db';
       db = await databaseFactoryMemory.openDatabase(dbName);
       DatabaseService().setDatabaseForTesting(db);
+      ServiceLocator().mockAuthRepository = FakeAuthRepository();
       await ServiceLocator().init();
 
       repo = MockStockRepository();

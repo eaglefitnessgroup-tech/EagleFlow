@@ -5,6 +5,7 @@ import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:eagleflow/app/routes/app_routes.dart';
+import '../../../features/authentication/fake_auth_repository.dart';
 
 void main() {
   setUp(() async {
@@ -14,6 +15,7 @@ void main() {
     final db = await databaseFactoryMemory.openDatabase(dbName);
     DatabaseService().setDatabaseForTesting(db);
 
+    ServiceLocator().mockAuthRepository = FakeAuthRepository();
     await ServiceLocator().init();
     await ServiceLocator().authController.logout();
   });

@@ -10,6 +10,7 @@ import 'package:eagleflow/features/products/presentation/bulk_import_screen.dart
 import 'package:eagleflow/app/routes/app_routes.dart';
 import 'package:eagleflow/core/guards/admin_guard.dart';
 import 'package:eagleflow/core/supabase/supabase_service.dart';
+import '../../../features/authentication/fake_auth_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,6 +77,7 @@ void main() {
     final db = await databaseFactoryMemory.openDatabase(dbName);
     DatabaseService().setDatabaseForTesting(db);
 
+    ServiceLocator().mockAuthRepository = FakeAuthRepository();
     await ServiceLocator().init();
     await ServiceLocator().authController.logout();
 

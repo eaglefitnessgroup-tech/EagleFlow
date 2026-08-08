@@ -3,7 +3,6 @@ import '../../../core/database/database_service.dart';
 import '../domain/app_user.dart';
 import '../domain/auth_repository.dart';
 import '../domain/auth_result.dart';
-import '../utils/password_utils.dart';
 
 class SembastAuthRepository implements AuthRepository {
   final DatabaseService _databaseService;
@@ -32,14 +31,14 @@ class SembastAuthRepository implements AuthRepository {
 
     if (count == 0) {
       final now = DateTime.now();
-      
+
       final defaultUsers = [
         // Admins
         AppUser(
           id: 'ADMIN-001',
           name: 'Anshad',
           username: 'anshad',
-          passwordHash: PasswordUtils.hashPassword('anshad123'),
+          passwordHash: '',
           role: UserRole.admin,
           createdAt: now,
           updatedAt: now,
@@ -48,7 +47,7 @@ class SembastAuthRepository implements AuthRepository {
           id: 'ADMIN-002',
           name: 'Faris',
           username: 'faris',
-          passwordHash: PasswordUtils.hashPassword('faris123'),
+          passwordHash: '',
           role: UserRole.admin,
           createdAt: now,
           updatedAt: now,
@@ -58,7 +57,7 @@ class SembastAuthRepository implements AuthRepository {
           id: 'SALES-001',
           name: 'Ajmal',
           username: 'ajmal',
-          passwordHash: PasswordUtils.hashPassword('ajmal123'),
+          passwordHash: '',
           role: UserRole.sales,
           createdAt: now,
           updatedAt: now,
@@ -67,7 +66,7 @@ class SembastAuthRepository implements AuthRepository {
           id: 'SALES-002',
           name: 'Harshad',
           username: 'harshad',
-          passwordHash: PasswordUtils.hashPassword('harshad123'),
+          passwordHash: '',
           role: UserRole.sales,
           createdAt: now,
           updatedAt: now,
@@ -76,7 +75,7 @@ class SembastAuthRepository implements AuthRepository {
           id: 'SALES-003',
           name: 'Nabeel',
           username: 'nabeel',
-          passwordHash: PasswordUtils.hashPassword('nabeel123'),
+          passwordHash: '',
           role: UserRole.sales,
           createdAt: now,
           updatedAt: now,
@@ -85,7 +84,7 @@ class SembastAuthRepository implements AuthRepository {
           id: 'SALES-004',
           name: 'Naser',
           username: 'naser',
-          passwordHash: PasswordUtils.hashPassword('naser123'),
+          passwordHash: '',
           role: UserRole.sales,
           createdAt: now,
           updatedAt: now,
@@ -94,7 +93,7 @@ class SembastAuthRepository implements AuthRepository {
           id: 'SALES-005',
           name: 'Shijo',
           username: 'shijo',
-          passwordHash: PasswordUtils.hashPassword('shijo123'),
+          passwordHash: '',
           role: UserRole.sales,
           createdAt: now,
           updatedAt: now,
@@ -112,45 +111,18 @@ class SembastAuthRepository implements AuthRepository {
     required String username,
     required String password,
   }) async {
-    final cleanUsername = username.trim();
-    final cleanPassword = password.trim();
+    // SembastAuthRepository no longer handles credentials.
+    return AuthResult.failure(
+      'Offline login not supported. Please connect to the internet.',
+    );
+  }
 
-    if (cleanUsername.isEmpty || cleanPassword.isEmpty) {
-      return AuthResult.failure('Invalid username or password.');
-    }
-
+  /// Caches the authenticated user session locally for offline restarts.
+  Future<void> cacheSession(AppUser user) async {
     final db = await _db;
-    final records = await _usersStore.find(db);
-
-    AppUser? matchedUser;
-
-    for (var record in records) {
-      final user = AppUser.fromJson(record.value);
-      if (user.username.toLowerCase() == cleanUsername.toLowerCase()) {
-        matchedUser = user;
-        break;
-      }
-    }
-
-    if (matchedUser == null ||
-        !PasswordUtils.verifyPassword(
-          cleanPassword,
-          matchedUser.passwordHash,
-        )) {
-      return AuthResult.failure('Invalid username or password.');
-    }
-
-    if (!matchedUser.isActive) {
-      return AuthResult.failure('This account is inactive.');
-    }
-
-    // Save session
-    final sessionData = matchedUser.toJson();
-    // Do not store the password hash in the session
+    final sessionData = user.toJson();
     sessionData.remove('passwordHash');
     await _sessionStore.record(_sessionKey).put(db, sessionData);
-
-    return AuthResult.success(matchedUser);
   }
 
   @override
