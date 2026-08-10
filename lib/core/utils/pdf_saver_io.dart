@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 
@@ -8,11 +7,7 @@ Future<String?> savePdf(Uint8List bytes, String filename) async {
     fileName: filename,
     type: FileType.custom,
     allowedExtensions: ['pdf'],
+    bytes: bytes,
   );
-  if (outputPath != null) {
-    final file = File(outputPath);
-    await file.writeAsBytes(bytes);
-    return outputPath;
-  }
-  return null;
+  return outputPath;
 }
