@@ -119,13 +119,33 @@ class _ProductImageState extends State<ProductImage> {
       return;
     }
 
-    // 4. Download from Supabase
+    // 4. Check local repository cache (Resilience fallback)
     setState(() {
       _isLoading = true;
       _hasError = false;
       _downloadedBytes = null;
     });
 
+    try {
+      final localProduct = await ServiceLocator()
+          .productRepository
+          .getProductWithImage(widget.product);
+      if (localProduct.imageBytes != null && localProduct.imageBytes!.isNotEmpty) {
+        if (mounted) {
+          ProductImage._imageCache[imageId] = localProduct.imageBytes!;
+          setState(() {
+            _isLoading = false;
+            _hasError = false;
+            _downloadedBytes = localProduct.imageBytes;
+          });
+        }
+        return;
+      }
+    } catch (_) {
+      // Ignore local cache read errors and proceed to remote download
+    }
+
+    // 5. Download from Supabase
     try {
       final client =
           widget.testClient ?? ServiceLocator().supabaseService.client;

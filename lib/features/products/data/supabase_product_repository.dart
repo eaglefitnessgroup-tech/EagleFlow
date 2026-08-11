@@ -201,7 +201,7 @@ class SupabaseProductRepository implements ProductRepository {
                 .uploadBinary(uploadPath, updatedProduct.imageBytes!);
           }
         } catch (e) {
-          // Ignore image upload errors
+          debugPrint('Storage Upload Error: Failed to upload product image. Product data was saved, but the image may be missing on the server. Details: $e');
         }
 
         // Best-effort image_id update on server
@@ -276,7 +276,7 @@ class SupabaseProductRepository implements ProductRepository {
           }
         }
       } catch (e) {
-        // Ignore image sync errors
+        debugPrint('Storage Upload Error: Failed to upload/cleanup product image during update. Product data was updated, but the image state on the server may be inconsistent. Details: $e');
       }
     }
 

@@ -94,12 +94,12 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['zip', 'xlsx', 'csv'],
-        withData: true,
       );
       if (result == null || result.files.isEmpty) return;
 
       final file = result.files.first;
-      if (file.bytes == null) {
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
         _showError('Could not read file data.');
         return;
       }
@@ -111,7 +111,6 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
         _userMessage = '';
       });
 
-      final bytes = file.bytes!;
       final name = file.name.toLowerCase();
       final service = ServiceLocator().bulkImportService;
 

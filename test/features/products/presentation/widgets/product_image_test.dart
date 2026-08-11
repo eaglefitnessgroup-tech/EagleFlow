@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/products/presentation/widgets/product_image.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/product_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:eagleflow/core/di/service_locator.dart';
 
 // Manual Fakes for Supabase Client
 class FakeSupabaseClient implements SupabaseClient {
@@ -57,6 +59,9 @@ void main() {
   late FakeSupabaseStorageClient fakeStorageClient;
   late FakeSupabaseClient fakeSupabaseClient;
 
+  // Manual Fake for ProductRepository
+  late FakeProductRepository fakeProductRepository;
+
   final dummyProduct = Product(
     id: 'test-id',
     productCode: 'TEST01',
@@ -69,9 +74,12 @@ void main() {
   );
 
   setUp(() {
+    ServiceLocator.resetForTesting();
     fakeStorageFileApi = FakeStorageFileApi();
     fakeStorageClient = FakeSupabaseStorageClient(fakeStorageFileApi);
     fakeSupabaseClient = FakeSupabaseClient(fakeStorageClient);
+    fakeProductRepository = FakeProductRepository();
+    ServiceLocator().mockProductRepository = fakeProductRepository;
   });
 
   Widget buildTestableWidget(Widget widget) {
@@ -302,4 +310,14 @@ void main() {
     expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
     expect(fakeStorageFileApi.downloadCallCount, 1);
   });
+}
+
+class FakeProductRepository implements ProductRepository {
+  @override
+  Future<Product> getProductWithImage(Product product) async {
+    return product; // Return unmodified product (no local image)
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

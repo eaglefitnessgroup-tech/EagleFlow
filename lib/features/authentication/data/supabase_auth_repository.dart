@@ -85,6 +85,9 @@ class SupabaseAuthRepository implements AuthRepository {
       // 3. Cache session locally
       await _localCache.cacheSession(appUser);
 
+      // 4. Refresh connectivity state since we are now authenticated
+      await _supabaseService.healthCheck();
+
       return AuthResult.success(appUser);
     } on AuthException catch (_) {
       return AuthResult.failure('Invalid email or password.');
