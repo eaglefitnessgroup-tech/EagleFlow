@@ -5,6 +5,7 @@ import '../../quotations/domain/quotation.dart';
 import '../../quotations/data/quotation_repository.dart';
 import '../domain/stock_movement.dart';
 import '../../../core/di/service_locator.dart';
+import '../../../core/supabase/supabase_service.dart';
 
 class StockOutByQuotationResult {
   final bool success;
@@ -40,6 +41,13 @@ class StockOutByQuotationService {
       return StockOutByQuotationResult(
         success: false,
         message: 'Quotation number cannot be empty.',
+      );
+    }
+
+    if (SupabaseService().isInitialized && !SupabaseService().isConnected) {
+      return StockOutByQuotationResult(
+        success: false,
+        message: 'Cannot process stock out while offline.',
       );
     }
 
@@ -84,6 +92,8 @@ class StockOutByQuotationService {
     final db = await DatabaseService().database;
 
     try {
+      List<StockMovement> savedMovements = [];
+
       final updatedQuotation = await db.transaction((txn) async {
         // Re-verify quotation state inside transaction
         final qtRecord = await _quotationsStore.record(quotation.id).get(txn);
@@ -157,6 +167,7 @@ class StockOutByQuotationService {
             .record(modifiedQt.id)
             .put(txn, modifiedQt.toJson());
 
+        savedMovements = movementsToSave;
         return modifiedQt;
       });
 
@@ -164,6 +175,26 @@ class StockOutByQuotationService {
       for (var item in eligibleItems) {
         if (item.productId != null) {
           await ServiceLocator().reservationCompletionService.completeReservation(item.productId!);
+        }
+      }
+
+      // Sync to Supabase
+      final client = SupabaseService().client;
+      if (client != null && savedMovements.isNotEmpty) {
+        try {
+          final inserts = savedMovements.map((m) => {
+            'id': m.id,
+            'product_id': m.productId,
+            'type': m.type.name,
+            'quantity': m.quantity,
+            'reference': m.reference,
+            'movement_date': m.movementDate.toUtc().toIso8601String(),
+            'created_at': m.createdAt.toUtc().toIso8601String(),
+            'created_by': m.createdBy,
+          }).toList();
+          await client.from('stock_movements').insert(inserts);
+        } catch (e) {
+          // Fire and forget, allow local operation to succeed even if remote fails
         }
       }
 
