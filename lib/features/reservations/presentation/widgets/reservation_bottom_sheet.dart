@@ -8,8 +8,15 @@ import 'package:uuid/uuid.dart';
 
 class ReservationBottomSheet extends StatefulWidget {
   final Product product;
+  final int currentStock;
+  final int availableStock;
 
-  const ReservationBottomSheet({super.key, required this.product});
+  const ReservationBottomSheet({
+    super.key,
+    required this.product,
+    required this.currentStock,
+    required this.availableStock,
+  });
 
   @override
   State<ReservationBottomSheet> createState() => _ReservationBottomSheetState();
@@ -162,9 +169,9 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildStockPill('Physical', widget.product.openingStock),
+                    _buildStockPill('Physical', widget.currentStock),
                     const SizedBox(width: 8),
-                    _buildStockPill('Available', widget.product.openingStock),
+                    _buildStockPill('Available', widget.availableStock),
                   ],
                 ),
               ],

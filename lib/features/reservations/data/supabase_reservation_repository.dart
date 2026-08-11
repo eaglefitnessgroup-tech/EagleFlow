@@ -112,7 +112,12 @@ class SupabaseReservationRepository implements ReservationRepository {
       }
     }
 
-    if (totalReserved + reservation.quantity > product.openingStock) {
+    final currentStock = await ServiceLocator().stockRepository.calculateCurrentStock(
+      productId: product.id,
+      openingStock: product.openingStock,
+    );
+
+    if (totalReserved + reservation.quantity > currentStock) {
       throw Exception('Not enough stock available for reservation.');
     }
 

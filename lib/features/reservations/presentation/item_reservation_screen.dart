@@ -19,6 +19,7 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
   List<Product> _allProducts = [];
   List<Product> _filteredProducts = [];
   List<Reservation> _activeReservations = [];
+  Map<String, int> _currentStockMap = {};
   bool _isLoading = true;
   String _searchQuery = '';
 
@@ -46,11 +47,21 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
       final activeProducts = products.where((p) => p.isActive).toList();
       final reservations = await ServiceLocator().reservationRepository.getActiveReservations();
       
+      final stockRepo = ServiceLocator().stockRepository;
+      final stockMap = <String, int>{};
+      await Future.wait(activeProducts.map((p) async {
+        stockMap[p.id] = await stockRepo.calculateCurrentStock(
+          productId: p.id,
+          openingStock: p.openingStock,
+        );
+      }));
+
       if (mounted) {
         setState(() {
           _allProducts = activeProducts;
           _filteredProducts = activeProducts;
           _activeReservations = reservations;
+          _currentStockMap = stockMap;
           _isLoading = false;
         });
       }
@@ -66,9 +77,20 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
   Future<void> _loadReservations() async {
     try {
       final reservations = await ServiceLocator().reservationRepository.getActiveReservations();
+      
+      final stockRepo = ServiceLocator().stockRepository;
+      final stockMap = <String, int>{};
+      await Future.wait(_allProducts.map((p) async {
+        stockMap[p.id] = await stockRepo.calculateCurrentStock(
+          productId: p.id,
+          openingStock: p.openingStock,
+        );
+      }));
+
       if (mounted) {
         setState(() {
           _activeReservations = reservations;
+          _currentStockMap = stockMap;
         });
       }
     } catch (e) {
@@ -96,11 +118,19 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
   }
 
   void _onProductTapped(Product product) async {
+    final reservedQty = _getReservedQuantity(product.id);
+    final currentStock = _currentStockMap[product.id] ?? product.openingStock;
+    final availableStock = currentStock - reservedQty;
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => ReservationBottomSheet(product: product),
+      builder: (context) => ReservationBottomSheet(
+        product: product,
+        currentStock: currentStock,
+        availableStock: availableStock,
+      ),
     );
     // Refresh reservations after the sheet is closed
     await _loadReservations();
@@ -263,7 +293,8 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
 
   Widget _buildProductCard(Product product) {
     final reservedQty = _getReservedQuantity(product.id);
-    final availableQty = product.openingStock - reservedQty;
+    final currentStock = _currentStockMap[product.id] ?? product.openingStock;
+    final availableQty = currentStock - reservedQty;
     return InkWell(
       onTap: () => _onProductTapped(product),
       borderRadius: BorderRadius.circular(12),
@@ -352,7 +383,7 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildStockRow('Physical', product.openingStock),
+                  _buildStockRow('Physical', currentStock),
                   _buildStockRow('Reserved', reservedQty),
                   _buildStockRow('Available', availableQty),
                   const Align(
