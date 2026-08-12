@@ -1,12 +1,13 @@
 -- Setup Test Data
 RESET ROLE;
 TRUNCATE public.app_users CASCADE;
+TRUNCATE public.quotations CASCADE;
 TRUNCATE public.products CASCADE;
 
 -- Insert users
-INSERT INTO public.app_users (id, name, username, email, password_hash, role, is_active, created_at, supabase_uid) VALUES
-('SALES-001', 'Sales A', 'salesA', 'salesA@example.com', '', 'salesperson', true, now(), '11111111-1111-1111-1111-111111111111'),
-('ADMIN-001', 'Admin', 'admin', 'admin@example.com', '', 'admin', true, now(), '33333333-3333-3333-3333-333333333333');
+INSERT INTO public.app_users (id, name, username, email, password_hash, role, is_active, created_at, supabase_uid, quotation_code) VALUES
+('SALES-001', 'Sales A', 'salesA', 'salesA@example.com', '', 'salesperson', true, now(), '11111111-1111-1111-1111-111111111111', 'T1'),
+('ADMIN-001', 'Admin', 'admin', 'admin@example.com', '', 'admin', true, now(), '33333333-3333-3333-3333-333333333333', 'TA');
 
 -- Insert initial product
 INSERT INTO public.products (id, product_code, normalized_product_code, name, selling_price, is_vat_applicable, is_active, opening_stock) VALUES

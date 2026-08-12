@@ -4,10 +4,10 @@ TRUNCATE public.reservations CASCADE;
 TRUNCATE public.app_users CASCADE;
 
 -- Insert users
-INSERT INTO public.app_users (id, name, username, email, password_hash, role, is_active, created_at, supabase_uid) VALUES
-('SALES-001', 'Sales A', 'salesA', 'salesA@example.com', '', 'salesperson', true, now(), '11111111-1111-1111-1111-111111111111'),
-('SALES-002', 'Sales B', 'salesB', 'salesB@example.com', '', 'salesperson', true, now(), '22222222-2222-2222-2222-222222222222'),
-('ADMIN-001', 'Admin', 'admin', 'admin@example.com', '', 'admin', true, now(), '33333333-3333-3333-3333-333333333333');
+INSERT INTO public.app_users (id, name, username, email, password_hash, role, is_active, created_at, supabase_uid, quotation_code) VALUES
+('SALES-001', 'Sales A', 'salesA', 'salesA@example.com', '', 'salesperson', true, now(), '11111111-1111-1111-1111-111111111111', 'T1'),
+('SALES-002', 'Sales B', 'salesB', 'salesB@example.com', '', 'salesperson', true, now(), '22222222-2222-2222-2222-222222222222', 'T2'),
+('ADMIN-001', 'Admin', 'admin', 'admin@example.com', '', 'admin', true, now(), '33333333-3333-3333-3333-333333333333', 'TA');
 
 -- Insert initial reservations
 INSERT INTO public.reservations (id, product_id, product_name, product_code, quantity, reserved_by_id, reserved_by_name, reserved_date, expiry_date, status) VALUES
