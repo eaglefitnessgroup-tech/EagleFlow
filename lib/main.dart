@@ -3,8 +3,8 @@ import 'app/app.dart';
 
 import 'core/di/service_locator.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await ServiceLocator().init();
+  ServiceLocator().init();
   runApp(const EagleFlowApp());
 }
