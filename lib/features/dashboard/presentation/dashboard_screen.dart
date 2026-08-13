@@ -116,6 +116,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildSearchField(),
                       const SizedBox(height: 24),
                       _buildPrimaryActionCard(context),
+                      const SizedBox(height: 16),
+                      _buildReservationActionCard(context),
                       const SizedBox(height: 24),
                       _buildQuickActionsGrid(context),
                       const SizedBox(height: 32),
@@ -277,50 +279,155 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildReservationActionCard(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).pushNamed(AppRoutes.itemReservation);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 2,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.bookmark_added_outlined,
+                color: AppColors.primaryBlue,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Item Reservation',
+                    style: TextStyle(
+                      color: AppColors.charcoal,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Reserve products for customers',
+                    style: TextStyle(
+                      color: AppColors.mutedText,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: AppColors.mutedText, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuickActionsGrid(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-        return GridView.count(
-          crossAxisCount: crossAxisCount,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.15,
-          children: [
+        final children = [
+          _buildActionCard(
+            title: 'Products',
+            icon: Icons.inventory_2_outlined,
+            onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+          ),
+          _buildActionCard(
+            title: 'Previous\nQuotations',
+            icon: Icons.history_outlined,
+            onTap: () =>
+                Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
+          ),
+          _buildActionCard(
+            title: 'Stock',
+            icon: Icons.warehouse_outlined,
+            onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+          ),
+          _buildActionCard(
+            title: 'Low Stock',
+            icon: Icons.warning_amber_rounded,
+            iconColor: Colors.amber.shade700,
+            onTap: () =>
+                _showComingSoonSnackBar('Low Stock module coming soon.'),
+          ),
+          if (ServiceLocator().authController.canManageStock)
             _buildActionCard(
-              title: 'Products',
-              icon: Icons.inventory_2_outlined,
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
-            ),
-            _buildActionCard(
-              title: 'Previous\nQuotations',
-              icon: Icons.history_outlined,
+              title: 'Stock\nManagement',
+              icon: Icons.admin_panel_settings_outlined,
               onTap: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
+                  Navigator.of(context).pushNamed(AppRoutes.stockManagement),
             ),
+          if (ServiceLocator().authController.canViewReports)
             _buildActionCard(
-              title: 'Stock',
-              icon: Icons.warehouse_outlined,
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+              title: 'Reports',
+              icon: Icons.bar_chart_outlined,
+              onTap: () => _showComingSoonSnackBar('Reports module coming soon.'),
             ),
+          if (ServiceLocator().authController.canManageUsers)
             _buildActionCard(
-              title: 'Low Stock',
-              icon: Icons.warning_amber_rounded,
-              iconColor: Colors.amber.shade700,
-              onTap: () =>
-                  _showComingSoonSnackBar('Low Stock module coming soon.'),
+              title: 'User\nManagement',
+              icon: Icons.group_outlined,
+              onTap: () => _showComingSoonSnackBar('User Management coming soon.'),
             ),
-            if (ServiceLocator().authController.isAdmin)
-              _buildActionCard(
-                title: 'Stock\nManagement',
-                icon: Icons.admin_panel_settings_outlined,
-                onTap: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.stockManagement),
+          if (ServiceLocator().authController.isAdmin)
+            _buildActionCard(
+              title: 'Settings',
+              icon: Icons.settings_outlined,
+              onTap: () => _showComingSoonSnackBar('Settings coming soon.'),
+            ),
+        ];
+
+        final rows = <Widget>[];
+        for (var i = 0; i < children.length; i += crossAxisCount) {
+          final rowChildren = <Widget>[];
+          for (var j = 0; j < crossAxisCount; j++) {
+            if (i + j < children.length) {
+              rowChildren.add(Expanded(child: children[i + j]));
+            } else {
+              rowChildren.add(Expanded(child: const SizedBox()));
+            }
+            if (j < crossAxisCount - 1) {
+              rowChildren.add(const SizedBox(width: 16));
+            }
+          }
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: rowChildren,
               ),
-          ],
-        );
+            ),
+          );
+          if (i + crossAxisCount < children.length) {
+            rows.add(const SizedBox(height: 16));
+          }
+        }
+
+        return Column(children: rows);
       },
     );
   }
@@ -349,11 +456,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, color: iconColor ?? AppColors.primaryBlue, size: 28),
-            const Spacer(),
+            const SizedBox(height: 16),
             Text(
               title,
               style: const TextStyle(

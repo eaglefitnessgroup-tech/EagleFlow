@@ -53,12 +53,13 @@ void main() {
     locator.authController.setCurrentUserForTesting(
       AppUser(
         id: 'ADMIN-001',
-        name: 'Admin',
-        username: 'admin',
+        name: 'Anshad',
+        username: 'anshad',
         passwordHash: '',
         role: UserRole.admin,
         isActive: true,
         createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
     );
 
@@ -99,6 +100,7 @@ void main() {
   });
 
   tearDown(() async {
+    await Future.delayed(const Duration(milliseconds: 100));
     await db.close();
   });
 
@@ -186,12 +188,13 @@ void main() {
       ServiceLocator().authController.setCurrentUserForTesting(
         AppUser(
           id: 'SALES-001',
-          name: 'Sales',
-          username: 'sales',
+          name: 'Ajmal',
+          username: 'ajmal',
           passwordHash: '',
-          role: UserRole.salesperson,
+          role: UserRole.sales,
           isActive: true,
-          createdAt: DateTime.now(),
+          createdAt: DateTime.parse('2026-08-01T12:00:00Z'),
+          updatedAt: DateTime.parse('2026-08-01T12:00:00Z'),
         ),
       );
 

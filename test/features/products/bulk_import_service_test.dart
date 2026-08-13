@@ -202,8 +202,7 @@ void main() {
 
   test('valid CSV generates successful preview', () async {
     const csv =
-        validHeaders +
-        'SKU01,Test Item,Tools,Acme,10.5,100,10,Box,Yes,Yes,Desc,M1,None';
+        '${validHeaders}SKU01,Test Item,Tools,Acme,10.5,100,10,Box,Yes,Yes,Desc,M1,None';
     final preview = await service.previewImport(csv);
 
     expect(preview.errorCount, 0);
@@ -224,7 +223,7 @@ void main() {
   });
 
   test('missing optional values applies defaults', () async {
-    const csv = validHeaders + 'SKU02,Test Item 2,,,15,,,,,,,,';
+    const csv = '${validHeaders}SKU02,Test Item 2,,,15,,,,,,,,';
     final preview = await service.previewImport(csv);
 
     expect(preview.canImport, true);
@@ -246,7 +245,7 @@ void main() {
   });
 
   test('invalid numbers/booleans catch errors', () async {
-    const csv = validHeaders + 'SKU03,Item,,,-10,-5,-2,,Maybe,Nope,,,';
+    const csv = '${validHeaders}SKU03,Item,,,-10,-5,-2,,Maybe,Nope,,,';
     final preview = await service.previewImport(csv);
     expect(preview.errorCount, 1);
     expect(preview.canImport, false);
@@ -263,7 +262,7 @@ void main() {
   });
 
   test('zero numeric values accepted', () async {
-    const csv = validHeaders + 'SKU_ZERO,Zero Item,,,0,0,0,,,,,,,';
+    const csv = '${validHeaders}SKU_ZERO,Zero Item,,,0,0,0,,,,,,,';
     final preview = await service.previewImport(csv);
     expect(preview.canImport, true);
     final prod = preview.rows.first.product!;
@@ -273,7 +272,7 @@ void main() {
   });
 
   test('in-file duplicate catches error', () async {
-    const csv = validHeaders + 'DUP,Item1,,,10,,,,,,,,\nDUP,Item2,,,20,,,,,,,,';
+    const csv = '${validHeaders}DUP,Item1,,,10,,,,,,,,\nDUP,Item2,,,20,,,,,,,,';
     final preview = await service.previewImport(csv);
     expect(preview.errorCount, 1);
     expect(preview.validCount, 1);
@@ -285,7 +284,7 @@ void main() {
 
   test('local duplicate catches error', () async {
     repository.seedProduct('EXISTING');
-    const csv = validHeaders + 'EXISTING,Item,,,10,,,,,,,,';
+    const csv = '${validHeaders}EXISTING,Item,,,10,,,,,,,,';
     final preview = await service.previewImport(csv);
     expect(preview.errorCount, 1);
     expect(
@@ -296,7 +295,7 @@ void main() {
 
   test('offline blocked', () async {
     supabase.overrideConnected = false;
-    const csv = validHeaders + 'NEW,Item,,,10,,,,,,,,';
+    const csv = '${validHeaders}NEW,Item,,,10,,,,,,,,';
     final preview = await service.previewImport(csv);
     final result = await service.commitImport(preview);
     expect(result.success, false);
@@ -304,7 +303,7 @@ void main() {
   });
 
   test('1 invalid row causes 0 inserts', () async {
-    const csv = validHeaders + 'V1,Item,,,10,,,,,,,,\n,Invalid,,,10,,,,,,,,';
+    const csv = '${validHeaders}V1,Item,,,10,,,,,,,,\n,Invalid,,,10,,,,,,,,';
     final preview = await service.previewImport(csv);
     expect(preview.canImport, false);
 
@@ -316,7 +315,7 @@ void main() {
 
   test('successful batch imports all rows', () async {
     const csv =
-        validHeaders + 'BATCH1,Item1,,,10,,,,,,,,\nBATCH2,Item2,,,20,,,,,,,,';
+        '${validHeaders}BATCH1,Item1,,,10,,,,,,,,\nBATCH2,Item2,,,20,,,,,,,,';
     final preview = await service.previewImport(csv);
     final result = await service.commitImport(preview);
 
@@ -327,7 +326,7 @@ void main() {
 
   test('local cache failure creates no partial local cache', () async {
     const csv =
-        validHeaders + 'FAIL1,Item1,,,10,,,,,,,,\nFAIL2,Item2,,,20,,,,,,,,';
+        '${validHeaders}FAIL1,Item1,,,10,,,,,,,,\nFAIL2,Item2,,,20,,,,,,,,';
     final preview = await service.previewImport(csv);
     repository.forceFail = true;
     final result = await service.commitImport(preview);
@@ -362,7 +361,7 @@ void main() {
     // after a successful import when images are present.
     // Because client == null in tests no actual upload happens, but the
     // product IDs must still be assigned (UUIDs generated pre-upload).
-    const csv = validHeaders + 'IMGTEST,Widget,,,5,,,,,,,,';
+    const csv = '${validHeaders}IMGTEST,Widget,,,5,,,,,,,,';
     final preview = await service.previewImport(csv);
     final result = await service.commitImport(preview);
     expect(result.success, true);
@@ -391,7 +390,7 @@ void main() {
   });
 
   // XLSX Tests
-  List<CellValue> _buildExcelHeaders() => [
+  List<CellValue> buildExcelHeaders() => [
     TextCellValue('Product Code'),
     TextCellValue('Name'),
     TextCellValue('Category'),
@@ -411,7 +410,7 @@ void main() {
     final excel = Excel.createExcel();
     final sheet = excel['Products'];
     excel.setDefaultSheet('Products');
-    sheet.appendRow(_buildExcelHeaders());
+    sheet.appendRow(buildExcelHeaders());
     sheet.appendRow([
       TextCellValue('SKU_XLSX'),
       TextCellValue('Excel Item'),
@@ -439,7 +438,7 @@ void main() {
     final excel = Excel.createExcel();
     final sheet = excel['WrongSheet'];
     excel.setDefaultSheet('WrongSheet');
-    sheet.appendRow(_buildExcelHeaders());
+    sheet.appendRow(buildExcelHeaders());
     final bytes = excel.encode()!;
 
     final preview = await service.previewImport('', excelBytes: bytes);
@@ -484,7 +483,7 @@ void main() {
     final excel = Excel.createExcel();
     final sheet = excel['Products'];
     excel.setDefaultSheet('Products');
-    sheet.appendRow(_buildExcelHeaders());
+    sheet.appendRow(buildExcelHeaders());
     sheet.appendRow([
       TextCellValue('F_SKU'), TextCellValue('Item'), TextCellValue(''),
       TextCellValue(''),
@@ -508,7 +507,7 @@ void main() {
     final excel = Excel.createExcel();
     final sheet = excel['Products'];
     excel.setDefaultSheet('Products');
-    sheet.appendRow(_buildExcelHeaders());
+    sheet.appendRow(buildExcelHeaders());
     sheet.setColumnWidth(0, 0.0); // Hide Product Code
     final bytes = excel.encode()!;
 
@@ -1056,7 +1055,7 @@ void main() {
 
     test('re-running the same package is blocked before any upload', () async {
       // Arrange: first run succeeds.
-      const csv = validHeaders + 'DEDUP1,Item,,,10,,,,,,,,';
+      const csv = '${validHeaders}DEDUP1,Item,,,10,,,,,,,,';
       final preview = await fake.previewImport(csv);
       final first = await fake.commitImport(preview);
       expect(first.success, true);

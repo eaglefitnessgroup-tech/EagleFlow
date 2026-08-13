@@ -22,70 +22,78 @@ void main() {
       await db.close();
     });
 
+    test('1. Default users are seeded correctly with empty hashes', () async {
+      final usersStore = stringMapStoreFactory.store('users');
+      final records = await usersStore.find(db);
+
+      expect(records.length, 7);
+
+      final admin = records.firstWhere((r) => r.key == 'ADMIN-001').value;
+      final sales = records.firstWhere((r) => r.key == 'SALES-001').value;
+
+      expect(admin['username'], 'anshad');
+      expect(sales['username'], 'ajmal');
+
+      expect(admin['passwordHash'], '');
+      expect(sales['passwordHash'], '');
+    });
+
+    test('2. Admin login success (now fails offline)', () async {
+      final result = await repository.login(
+        email: 'anshad@eagleflow.com',
+        password: 'anshad123',
+      );
+
+      expect(result.success, false);
+      expect(
+        result.message,
+        'Offline login not supported. Please connect to the internet.',
+      );
+    });
+
+    test('3. Salesperson login success (now fails offline)', () async {
+      final result = await repository.login(
+        email: 'ajmal@eagleflow.com',
+        password: 'ajmal123',
+      );
+
+      expect(result.success, false);
+      expect(
+        result.message,
+        'Offline login not supported. Please connect to the internet.',
+      );
+    });
+
     test(
-      '1. Default users are seeded correctly and only hashes are stored',
+      '4. Case-insensitive and trimmed username login (now fails offline)',
       () async {
-        final usersStore = stringMapStoreFactory.store('users');
-        final records = await usersStore.find(db);
+        final result = await repository.login(
+          email: '  aNshaD@eagleflow.com  ',
+          password: 'anshad123',
+        );
 
-        expect(records.length, 2);
-
-        final admin = records.firstWhere((r) => r.key == 'ADMIN-001').value;
-        final sales = records.firstWhere((r) => r.key == 'SALES-001').value;
-
-        expect(admin['username'], 'admin');
-        expect(sales['username'], 'sales');
-
-        expect(admin['passwordHash'], isNot('admin123'));
-        expect(sales['passwordHash'], isNot('sales123'));
-        expect(admin['password'], isNull);
+        expect(result.success, false);
+        expect(
+          result.message,
+          'Offline login not supported. Please connect to the internet.',
+        );
       },
     );
 
-    test('2. Admin login success', () async {
+    test('5. Invalid password rejection (now fails offline)', () async {
       final result = await repository.login(
-        username: 'admin',
-        password: 'admin123',
-      );
-
-      expect(result.success, true);
-      expect(result.user, isNotNull);
-      expect(result.user!.role, UserRole.admin);
-    });
-
-    test('3. Salesperson login success', () async {
-      final result = await repository.login(
-        username: 'sales',
-        password: 'sales123',
-      );
-
-      expect(result.success, true);
-      expect(result.user, isNotNull);
-      expect(result.user!.role, UserRole.salesperson);
-    });
-
-    test('4. Case-insensitive and trimmed username login', () async {
-      final result = await repository.login(
-        username: '  aDmiN  ',
-        password: 'admin123',
-      );
-
-      expect(result.success, true);
-      expect(result.user!.username, 'admin');
-    });
-
-    test('5. Invalid password rejection', () async {
-      final result = await repository.login(
-        username: 'admin',
+        email: 'anshad@eagleflow.com',
         password: 'wrongpassword',
       );
 
       expect(result.success, false);
-      expect(result.message, 'Invalid username or password.');
-      expect(result.user, isNull);
+      expect(
+        result.message,
+        'Offline login not supported. Please connect to the internet.',
+      );
     });
 
-    test('6. Inactive user rejection', () async {
+    test('6. Inactive user rejection (now fails offline)', () async {
       // Deactivate admin manually
       final usersStore = stringMapStoreFactory.store('users');
       final adminRecord = await usersStore.record('ADMIN-001').get(db);
@@ -94,24 +102,37 @@ void main() {
       await usersStore.record('ADMIN-001').put(db, updatedAdmin);
 
       final result = await repository.login(
-        username: 'admin',
-        password: 'admin123',
+        email: 'anshad@eagleflow.com',
+        password: 'anshad123',
       );
 
       expect(result.success, false);
-      expect(result.message, 'This account is inactive.');
-      expect(result.user, isNull);
+      expect(
+        result.message,
+        'Offline login not supported. Please connect to the internet.',
+      );
     });
 
-    test('7. Session persistence after successful login', () async {
-      await repository.login(username: 'sales', password: 'sales123');
+    test('7. Session caching and retrieval via cacheSession', () async {
+      final now = DateTime.now();
+      final user = AppUser(
+        id: 'ADMIN-001',
+        name: 'Anshad',
+        username: 'anshad',
+        passwordHash: '',
+        role: UserRole.admin,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await repository.cacheSession(user);
 
       final hasSession = await repository.hasRememberedSession();
       expect(hasSession, true);
 
-      final user = await repository.getCurrentUser();
-      expect(user, isNotNull);
-      expect(user!.username, 'sales');
+      final cachedUser = await repository.getCurrentUser();
+      expect(cachedUser, isNotNull);
+      expect(cachedUser!.username, 'anshad');
 
       // Verify passwordHash is not stored in session
       final sessionStore = stringMapStoreFactory.store('auth_session');
@@ -120,7 +141,18 @@ void main() {
     });
 
     test('8. Logout clears session', () async {
-      await repository.login(username: 'admin', password: 'admin123');
+      final now = DateTime.now();
+      final user = AppUser(
+        id: 'ADMIN-001',
+        name: 'Anshad',
+        username: 'anshad',
+        passwordHash: '',
+        role: UserRole.admin,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await repository.cacheSession(user);
       expect(await repository.hasRememberedSession(), true);
 
       await repository.logout();

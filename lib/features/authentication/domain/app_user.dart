@@ -1,15 +1,15 @@
 enum UserRole {
   admin,
-  salesperson;
+  sales;
 
   static UserRole fromJson(String? role) {
-    if (role == null) return UserRole.salesperson;
+    if (role == null) return UserRole.sales;
     switch (role.toLowerCase()) {
       case 'admin':
         return UserRole.admin;
-      case 'salesperson':
+      case 'sales':
       default:
-        return UserRole.salesperson;
+        return UserRole.sales;
     }
   }
 
@@ -24,6 +24,7 @@ class AppUser {
   final UserRole role;
   final bool isActive;
   final DateTime createdAt;
+  final DateTime updatedAt;
 
   const AppUser({
     required this.id,
@@ -33,10 +34,17 @@ class AppUser {
     required this.role,
     this.isActive = true,
     required this.createdAt,
+    required this.updatedAt,
   });
 
   bool get isAdmin => role == UserRole.admin;
-  bool get isSalesperson => role == UserRole.salesperson;
+  bool get isSales => role == UserRole.sales;
+
+  // Permission helpers
+  bool get canManageStock => isAdmin;
+  bool get canViewReports => isAdmin;
+  bool get canManageUsers => isAdmin;
+  bool get canCancelAnyReservation => isAdmin;
 
   AppUser copyWith({
     String? id,
@@ -46,6 +54,7 @@ class AppUser {
     UserRole? role,
     bool? isActive,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return AppUser(
       id: id ?? this.id,
@@ -55,6 +64,7 @@ class AppUser {
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -67,6 +77,7 @@ class AppUser {
       'role': role.toJson(),
       'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
@@ -81,12 +92,15 @@ class AppUser {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String).toLocal()
           : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String).toLocal()
+          : DateTime.now(),
     );
   }
 
   @override
   String toString() {
-    return 'AppUser(id: $id, name: $name, username: $username, role: $role, isActive: $isActive, createdAt: $createdAt)';
+    return 'AppUser(id: $id, name: $name, username: $username, role: $role, isActive: $isActive, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -100,7 +114,8 @@ class AppUser {
         other.passwordHash == passwordHash &&
         other.role == role &&
         other.isActive == isActive &&
-        other.createdAt == createdAt;
+        other.createdAt == createdAt &&
+        other.updatedAt == updatedAt;
   }
 
   @override
@@ -111,6 +126,7 @@ class AppUser {
         passwordHash.hashCode ^
         role.hashCode ^
         isActive.hashCode ^
-        createdAt.hashCode;
+        createdAt.hashCode ^
+        updatedAt.hashCode;
   }
 }

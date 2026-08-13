@@ -435,7 +435,7 @@ class _StockOutScreenState extends State<StockOutScreen> {
                 ),
                 const SizedBox(height: 24),
                 DropdownButtonFormField<String>(
-                  value: _selectedReason,
+                  initialValue: _selectedReason,
                   items:
                       [
                         'Sold',

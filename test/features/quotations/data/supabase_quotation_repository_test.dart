@@ -53,6 +53,7 @@ void main() {
         passwordHash: '',
         role: UserRole.admin,
         createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
     );
 
@@ -188,8 +189,9 @@ void main() {
           name: 'Sales',
           username: 'sales',
           passwordHash: '',
-          role: UserRole.salesperson,
-          createdAt: DateTime.now(),
+          role: UserRole.sales,
+          createdAt: DateTime.parse('2026-08-01T12:00:00Z'),
+          updatedAt: DateTime.parse('2026-08-01T12:00:00Z'),
         ),
       );
 

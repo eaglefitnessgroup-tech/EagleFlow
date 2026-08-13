@@ -1,11 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:path/path.dart' as p;
 import 'package:eagleflow/core/database/database_service.dart';
-import 'package:eagleflow/core/backup/backup_models.dart';
 import 'package:eagleflow/core/backup/backup_service.dart';
 
 void main() {
@@ -34,7 +32,7 @@ void main() {
       'name': 'Alice',
       'role': 'admin',
       'passwordHash': 'secret_hash_1',
-      'auth_uid': 'uid_1',
+      'supabase_uid': 'uid_1',
     });
     await productsStore.record('prod1').put(db, {'name': 'Product A'});
     await stockStore.record('stock1').put(db, {'qty': 10});
@@ -141,7 +139,7 @@ void main() {
     },
   );
 
-  test('Backup JSON contains no passwordHash or auth_uid', () async {
+  test('Backup JSON contains no passwordHash or supabase_uid', () async {
     await backupService.createBackup(backupFilePath);
 
     final file = File(backupFilePath);
@@ -149,7 +147,7 @@ void main() {
 
     final users = content['payload']['users'] as Map<String, dynamic>;
     expect(users['user1'].containsKey('passwordHash'), false);
-    expect(users['user1'].containsKey('auth_uid'), false);
+    expect(users['user1'].containsKey('supabase_uid'), false);
   });
 
   test('Restore preserves existing passwordHash', () async {
@@ -160,7 +158,7 @@ void main() {
     await usersStore.record('user1').put(db, {
       'name': 'Changed',
       'passwordHash': 'new_hash_123',
-      'auth_uid': 'new_uid',
+      'supabase_uid': 'new_uid',
     });
 
     final restoreResult = await backupService.executeRestore(backupFilePath);
@@ -169,7 +167,7 @@ void main() {
     final user1 = await usersStore.record('user1').get(db);
     expect(user1?['name'], 'Alice'); // Restored
     expect(user1?['passwordHash'], 'new_hash_123'); // Preserved
-    expect(user1?['auth_uid'], 'new_uid'); // Preserved
+    expect(user1?['supabase_uid'], 'new_uid'); // Preserved
   });
 
   test(

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:sembast/sembast.dart';
 import 'package:sembast/blob.dart';
 import 'package:uuid/uuid.dart';
@@ -9,12 +8,9 @@ import '../domain/quotation_line_item.dart';
 import 'quotation_repository.dart';
 
 class SembastQuotationRepository implements QuotationRepository {
-  final StoreRef<String, Map<String, dynamic>> _quotationsStore =
-      StoreRef<String, Map<String, dynamic>>('quotations');
+  final StoreRef<String, Map<String, Object?>> _quotationsStore =
+      stringMapStoreFactory.store('quotations');
   final StoreRef<String, Blob> _imagesStore = StoreRef<String, Blob>('images');
-  final StoreRef<String, int> _metadataStore = StoreRef<String, int>(
-    'metadata',
-  );
 
   final Uuid _uuid = const Uuid();
 
@@ -25,7 +21,7 @@ class SembastQuotationRepository implements QuotationRepository {
     final db = await _db;
     final records = await _quotationsStore.find(db);
     // Sort newest first by default
-    final quotations = records.map((r) => Quotation.fromJson(r.value)).toList();
+    final quotations = records.map((r) => Quotation.fromJson(Map<String, dynamic>.from(r.value))).toList();
     quotations.sort((a, b) => b.createdDate.compareTo(a.createdDate));
     return quotations;
   }
@@ -39,7 +35,7 @@ class SembastQuotationRepository implements QuotationRepository {
     );
     final record = await _quotationsStore.findFirst(db, finder: finder);
     if (record != null) {
-      return Quotation.fromJson(record.value);
+      return Quotation.fromJson(Map<String, dynamic>.from(record.value));
     }
     return null;
   }
@@ -69,12 +65,7 @@ class SembastQuotationRepository implements QuotationRepository {
   }
 
   Future<String> generateNextQuotationNumber(DatabaseClient client) async {
-    final currentYear = DateTime.now().year % 100;
-    final yearKey = 'seq_$currentYear';
-    final currentSeq = await _metadataStore.record(yearKey).get(client) ?? 0;
-    final nextSeq = currentSeq + 1;
-    await _metadataStore.record(yearKey).put(client, nextSeq);
-    return 'QT-${nextSeq.toString().padLeft(4, '0')}-$currentYear';
+    return 'DRAFT-${_uuid.v4().substring(0, 8).toUpperCase()}';
   }
 
   @override
@@ -107,7 +98,7 @@ class SembastQuotationRepository implements QuotationRepository {
           .get(txn);
       Quotation? previousQuotation;
       if (previousRecord != null) {
-        previousQuotation = Quotation.fromJson(previousRecord);
+        previousQuotation = Quotation.fromJson(Map<String, dynamic>.from(previousRecord));
       }
 
       for (var item in updatedQuotation.lineItems) {
@@ -168,7 +159,7 @@ class SembastQuotationRepository implements QuotationRepository {
     await db.transaction((txn) async {
       final record = await _quotationsStore.record(id).get(txn);
       if (record != null) {
-        final q = Quotation.fromJson(record);
+        final q = Quotation.fromJson(Map<String, dynamic>.from(record));
         for (var item in q.lineItems) {
           if (item.imageId != null && item.imageId!.isNotEmpty) {
             await _imagesStore.record(item.imageId!).delete(txn);

@@ -25,9 +25,11 @@ class PdfImageLoader {
     try {
       final client = ServiceLocator().supabaseService.client;
       if (client != null) {
+        final downloadPath =
+            imageId.contains('/') ? imageId : '$imageId/main.jpg';
         final bytes = await client.storage
             .from('product-images')
-            .download(imageId);
+            .download(downloadPath);
         _cache[imageId] = bytes;
         return bytes;
       }

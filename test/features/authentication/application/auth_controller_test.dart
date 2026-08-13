@@ -1,75 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/authentication/application/auth_controller.dart';
-import 'package:eagleflow/features/authentication/domain/app_user.dart';
-import 'package:eagleflow/features/authentication/domain/auth_repository.dart';
-import 'package:eagleflow/features/authentication/domain/auth_result.dart';
-
-class FakeAuthRepository implements AuthRepository {
-  AppUser? simulatedCurrentUser;
-  bool shouldThrowOnLogin = false;
-  bool hasClearedSession = false;
-  bool hasLoggedOut = false;
-
-  final _testAdmin = AppUser(
-    id: 'ADMIN',
-    name: 'Admin',
-    username: 'admin',
-    passwordHash: 'hashed1',
-    role: UserRole.admin,
-    createdAt: DateTime.now(),
-  );
-
-  final _testSales = AppUser(
-    id: 'SALES',
-    name: 'Sales',
-    username: 'sales',
-    passwordHash: 'hashed2',
-    role: UserRole.salesperson,
-    createdAt: DateTime.now(),
-  );
-
-  @override
-  Future<AppUser?> getCurrentUser() async {
-    return simulatedCurrentUser;
-  }
-
-  @override
-  Future<AuthResult> login({
-    required String username,
-    required String password,
-  }) async {
-    await Future.delayed(
-      const Duration(milliseconds: 10),
-    ); // Add slight delay to test duplicate prevention
-
-    if (shouldThrowOnLogin) {
-      throw Exception('Simulated network error');
-    }
-    if (username == 'admin' && password == 'pass') {
-      return AuthResult.success(_testAdmin);
-    } else if (username == 'sales' && password == 'pass') {
-      return AuthResult.success(_testSales);
-    } else {
-      return AuthResult.failure('Invalid credentials');
-    }
-  }
-
-  @override
-  Future<void> logout() async {
-    hasLoggedOut = true;
-    simulatedCurrentUser = null;
-  }
-
-  @override
-  Future<bool> hasRememberedSession() async {
-    return simulatedCurrentUser != null;
-  }
-
-  @override
-  Future<void> clearRememberedSession() async {
-    hasClearedSession = true;
-  }
-}
+import '../fake_auth_repository.dart';
 
 void main() {
   group('AuthController Tests', () {
@@ -89,7 +20,7 @@ void main() {
     });
 
     test('2. Initialize with remembered user sets currentUser', () async {
-      fakeRepo.simulatedCurrentUser = fakeRepo._testAdmin;
+      fakeRepo.simulatedCurrentUser = fakeRepo.testAdmin;
       await controller.initialize();
 
       expect(controller.currentUser, isNotNull);
@@ -97,21 +28,20 @@ void main() {
       expect(controller.isAdmin, true);
     });
 
-    test('3. Admin and salesperson getters work', () async {
-      fakeRepo.simulatedCurrentUser = fakeRepo._testAdmin;
+    test('3. Admin and sales getters work', () async {
+      fakeRepo.simulatedCurrentUser = fakeRepo.testAdmin;
       await controller.initialize();
       expect(controller.isAdmin, true);
-      expect(controller.isSalesperson, false);
+      expect(controller.isSales, false);
 
-      fakeRepo.simulatedCurrentUser = fakeRepo._testSales;
+      fakeRepo.simulatedCurrentUser = fakeRepo.testSales;
       await controller.initialize();
       expect(controller.isAdmin, false);
-      expect(controller.isSalesperson, true);
+      expect(controller.isSales, true);
     });
 
     test('4. Successful login updates state and returns true', () async {
-      final result = await controller.login(
-        username: 'admin',
+      final result = await controller.login(email: 'admin@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );
@@ -124,8 +54,7 @@ void main() {
     });
 
     test('5. Failed login sets error message and keeps user null', () async {
-      final result = await controller.login(
-        username: 'wrong',
+      final result = await controller.login(email: 'wrong@eagleflow.com',
         password: 'wrong',
         rememberMe: true,
       );
@@ -133,15 +62,14 @@ void main() {
       expect(result, false);
       expect(controller.currentUser, isNull);
       expect(controller.isAuthenticated, false);
-      expect(controller.errorMessage, 'Invalid credentials');
+      expect(controller.errorMessage, 'Invalid email or password.');
     });
 
     test('6. Duplicate login prevention', () async {
       fakeRepo.shouldThrowOnLogin = false;
 
       // Start first request
-      final future1 = controller.login(
-        username: 'admin',
+      final future1 = controller.login(email: 'admin@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );
@@ -150,8 +78,7 @@ void main() {
       expect(controller.isLoading, true);
 
       // Start second request
-      final future2 = controller.login(
-        username: 'sales',
+      final future2 = controller.login(email: 'sales@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );
@@ -161,30 +88,25 @@ void main() {
 
       final result1 = await future1;
       expect(result1, true); // First succeeds
-      expect(controller.currentUser!.username, 'admin');
+      expect(controller.currentUser!.username, 'anshad');
     });
 
-    test(
-      '7. rememberMe false clears persisted session but keeps runtime user',
-      () async {
-        final result = await controller.login(
-          username: 'sales',
-          password: 'pass',
-          rememberMe: false,
-        );
+    test('7. rememberMe false no longer clears persisted session', () async {
+      final result = await controller.login(email: 'sales@eagleflow.com',
+        password: 'pass',
+        rememberMe: false,
+      );
 
-        expect(result, true);
-        expect(controller.currentUser, isNotNull);
-        expect(
-          fakeRepo.hasClearedSession,
-          true,
-        ); // Should clear persisted session
-      },
-    );
+      expect(result, true);
+      expect(controller.currentUser, isNotNull);
+      expect(
+        fakeRepo.hasClearedSession,
+        false,
+      ); // Should NOT clear persisted session
+    });
 
     test('8. Logout clears current user and notifies', () async {
-      await controller.login(
-        username: 'admin',
+      await controller.login(email: 'admin@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );
@@ -198,8 +120,7 @@ void main() {
 
     test('9. Unexpected exception sets generic error message', () async {
       fakeRepo.shouldThrowOnLogin = true;
-      final result = await controller.login(
-        username: 'admin',
+      final result = await controller.login(email: 'admin@eagleflow.com',
         password: 'pass',
         rememberMe: true,
       );

@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local dev profiles
+.chrome-dev-profile/
+
+# Supabase secrets
+supabase.json

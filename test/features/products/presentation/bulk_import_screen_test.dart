@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +10,7 @@ import 'package:eagleflow/features/products/presentation/bulk_import_screen.dart
 import 'package:eagleflow/app/routes/app_routes.dart';
 import 'package:eagleflow/core/guards/admin_guard.dart';
 import 'package:eagleflow/core/supabase/supabase_service.dart';
+import '../../../features/authentication/fake_auth_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,6 +77,7 @@ void main() {
     final db = await databaseFactoryMemory.openDatabase(dbName);
     DatabaseService().setDatabaseForTesting(db);
 
+    ServiceLocator().mockAuthRepository = FakeAuthRepository();
     await ServiceLocator().init();
     await ServiceLocator().authController.logout();
 
@@ -106,9 +108,8 @@ void main() {
 
   Future<void> loginAdmin(WidgetTester tester) async {
     await tester.runAsync(() async {
-      await ServiceLocator().authController.login(
-        username: 'admin',
-        password: 'admin123',
+      await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
+        password: 'anshad123',
         rememberMe: false,
       );
     });
@@ -116,15 +117,14 @@ void main() {
 
   Future<void> loginSales(WidgetTester tester) async {
     await tester.runAsync(() async {
-      await ServiceLocator().authController.login(
-        username: 'sales',
-        password: 'sales123',
+      await ServiceLocator().authController.login(email: 'ajmal@eagleflow.com',
+        password: 'ajmal123',
         rememberMe: false,
       );
     });
   }
 
-  // ── access control ─────────────────────────────────────────────────────────
+  // â”€â”€ access control â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Admin sees Import action', (tester) async {
     await loginAdmin(tester);
@@ -149,7 +149,7 @@ void main() {
     expect(find.byType(BulkImportScreen), findsNothing);
   });
 
-  // ── initial state ──────────────────────────────────────────────────────────
+  // â”€â”€ initial state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Shows Choose ZIP File button on initial state', (tester) async {
     await loginAdmin(tester);
@@ -170,7 +170,7 @@ void main() {
     expect(find.text('Sample ZIP'), findsOneWidget);
   });
 
-  // ── CSV parse and preview ──────────────────────────────────────────────────
+  // â”€â”€ CSV parse and preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Valid CSV shows Confirm Import button', (tester) async {
     await loginAdmin(tester);
@@ -204,7 +204,7 @@ void main() {
     expect(btn.onPressed, isNull);
   });
 
-  // ── summary bar ────────────────────────────────────────────────────────────
+  // â”€â”€ summary bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Summary bar shows valid/invalid counts after parse', (
     tester,
@@ -218,13 +218,13 @@ void main() {
 
     // Summary bar should appear
     expect(find.byKey(const Key('summary_bar')), findsOneWidget);
-    // Valid count — 1 row
+    // Valid count â€” 1 row
     expect(find.text('1'), findsWidgets);
     expect(find.text('Valid'), findsOneWidget);
     expect(find.text('Invalid'), findsOneWidget);
   });
 
-  // ── image column ──────────────────────────────────────────────────────────
+  // â”€â”€ image column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Preview table shows Image column header', (tester) async {
     await loginAdmin(tester);
@@ -237,7 +237,7 @@ void main() {
     expect(find.text('Image'), findsOneWidget);
   });
 
-  // ── offline state ──────────────────────────────────────────────────────────
+  // â”€â”€ offline state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Offline banner visible when disconnected', (tester) async {
     // Supabase is not connected in tests by default.
@@ -258,14 +258,14 @@ void main() {
     await tester.tap(find.byKey(const Key('pick_zip_btn')));
     await tester.pumpAndSettle();
 
-    // Offline → button disabled (isOnline=false)
+    // Offline â†’ button disabled (isOnline=false)
     final btn = tester.widget<ElevatedButton>(
       find.byKey(const Key('confirm_import_btn')),
     );
     expect(btn.onPressed, isNull);
   });
 
-  // ── file name display ──────────────────────────────────────────────────────
+  // â”€â”€ file name display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Picked filename is shown after selection', (tester) async {
     _mockFilePicker(_validCsvRow, filename: 'products.csv');
@@ -280,7 +280,7 @@ void main() {
     expect(find.text('products.csv'), findsOneWidget);
   });
 
-  // ── template / sample download ─────────────────────────────────────────────
+  // â”€â”€ template / sample download â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Excel Template button triggers save and shows snackbar', (
     tester,
@@ -333,7 +333,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    // No raw exception — friendly message shown in status area
+    // No raw exception â€” friendly message shown in status area
     expect(
       find.text('Could not download template. Please try again.'),
       findsOneWidget,

@@ -10,6 +10,7 @@ import 'package:eagleflow/features/stock/presentation/stock_out_by_quotation_scr
 import 'package:eagleflow/features/products/presentation/add_edit_product_screen.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
+import '../fake_auth_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,17 +23,19 @@ AppUser _fakeAdmin() => AppUser(
   username: 'admin',
   passwordHash: 'x',
   role: UserRole.admin,
-  createdAt: DateTime(2024),
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
 );
 
 /// Create a fake salesperson user without touching the DB.
 AppUser _fakeSales() => AppUser(
-  id: 'SALES-001',
-  name: 'Salesperson',
+  id: 'sales123',
+  name: 'Test Sales',
   username: 'sales',
-  passwordHash: 'x',
-  role: UserRole.salesperson,
-  createdAt: DateTime(2024),
+  passwordHash: 'hash',
+  role: UserRole.sales,
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
 );
 
 // ---------------------------------------------------------------------------
@@ -47,6 +50,9 @@ void main() {
       'guard_test_${DateTime.now().microsecondsSinceEpoch}.db',
     );
     DatabaseService().setDatabaseForTesting(db);
+
+    // Inject fake repository
+    ServiceLocator().mockAuthRepository = FakeAuthRepository();
 
     // Initialize only the auth controller so that SembastAuthRepository's
     // _initDefaultUsers() async write completes (draining its Sembast timer)

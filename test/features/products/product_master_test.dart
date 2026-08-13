@@ -4,9 +4,7 @@ import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/features/products/application/product_master_controller.dart';
 import 'package:eagleflow/core/database/database_service.dart';
-import 'package:eagleflow/features/quotations/data/sembast_quotation_repository.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
-import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:uuid/uuid.dart';
 import 'package:eagleflow/features/quotations/application/quotation_controller.dart';
@@ -59,10 +57,10 @@ void main() {
       await db.close();
     });
 
-    test('One-time sample-product seed migration', () async {
+    test('Initializes with empty products without dummy seed', () async {
       await repo.init();
       final products = await repo.getAllProducts();
-      expect(products.isNotEmpty, true); // Since sample products are seeded
+      expect(products.isEmpty, true);
     });
 
     test(

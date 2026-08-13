@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
-import 'package:eagleflow/features/authentication/data/sembast_auth_repository.dart';
+import 'package:eagleflow/features/authentication/data/supabase_auth_repository.dart';
 import 'package:eagleflow/features/authentication/application/auth_controller.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/core/supabase/supabase_service.dart';
@@ -71,7 +71,7 @@ void main() {
     test('Auth dependencies are registered and exposed correctly', () {
       final locator = ServiceLocator();
 
-      expect(locator.authRepository, isA<SembastAuthRepository>());
+      expect(locator.authRepository, isA<SupabaseAuthRepository>());
       expect(locator.authController, isA<AuthController>());
     });
 

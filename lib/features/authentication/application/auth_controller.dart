@@ -19,7 +19,14 @@ class AuthController extends ChangeNotifier {
 
   bool get isAuthenticated => _currentUser != null;
   bool get isAdmin => _currentUser?.isAdmin ?? false;
-  bool get isSalesperson => _currentUser?.isSalesperson ?? false;
+  bool get isSales => _currentUser?.isSales ?? false;
+
+  // Permissions
+  bool get canManageStock => _currentUser?.canManageStock ?? false;
+  bool get canViewReports => _currentUser?.canViewReports ?? false;
+  bool get canManageUsers => _currentUser?.canManageUsers ?? false;
+  bool get canCancelAnyReservation =>
+      _currentUser?.canCancelAnyReservation ?? false;
 
   @visibleForTesting
   void setCurrentUserForTesting(AppUser? user) {
@@ -44,7 +51,7 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<bool> login({
-    required String username,
+    required String email,
     required String password,
     required bool rememberMe,
   }) async {
@@ -56,17 +63,12 @@ class AuthController extends ChangeNotifier {
 
     try {
       final result = await _repository.login(
-        username: username,
+        email: email,
         password: password,
       );
 
       if (result.success && result.user != null) {
         _currentUser = result.user;
-
-        if (!rememberMe) {
-          // Keep the runtime user, but remove from persistent storage
-          await _repository.clearRememberedSession();
-        }
 
         return true;
       } else {

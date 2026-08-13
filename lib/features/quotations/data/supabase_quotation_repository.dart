@@ -24,15 +24,18 @@ class SupabaseQuotationRepository implements QuotationRepository {
 
   Future<Database> get _db async => await DatabaseService().database;
 
-  bool _syncing = false;
+  Future<void>? _activeSyncFuture;
 
   @visibleForTesting
   bool get isConnectedToServer => supabase.isConnected;
 
-  Future<void> init() async {
-    if (!isConnectedToServer) return;
-    await _syncQuotationsDown();
+ Future<void> init() async {
+  if (!isConnectedToServer) {
+    return;
   }
+
+  await _syncQuotationsDown();
+}
 
   @visibleForTesting
   Future<List<dynamic>> fetchQuotationsFromServer() async {
@@ -47,38 +50,50 @@ class SupabaseQuotationRepository implements QuotationRepository {
   }
 
   Future<void> _syncQuotationsDown() async {
-    if (_syncing) return;
-    _syncing = true;
+    if (_activeSyncFuture != null) {
+      return _activeSyncFuture;
+    }
 
+    _activeSyncFuture = _doSyncQuotationsDown();
+    try {
+      await _activeSyncFuture;
+    } finally {
+      _activeSyncFuture = null;
+    }
+  }
+
+  Future<void> _doSyncQuotationsDown() async {
     try {
       final serverQuotations = await fetchQuotationsFromServer();
 
       final db = await _db;
       await db.transaction((txn) async {
         for (var row in serverQuotations) {
-          final serverQ = _fromSupabase(row);
-          final localRecord = await _quotationsStore
-              .record(serverQ.id)
-              .get(txn);
-
-          if (localRecord == null) {
-            await _quotationsStore
+          try {
+            final serverQ = _fromSupabase(row);
+            final localRecord = await _quotationsStore
                 .record(serverQ.id)
-                .put(txn, serverQ.toJson());
-          } else {
-            final localQ = Quotation.fromJson(localRecord);
-            if (serverQ.modifiedDate.isAfter(localQ.modifiedDate)) {
+                .get(txn);
+
+            if (localRecord == null) {
               await _quotationsStore
                   .record(serverQ.id)
                   .put(txn, serverQ.toJson());
+            } else {
+              final localQ = Quotation.fromJson(localRecord);
+              if (serverQ.modifiedDate.isAfter(localQ.modifiedDate)) {
+                await _quotationsStore
+                    .record(serverQ.id)
+                    .put(txn, serverQ.toJson());
+              }
             }
+          } catch (e) {
+            // Ignore parse errors for individual rows
           }
         }
       });
     } catch (e) {
-      debugPrint('Error syncing quotations down: $e');
-    } finally {
-      _syncing = false;
+      // Ignore sync errors
     }
   }
 
@@ -150,14 +165,22 @@ class SupabaseQuotationRepository implements QuotationRepository {
   }
 
   @override
-  Future<List<Quotation>> getAllQuotations() async {
-    final user = ServiceLocator().authController.currentUser;
-    final all = await localCache.getAllQuotations();
-    if (user != null && !user.isAdmin) {
-      return all.where((q) => q.salespersonId == user.id).toList();
-    }
-    return all;
+Future<List<Quotation>> getAllQuotations() async {
+  final user = ServiceLocator().authController.currentUser;
+
+  // Pull latest quotations from Supabase
+  if (isConnectedToServer) {
+    await _syncQuotationsDown();
   }
+
+  final all = await localCache.getAllQuotations();
+
+  if (user != null && !user.isAdmin) {
+    return all.where((q) => q.salespersonId == user.id).toList();
+  }
+
+  return all;
+}
 
   @override
   Future<Quotation?> getQuotationByNumber(String quotationNumber) async {
@@ -203,18 +226,13 @@ class SupabaseQuotationRepository implements QuotationRepository {
         if (client == null) {
           throw Exception('Supabase client is null while connected');
         }
-        final payload = toSave.toJson();
-        // Remove huge image bytes before sending
-        if (payload['lineItems'] != null) {
-          for (var item in payload['lineItems'] as List<dynamic>) {
-            item.remove('imageBytes');
-          }
-        }
+        final payload = _buildQuotationPayload(toSave);
 
         final response = await client.rpc(
           'save_quotation',
           params: {'p_payload': payload},
         );
+
         if (response != null && response is Map<String, dynamic>) {
           if (response.containsKey('error')) {
             throw Exception(response['error']);
@@ -321,5 +339,60 @@ class SupabaseQuotationRepository implements QuotationRepository {
     duplicated = duplicated.copyWith(lineItems: newItems);
 
     return await saveQuotation(duplicated);
+  }
+
+  Map<String, dynamic> _buildQuotationPayload(Quotation q) {
+    return {
+      'id': q.id,
+      'quotation_number': q.quotationNumber,
+      'salesperson_id': q.salespersonId,
+      'customer_name': q.customerInfo.name,
+      'customer_company': q.customerInfo.company,
+      'customer_phone': q.customerInfo.phone,
+      'customer_email': q.customerInfo.email,
+      'project_location': q.customerInfo.projectLocation,
+      'delivery_charges': q.charges.deliveryCharges,
+      'installation_charges': q.charges.installationCharges,
+      'other_charges': q.charges.otherCharges,
+      'overall_discount': q.charges.overallDiscount,
+      'vat_percentage': q.charges.vatPercentage,
+      'customer_notes': q.customerNotes,
+      'internal_notes': q.internalNotes,
+      'status': q.status.name,
+      'created_at': q.createdDate.toUtc().toIso8601String(),
+      'updated_at': q.modifiedDate.toUtc().toIso8601String(),
+      'valid_until': q.validUntil.toUtc().toIso8601String(),
+      'expected_delivery': q.expectedDelivery.toUtc().toIso8601String(),
+      'quotation_items': q.lineItems.map((e) {
+        final itemId = Uuid.isValidUUID(fromString: e.id) ? e.id : const Uuid().v4();
+        return {
+          'id': itemId,
+          'product_id': e.productId,
+          'product_code': e.productCode,
+          'name': e.name,
+          'brand': e.brand,
+          'unit_price': e.unitPrice,
+          'quantity': e.quantity,
+          'discount': e.discount,
+          'description': e.description,
+          'is_custom': e.isCustom,
+          'is_vat_applicable': e.isVatApplicable,
+          'image_storage_path': e.imagePath,
+          'image_id': e.imageId,
+        };
+      }).toList(),
+      // Adding camelCase fallbacks just in case the RPC uses them
+      'quotationNumber': q.quotationNumber,
+      'salespersonId': q.salespersonId,
+      'customerInfo': q.customerInfo.toJson(),
+      'charges': q.charges.toJson(),
+      'lineItems': q.lineItems.map((e) {
+        final itemId = Uuid.isValidUUID(fromString: e.id) ? e.id : const Uuid().v4();
+        final map = e.toJson();
+        map['id'] = itemId;
+        map.remove('imageBytes');
+        return map;
+      }).toList(),
+    };
   }
 }

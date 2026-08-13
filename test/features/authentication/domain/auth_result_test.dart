@@ -13,6 +13,7 @@ void main() {
       role: UserRole.admin,
       isActive: true,
       createdAt: now,
+      updatedAt: now,
     );
 
     test('AuthResult.success creates correct success instance', () {

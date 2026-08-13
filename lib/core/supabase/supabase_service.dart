@@ -139,9 +139,13 @@ class SupabaseService extends ChangeNotifier {
           .from('app_users')
           .select('id')
           .limit(1)
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 2));
+      return true;
+    } on PostgrestException catch (_) {
+      // Reached the server but RLS or auth blocked it. We are online!
       return true;
     } catch (_) {
+      // Network error or timeout.
       return false;
     }
   }

@@ -120,9 +120,10 @@ class _SplashScreenState extends State<SplashScreen>
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(
-          Icons.flight_takeoff,
-          size: 72,
+        Image.asset(
+          'assets/logos/app_icon_logo.png',
+          width: 72,
+          height: 72,
           color: AppColors.primaryBlue,
         ),
         const SizedBox(height: 24),

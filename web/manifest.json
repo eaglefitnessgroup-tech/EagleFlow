@@ -1,12 +1,12 @@
 {
-    "name": "eagleflow",
-    "short_name": "eagleflow",
-    "start_url": ".",
+    "name": "EagleFlow",
+    "short_name": "EagleFlow",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#000000",
+    "theme_color": "#155EEF",
+    "description": "EagleFlow - Quotation and Stock Management System",
     "prefer_related_applications": false,
     "icons": [
         {

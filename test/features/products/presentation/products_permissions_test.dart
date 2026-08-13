@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/products/presentation/products_screen.dart';
 import 'package:eagleflow/features/products/presentation/product_details_screen.dart';
@@ -7,6 +7,7 @@ import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/products/presentation/widgets/product_card.dart';
+import '../../../features/authentication/fake_auth_repository.dart';
 
 void main() {
   final dummyProduct = Product(
@@ -31,6 +32,7 @@ void main() {
     final db = await databaseFactoryMemory.openDatabase(dbName);
     DatabaseService().setDatabaseForTesting(db);
 
+    ServiceLocator().mockAuthRepository = FakeAuthRepository();
     await ServiceLocator().init();
     await ServiceLocator().authController.logout();
 
@@ -53,9 +55,8 @@ void main() {
   group('Products Screen Permissions', () {
     testWidgets('Admin sees Add Product', (WidgetTester tester) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(
-          username: 'admin',
-          password: 'admin123',
+        await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
+          password: 'anshad123',
           rememberMe: true,
         );
       });
@@ -70,9 +71,8 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(
-          username: 'sales',
-          password: 'sales123',
+        await ServiceLocator().authController.login(email: 'ajmal@eagleflow.com',
+          password: 'ajmal123',
           rememberMe: true,
         );
       });
@@ -100,9 +100,8 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(
-          username: 'admin',
-          password: 'admin123',
+        await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
+          password: 'anshad123',
           rememberMe: true,
         );
       });
@@ -130,9 +129,8 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(
-          username: 'sales',
-          password: 'sales123',
+        await ServiceLocator().authController.login(email: 'ajmal@eagleflow.com',
+          password: 'ajmal123',
           rememberMe: true,
         );
       });

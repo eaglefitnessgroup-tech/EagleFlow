@@ -17,20 +17,28 @@ class ProductFilterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        _buildFilterToggle(
-          label: 'In Stock',
-          isSelected: inStockOnly,
-          onTap: () => onInStockToggled(!inStockOnly),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildFilterToggle(
+              label: 'In Stock',
+              isSelected: inStockOnly,
+              onTap: () => onInStockToggled(!inStockOnly),
+            ),
+            _buildFilterToggle(
+              label: 'Low Stock',
+              isSelected: lowStockOnly,
+              onTap: () => onLowStockToggled(!lowStockOnly),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        _buildFilterToggle(
-          label: 'Low Stock',
-          isSelected: lowStockOnly,
-          onTap: () => onLowStockToggled(!lowStockOnly),
-        ),
-        const Spacer(),
         InkWell(
           onTap: () {
             // Sort placeholder
@@ -50,6 +58,7 @@ class ProductFilterRow extends StatelessWidget {
               border: Border.all(color: AppColors.border),
             ),
             child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.sort, size: 18, color: AppColors.charcoal),
                 SizedBox(width: 6),
