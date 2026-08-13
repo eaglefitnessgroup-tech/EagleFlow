@@ -46,3 +46,6 @@ app.*.map.json
 
 # Local dev profiles
 .chrome-dev-profile/
+
+# Supabase secrets
+supabase.json
