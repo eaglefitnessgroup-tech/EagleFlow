@@ -11,8 +11,6 @@ class SembastQuotationRepository implements QuotationRepository {
   final StoreRef<String, Map<String, Object?>> _quotationsStore =
       stringMapStoreFactory.store('quotations');
   final StoreRef<String, Blob> _imagesStore = StoreRef<String, Blob>('images');
-  final StoreRef<String, Map<String, Object?>> _metadataStore =
-      stringMapStoreFactory.store('metadata');
 
   final Uuid _uuid = const Uuid();
 
@@ -67,33 +65,7 @@ class SembastQuotationRepository implements QuotationRepository {
   }
 
   Future<String> generateNextQuotationNumber(DatabaseClient client) async {
-    final currentYear = DateTime.now().year % 100;
-    final yearKey = 'seq_$currentYear';
-    final record = await _metadataStore.record(yearKey).get(client);
-    var currentSeq = record != null ? (record['seq'] as int? ?? 0) : 0;
-    
-    // Check highest quotation in current year
-    if (currentSeq == 0) {
-      final allRecords = await _quotationsStore.find(client);
-      int maxSeq = 0;
-      final prefix = 'QT-';
-      final suffix = '-$currentYear';
-      for (var record in allRecords) {
-        final qNumber = record.value['quotationNumber'] as String?;
-        if (qNumber != null && qNumber.startsWith(prefix) && qNumber.endsWith(suffix)) {
-          final middle = qNumber.substring(prefix.length, qNumber.length - suffix.length);
-          final seq = int.tryParse(middle) ?? 0;
-          if (seq > maxSeq) {
-            maxSeq = seq;
-          }
-        }
-      }
-      currentSeq = maxSeq;
-    }
-
-    final nextSeq = currentSeq + 1;
-    await _metadataStore.record(yearKey).put(client, {'seq': nextSeq});
-    return 'QT-${nextSeq.toString().padLeft(4, '0')}-$currentYear';
+    return 'DRAFT-${_uuid.v4().substring(0, 8).toUpperCase()}';
   }
 
   @override

@@ -30,7 +30,7 @@ void main() {
         final saved = await repository.saveQuotation(draft);
 
         expect(saved.id, isNotEmpty);
-        expect(saved.quotationNumber, startsWith('QT-0001-'));
+        expect(saved.quotationNumber, startsWith('DRAFT-'));
       },
     );
 

@@ -178,7 +178,7 @@ void main() {
       final saved = await repo.saveQuotation(q);
 
       expect(saved.id, isNotEmpty);
-      expect(saved.quotationNumber.startsWith('QT-'), isTrue);
+      expect(saved.quotationNumber.startsWith('DRAFT-'), isTrue);
     });
 
     test('5. Salesperson own-only rules', () async {
@@ -243,7 +243,7 @@ void main() {
       final saved = await repo.saveQuotation(q);
 
       expect(saved.id, isNotEmpty);
-      expect(saved.quotationNumber.startsWith('QT-'), isTrue);
+      expect(saved.quotationNumber.startsWith('DRAFT-'), isTrue);
     });
   });
 }

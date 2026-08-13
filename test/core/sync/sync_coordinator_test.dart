@@ -267,7 +267,7 @@ void main() {
       );
 
       final saved = await qRepo.saveQuotation(q);
-      expect(saved.quotationNumber.startsWith('QT-'), isTrue);
+      expect(saved.quotationNumber.startsWith('DRAFT-'), isTrue);
 
       final queue = await coordinator.getQueueForTesting();
       expect(queue.length, 1);
