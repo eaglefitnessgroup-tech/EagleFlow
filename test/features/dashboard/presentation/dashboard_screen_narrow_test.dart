@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
@@ -55,7 +55,10 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.runAsync(() async {
+        await tester.pumpWidget(buildTestableWidget());
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
       await tester.pumpAndSettle();
 
       // Verify no RenderFlex overflow occurs

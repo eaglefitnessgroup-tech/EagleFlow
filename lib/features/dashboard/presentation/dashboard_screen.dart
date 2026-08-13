@@ -1,26 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../core/di/service_locator.dart';
-
-// Temporary structured models
-class QuotationSummary {
-  final String id;
-  final String customer;
-  final String amount;
-  final String date;
-  final QuotationStatus status;
-
-  const QuotationSummary({
-    required this.id,
-    required this.customer,
-    required this.amount,
-    required this.date,
-    required this.status,
-  });
-}
-
-enum QuotationStatus { pending, sent, approved }
+import '../../quotations/domain/quotation.dart';
+import '../../quotations/domain/quotation_status.dart';
+import '../../quotations/application/quotation_calculator.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -32,29 +17,80 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final int _currentIndex = 0;
 
-  final List<QuotationSummary> _recentQuotations = const [
-    QuotationSummary(
-      id: 'QT-1025',
-      customer: 'Falcon Gym',
-      amount: 'AED 14,500',
-      date: 'Today',
-      status: QuotationStatus.pending,
-    ),
-    QuotationSummary(
-      id: 'QT-1024',
-      customer: 'Power Fitness',
-      amount: 'AED 7,800',
-      date: 'Yesterday',
-      status: QuotationStatus.sent,
-    ),
-    QuotationSummary(
-      id: 'QT-1023',
-      customer: 'Al Noor Club',
-      amount: 'AED 2,950',
-      date: '28 Jul 2026',
-      status: QuotationStatus.approved,
-    ),
-  ];
+  bool _isLoading = true;
+  int _totalProducts = 0;
+  int _todaysQuotations = 0;
+  int _pendingQuotations = 0;
+  int _lowStockItems = 0;
+  List<Quotation> _recentQuotations = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      final productRepo = ServiceLocator().productRepository;
+      final quotationRepo = ServiceLocator().quotationRepository;
+      final stockController = ServiceLocator().stockController;
+
+      final products = await productRepo.getAllProducts();
+      final quotations = await quotationRepo.getAllQuotations();
+
+      int lowStockCount = 0;
+      for (final product in products) {
+        final currentStock = await stockController.getCurrentStock(product);
+        if (currentStock <= product.minStockLevel) {
+          lowStockCount++;
+        }
+      }
+
+      final now = DateTime.now();
+      int todayQuotationsCount = 0;
+      int pendingQuotationsCount = 0;
+
+      for (final q in quotations) {
+        if (q.createdDate.year == now.year &&
+            q.createdDate.month == now.month &&
+            q.createdDate.day == now.day) {
+          todayQuotationsCount++;
+        }
+        if (q.status == QuotationStatus.draft) {
+          pendingQuotationsCount++;
+        }
+      }
+
+      final sortedQuotations = List<Quotation>.from(quotations)
+        ..sort((a, b) => b.createdDate.compareTo(a.createdDate));
+      
+      final recent = sortedQuotations.take(3).toList();
+
+      if (mounted) {
+        setState(() {
+          _totalProducts = products.length;
+          _todaysQuotations = todayQuotationsCount;
+          _pendingQuotations = pendingQuotationsCount;
+          _lowStockItems = lowStockCount;
+          _recentQuotations = recent;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load dashboard data: $e'),
+            backgroundColor: AppColors.statusRejectedText,
+          ),
+        );
+      }
+    }
+  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -74,7 +110,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     switch (index) {
       case 0:
-        // Already on home
         break;
       case 1:
         Navigator.of(context).pushNamed(AppRoutes.products);
@@ -104,34 +139,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               maxWidth: 800,
-            ), // Sensible max width for web
-            child: CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.all(20.0),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      _buildHeader(),
-                      const SizedBox(height: 24),
-                      _buildSearchField(),
-                      const SizedBox(height: 24),
-                      _buildPrimaryActionCard(context),
-                      const SizedBox(height: 16),
-                      _buildReservationActionCard(context),
-                      const SizedBox(height: 24),
-                      _buildQuickActionsGrid(context),
-                      const SizedBox(height: 32),
-                      _buildOverviewSection(),
-                      const SizedBox(height: 32),
-                      _buildRecentQuotationsHeader(context),
-                      const SizedBox(height: 16),
-                      ..._recentQuotations.map((q) => _buildQuotationRow(q)),
-                      const SizedBox(height: 24), // Extra bottom padding
-                    ]),
-                  ),
-                ),
-              ],
             ),
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryBlue,
+                    ),
+                  )
+                : CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.all(20.0),
+                        sliver: SliverList(
+                          delegate: SliverChildListDelegate([
+                            _buildHeader(),
+                            const SizedBox(height: 24),
+                            _buildSearchField(),
+                            const SizedBox(height: 24),
+                            _buildPrimaryActionCard(context),
+                            const SizedBox(height: 16),
+                            _buildReservationActionCard(context),
+                            const SizedBox(height: 24),
+                            _buildQuickActionsGrid(context),
+                            const SizedBox(height: 32),
+                            _buildOverviewSection(),
+                            const SizedBox(height: 32),
+                            _buildRecentQuotationsHeader(context),
+                            const SizedBox(height: 16),
+                            ...(_recentQuotations.isEmpty
+                                ? [
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 32.0),
+                                      child: Center(
+                                        child: Text(
+                                          'No quotations yet',
+                                          style: TextStyle(
+                                            color: AppColors.mutedText,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  ]
+                                : _recentQuotations.map((q) => _buildQuotationRow(q))),
+                            const SizedBox(height: 24),
+                          ]),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),
@@ -483,9 +540,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Text(
           'Overview',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         LayoutBuilder(
@@ -499,10 +554,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisSpacing: 16,
               childAspectRatio: 1.4,
               children: [
-                _buildStatCard('Total Products', '2,450'),
-                _buildStatCard('Today\'s Quotations', '6'),
-                _buildStatCard('Pending Quotations', '12'),
-                _buildStatCard('Low Stock Items', '18'),
+                _buildStatCard('Total Products', _totalProducts.toString()),
+                _buildStatCard('Today\'s Quotations', _todaysQuotations.toString()),
+                _buildStatCard('Pending Quotations', _pendingQuotations.toString()),
+                _buildStatCard('Low Stock Items', _lowStockItems.toString()),
               ],
             );
           },
@@ -549,9 +604,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Text(
           'Recent Quotations',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         TextButton(
           onPressed: () {
@@ -569,28 +622,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildQuotationRow(QuotationSummary quote) {
+  Widget _buildQuotationRow(Quotation quote) {
     Color statusBg;
     Color statusText;
-    String statusLabel;
+    String statusLabel = quote.status.displayName;
 
     switch (quote.status) {
-      case QuotationStatus.pending:
+      case QuotationStatus.draft:
         statusBg = AppColors.statusPendingBg;
         statusText = AppColors.statusPendingText;
-        statusLabel = 'Pending';
         break;
       case QuotationStatus.sent:
         statusBg = AppColors.statusSentBg;
         statusText = AppColors.statusSentText;
-        statusLabel = 'Sent';
         break;
       case QuotationStatus.approved:
         statusBg = AppColors.statusApprovedBg;
         statusText = AppColors.statusApprovedText;
-        statusLabel = 'Approved';
         break;
+      default:
+        statusBg = AppColors.statusPendingBg;
+        statusText = AppColors.statusPendingText;
     }
+
+    final formatter = NumberFormat('#,##0.00');
+    final grandTotal = QuotationCalculator.calculateGrandTotal(
+      QuotationCalculator.calculateSubtotal(quote.lineItems),
+      quote.charges,
+    );
+    final formattedAmount = 'AED ${formatter.format(grandTotal)}';
+    final formattedDate = DateFormat('dd MMM yyyy').format(quote.createdDate);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -611,7 +672,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  quote.customer,
+                  quote.customerInfo.name,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -624,7 +685,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   children: [
                     Text(
-                      quote.id,
+                      quote.quotationNumber.isNotEmpty ? quote.quotationNumber : 'DRAFT',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.mutedText,
@@ -640,7 +701,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      quote.date,
+                      formattedDate,
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.mutedText,
@@ -656,7 +717,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                quote.amount,
+                formattedAmount,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.charcoal,
