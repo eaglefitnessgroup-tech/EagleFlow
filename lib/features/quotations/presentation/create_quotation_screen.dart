@@ -74,27 +74,27 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
 
     final stock = await ServiceLocator().stockController.getCurrentStock(product);
 
-    if (qty > stock) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Only $stock unit(s) available for ${product.name}.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      
-      int fallbackQty = item.quantity;
-      if (fallbackQty > stock) fallbackQty = stock;
-      if (fallbackQty < 1) fallbackQty = 1;
-      
-      _controller.updateQuantity(itemId, fallbackQty + 1);
-      await Future.delayed(const Duration(milliseconds: 50));
-      _controller.updateQuantity(itemId, fallbackQty);
+    if (qty <= stock) {
+      _controller.updateQuantity(itemId, qty);
       return;
     }
 
-    _controller.updateQuantity(itemId, qty);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Only $stock unit(s) available for ${product.name}.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    
+    int fallbackQty = item.quantity;
+    if (fallbackQty > stock) fallbackQty = stock;
+    if (fallbackQty < 1) fallbackQty = 1;
+    
+    _controller.updateQuantity(itemId, fallbackQty + 1);
+    await Future.delayed(const Duration(milliseconds: 50));
+    _controller.updateQuantity(itemId, fallbackQty);
   }
 
   Future<void> _handleProductsAdded(List<Product> products) async {
@@ -105,7 +105,9 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
       
       final stock = await ServiceLocator().stockController.getCurrentStock(product);
       
-      if (requestedQty > stock) {
+      if (requestedQty <= stock) {
+        _controller.addProduct(product);
+      } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -114,10 +116,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
             ),
           );
         }
-        continue;
       }
-      
-      _controller.addProduct(product);
     }
   }
 
@@ -154,18 +153,20 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
       final stock = cachedStock[product.id] ?? await ServiceLocator().stockController.getCurrentStock(product);
       cachedStock[product.id] = stock;
       
-      if (item.quantity > stock) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Cannot save. Only $stock unit(s) available for ${product.name}.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          setState(() => _isSaving = false);
-        }
-        return;
+      if (item.quantity <= stock) {
+        continue;
       }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cannot save. Only $stock unit(s) available for ${product.name}.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isSaving = false);
+      }
+      return;
     }
 
     try {
