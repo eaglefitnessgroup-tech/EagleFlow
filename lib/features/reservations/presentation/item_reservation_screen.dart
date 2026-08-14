@@ -43,7 +43,8 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
 
   Future<void> _loadData() async {
     try {
-      final products = await ServiceLocator().productRepository.getAllProducts();
+      await ServiceLocator().productMasterController.loadProducts();
+      final products = ServiceLocator().productMasterController.products;
       final activeProducts = products.where((p) => p.isActive).toList();
       final reservations = await ServiceLocator().reservationRepository.getActiveReservations();
       

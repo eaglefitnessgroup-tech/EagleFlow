@@ -233,5 +233,41 @@ void main() {
 
       expect(returnedProducts, isNull);
     });
+
+    test('ProductMasterController loads new product from repository', () async {
+      final controller = ServiceLocator().productMasterController;
+      
+      // 1. Initial load
+      await controller.loadProducts();
+      expect(controller.products.length, sampleProducts.length);
+      
+      // 2. Add a new product to the underlying repository directly
+      final newProduct = Product(
+        id: 'test-new-123',
+        productCode: 'NEW123',
+        name: 'Brand New Test Product',
+        category: 'Test',
+        brand: 'TestBrand',
+        sellingPrice: 99.99,
+        isVatApplicable: true,
+        isActive: true,
+        minStockLevel: 5,
+        openingStock: 10,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      
+      await ServiceLocator().productRepository.addProduct(newProduct);
+      
+      // 3. Reload controller
+      await controller.loadProducts();
+      
+      // 4. Verify controller has the new product
+      expect(controller.products.length, sampleProducts.length + 1);
+      expect(
+        controller.products.any((p) => p.name == 'Brand New Test Product'),
+        isTrue,
+      );
+    });
   });
 }

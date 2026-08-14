@@ -8,7 +8,12 @@ import '../../../../reservations/domain/reservation.dart';
 import 'package:intl/intl.dart';
 
 class ProductPicker {
-  static Future<List<Product>?> show(BuildContext context) {
+  static Future<List<Product>?> show(BuildContext context) async {
+    // Refresh the master controller to ensure we have the latest synced products
+    await ServiceLocator().productMasterController.loadProducts();
+
+    if (!context.mounted) return null;
+
     final bool isMobile = MediaQuery.of(context).size.width < 600;
 
     if (isMobile) {
