@@ -1,7 +1,6 @@
-import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 import '../../../../core/models/company_profile.dart';
 import '../../../../core/utils/pdf_image_loader.dart';
@@ -49,9 +48,9 @@ class QuotationPdfService {
 
     // 2. Setup Document & Fonts
     final pdf = pw.Document();
-    _fontRegular = await PdfGoogleFonts.interRegular();
-    _fontMedium = await PdfGoogleFonts.interMedium();
-    _fontSemiBold = await PdfGoogleFonts.interSemiBold();
+    _fontRegular = pw.Font.ttf(await rootBundle.load('assets/fonts/ibm_plex_sans_condensed/IBMPlexSansCondensed-Regular.ttf'));
+    _fontMedium = pw.Font.ttf(await rootBundle.load('assets/fonts/ibm_plex_sans_condensed/IBMPlexSansCondensed-Medium.ttf'));
+    _fontSemiBold = pw.Font.ttf(await rootBundle.load('assets/fonts/ibm_plex_sans_condensed/IBMPlexSansCondensed-SemiBold.ttf'));
 
     // 3. Paginate
     final pages = QuotationPaginator.paginate(quotation);

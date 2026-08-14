@@ -13,6 +13,7 @@ class QuotationDocumentTheme {
 
   // Typography
   static const TextStyle h1 = TextStyle(
+    fontFamily: 'IBM Plex Sans Condensed',
     fontSize: 28,
     fontWeight: FontWeight.w800,
     color: navy,
@@ -21,6 +22,7 @@ class QuotationDocumentTheme {
   );
 
   static const TextStyle h2 = TextStyle(
+    fontFamily: 'IBM Plex Sans Condensed',
     fontSize: 22,
     fontWeight: FontWeight.bold,
     color: navy,
@@ -28,6 +30,7 @@ class QuotationDocumentTheme {
   );
 
   static const TextStyle h3 = TextStyle(
+    fontFamily: 'IBM Plex Sans Condensed',
     fontSize: 14,
     fontWeight: FontWeight.w700,
     color: navy,
@@ -36,6 +39,7 @@ class QuotationDocumentTheme {
   );
 
   static const TextStyle body = TextStyle(
+    fontFamily: 'IBM Plex Sans Condensed',
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: textMain,
@@ -43,6 +47,7 @@ class QuotationDocumentTheme {
   );
 
   static const TextStyle bodyBold = TextStyle(
+    fontFamily: 'IBM Plex Sans Condensed',
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: navy,
@@ -50,6 +55,7 @@ class QuotationDocumentTheme {
   );
 
   static const TextStyle small = TextStyle(
+    fontFamily: 'IBM Plex Sans Condensed',
     fontSize: 10,
     fontWeight: FontWeight.w500,
     color: textMuted,
@@ -57,6 +63,7 @@ class QuotationDocumentTheme {
   );
 
   static const TextStyle smallBold = TextStyle(
+    fontFamily: 'IBM Plex Sans Condensed',
     fontSize: 10,
     fontWeight: FontWeight.w700,
     color: navy,
