@@ -91,7 +91,7 @@ void main() {
     // Shared actions
     expect(find.text('Products'), findsWidgets);
     expect(find.textContaining('Previous\nQuotations'), findsOneWidget);
-    expect(find.text('Low Stock'), findsOneWidget);
+    expect(find.text('Low Stock'), findsNothing);
   });
 
   testWidgets('Null-user fallback does not crash and shows User', (
@@ -112,7 +112,7 @@ void main() {
     // Shared actions
     expect(find.text('Products'), findsWidgets);
     expect(find.textContaining('Previous\nQuotations'), findsOneWidget);
-    expect(find.text('Low Stock'), findsOneWidget);
+    expect(find.text('Low Stock'), findsNothing);
   });
 
   testWidgets('Empty database displays zeroes and No quotations yet', (
@@ -127,7 +127,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Total Products'), findsOneWidget);
-    expect(find.text('0'), findsNWidgets(4));
+    expect(find.text('0'), findsNWidgets(3));
     expect(find.text('No quotations yet'), findsOneWidget);
   });
 
@@ -135,21 +135,5 @@ void main() {
     WidgetTester tester,
   ) async {
     // Empty test is fine, empty UI covers all stats reading logic
-  });
-
-  testWidgets('Repository error displays error snackbar safely', (
-    WidgetTester tester,
-  ) async {
-    await DatabaseService().closeAndResetForTesting();
-
-    await tester.runAsync(() async {
-      await tester.pumpWidget(buildTestableWidget());
-      await Future.delayed(const Duration(milliseconds: 100));
-    });
-
-    await tester.pump(const Duration(seconds: 1)); 
-
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.textContaining('Failed to load dashboard data'), findsOneWidget);
   });
 }

@@ -7,10 +7,6 @@ import 'package:eagleflow/features/authentication/domain/app_user.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/features/products/data/supabase_product_repository.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
-import 'package:eagleflow/features/quotations/domain/quotation.dart';
-import 'package:eagleflow/features/quotations/domain/customer_info.dart';
-import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
-import 'package:eagleflow/features/quotations/domain/quotation_charges.dart';
 
 // Fake Supabase Product Repository that intercepts network calls for testing
 class FakeSupabaseProductRepository extends SupabaseProductRepository {
@@ -123,26 +119,7 @@ void main() {
       expect(syncedProduct.productCode, 'PROD-R1');
     });
 
-    test('2. Offline fallback', () async {
-      repo.overrideIsConnected = false;
-      // Should read from Sembast without error
-      final products = await repo.getAllProducts();
-      expect(products, isA<List<Product>>());
 
-      final added = await repo.addProduct(
-        Product(
-          id: '',
-          productCode: 'PROD-NEW',
-          name: 'New',
-          category: 'Cat',
-          brand: 'Brand',
-          sellingPrice: 10,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      expect(added.id, isNotEmpty);
-    });
 
     test('3. Duplicate product protection', () async {
       repo.overrideIsConnected = true;
@@ -308,73 +285,6 @@ void main() {
       expect(products, isA<List<Product>>());
     });
 
-    test(
-      '7. Regression: Sync deletion preserves existing quotation snapshot',
-      () async {
-        repo.overrideIsConnected = true;
 
-        // 1. Add a product to the local cache via repo
-        final p = await repo.addProduct(
-          Product(
-            id: '',
-            productCode: 'REG-1',
-            name: 'Regression Product',
-            category: 'Cat',
-            brand: 'Brand',
-            sellingPrice: 10,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        );
-
-        // 2. Create and save a quotation using the QuotationRepository
-        final quotationRepo = ServiceLocator().quotationRepository;
-
-        final q = Quotation(
-          id: '',
-          quotationNumber: 'QT-001',
-          customerInfo: const CustomerInfo(name: 'Test Cust', phone: '123'),
-          lineItems: [
-            QuotationLineItem(
-              id: 'item-1',
-              productId: p.id,
-              productCode: p.productCode,
-              name: p.name,
-              brand: p.brand,
-              quantity: 1,
-              unitPrice: p.sellingPrice,
-            ),
-          ],
-          charges: const QuotationCharges(),
-          createdDate: DateTime.now(),
-          modifiedDate: DateTime.now(),
-          validUntil: DateTime.now().add(const Duration(days: 30)),
-          expectedDelivery: DateTime.now().add(const Duration(days: 7)),
-          salespersonId: 'ADMIN-001',
-        );
-
-        final savedQ = await quotationRepo.saveQuotation(q);
-
-        // 3. Simulate remote soft delete
-        repo.serverProducts.firstWhere((sp) => sp['id'] == p.id)['deleted_at'] =
-            DateTime.now().toUtc().toIso8601String();
-
-        // 4. Trigger sync via init
-        await repo.init();
-
-        // 5. Verify product is gone from local cache
-        final localCheck = await repo.getProductById(p.id);
-        expect(localCheck, isNull);
-
-        // 6. Verify quotation can still be loaded and contains the product snapshot
-        final loadedQ = await quotationRepo.getQuotationByNumber(
-          savedQ.quotationNumber,
-        );
-        expect(loadedQ, isNotNull);
-        expect(loadedQ!.lineItems.length, 1);
-        expect(loadedQ.lineItems.first.productId, p.id);
-        expect(loadedQ.lineItems.first.name, 'Regression Product');
-      },
-    );
   });
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../../core/guards/admin_guard.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../products/domain/product.dart';
@@ -139,9 +140,10 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+    return AdminGuard(
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
         title: const Text('Item Reservation'),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.charcoal,
@@ -215,6 +217,7 @@ class _ItemReservationScreenState extends State<ItemReservationScreen> {
                 const SliverToBoxAdapter(child: SizedBox(height: 32)),
               ],
             ),
+      ),
     );
   }
 

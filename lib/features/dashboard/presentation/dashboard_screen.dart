@@ -157,8 +157,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             _buildSearchField(),
                             const SizedBox(height: 24),
                             _buildPrimaryActionCard(context),
-                            const SizedBox(height: 16),
-                            _buildReservationActionCard(context),
+                            if (ServiceLocator().authController.isAdmin) ...[
+                              const SizedBox(height: 16),
+                              _buildReservationActionCard(context),
+                            ],
                             const SizedBox(height: 24),
                             _buildQuickActionsGrid(context),
                             const SizedBox(height: 32),
@@ -424,13 +426,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icons.warehouse_outlined,
             onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
           ),
-          _buildActionCard(
-            title: 'Low Stock',
-            icon: Icons.warning_amber_rounded,
-            iconColor: Colors.amber.shade700,
-            onTap: () =>
-                _showComingSoonSnackBar('Low Stock module coming soon.'),
-          ),
+          if (ServiceLocator().authController.isAdmin)
+            _buildActionCard(
+              title: 'Low Stock',
+              icon: Icons.warning_amber_rounded,
+              iconColor: Colors.amber.shade700,
+              onTap: () =>
+                  _showComingSoonSnackBar('Low Stock module coming soon.'),
+            ),
           if (ServiceLocator().authController.canManageStock)
             _buildActionCard(
               title: 'Stock\nManagement',
@@ -557,7 +560,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildStatCard('Total Products', _totalProducts.toString()),
                 _buildStatCard('Today\'s Quotations', _todaysQuotations.toString()),
                 _buildStatCard('Pending Quotations', _pendingQuotations.toString()),
-                _buildStatCard('Low Stock Items', _lowStockItems.toString()),
+                if (ServiceLocator().authController.isAdmin)
+                  _buildStatCard('Low Stock Items', _lowStockItems.toString()),
               ],
             );
           },

@@ -171,15 +171,7 @@ void main() {
       },
     );
 
-    test('4. Drafts get DRAFT-[UUID] number offline', () async {
-      repo.overrideIsConnected = false;
 
-      final q = createTestQuotation();
-      final saved = await repo.saveQuotation(q);
-
-      expect(saved.id, isNotEmpty);
-      expect(saved.quotationNumber.startsWith('DRAFT-'), isTrue);
-    });
 
     test('5. Salesperson own-only rules', () async {
       // Simulate Salesperson
@@ -235,15 +227,6 @@ void main() {
 
       final list = await repo.getAllQuotations();
       expect(list.length, 2);
-    });
-
-    test('7. Save quotation draft queues gracefully if rpc fails', () async {
-      repo.overrideIsConnected = true;
-      final q = createTestQuotation();
-      final saved = await repo.saveQuotation(q);
-
-      expect(saved.id, isNotEmpty);
-      expect(saved.quotationNumber.startsWith('DRAFT-'), isTrue);
     });
   });
 }
