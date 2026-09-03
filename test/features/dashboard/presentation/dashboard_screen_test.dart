@@ -66,7 +66,7 @@ void main() {
     // Shared actions (Products appears in Grid and BottomNav so findsWidgets is correct)
     expect(find.text('Products'), findsWidgets);
     expect(find.textContaining('Previous\nQuotations'), findsOneWidget);
-    expect(find.text('Low Stock'), findsOneWidget);
+    expect(find.text('Low Stock'), findsNothing);
   });
 
   testWidgets('Salesperson name appears and Stock Management card is hidden', (
