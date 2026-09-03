@@ -47,6 +47,10 @@ void main() {
   testWidgets('Admin name appears and Stock Management card is visible', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    
     await tester.runAsync(() async {
       await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
         password: 'anshad123',
@@ -57,21 +61,25 @@ void main() {
     await tester.pumpWidget(buildTestableWidget());
     await tester.pumpAndSettle();
 
-    // Greeting
-    expect(find.text('Anshad'), findsOneWidget);
+    // Greeting should contain user name
+    expect(find.textContaining('Anshad'), findsOneWidget);
 
     // Admin specific card
-    expect(find.textContaining('Stock\nManagement'), findsOneWidget);
+    expect(find.textContaining('Stock Management'), findsWidgets);
 
     // Shared actions (Products appears in Grid and BottomNav so findsWidgets is correct)
     expect(find.text('Products'), findsWidgets);
-    expect(find.textContaining('Previous\nQuotations'), findsOneWidget);
+    expect(find.textContaining('Previous Quotations'), findsWidgets);
     expect(find.text('Low Stock'), findsNothing);
   });
 
   testWidgets('Salesperson name appears and Stock Management card is hidden', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await tester.runAsync(() async {
       await ServiceLocator().authController.login(email: 'ajmal@eagleflow.com',
         password: 'ajmal123',
@@ -82,42 +90,50 @@ void main() {
     await tester.pumpWidget(buildTestableWidget());
     await tester.pumpAndSettle();
 
-    // Greeting
-    expect(find.text('Ajmal'), findsOneWidget);
+    // Greeting should contain user name
+    expect(find.textContaining('Ajmal'), findsOneWidget);
 
     // Admin specific card
-    expect(find.textContaining('Stock\nManagement'), findsNothing);
+    expect(find.textContaining('Stock Management'), findsNothing);
 
     // Shared actions
     expect(find.text('Products'), findsWidgets);
-    expect(find.textContaining('Previous\nQuotations'), findsOneWidget);
+    expect(find.textContaining('Previous Quotations'), findsWidgets);
     expect(find.text('Low Stock'), findsNothing);
   });
 
   testWidgets('Null-user fallback does not crash and shows User', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     // Ensuring no user is logged in
     expect(ServiceLocator().authController.currentUser, isNull);
 
     await tester.pumpWidget(buildTestableWidget());
     await tester.pumpAndSettle();
 
-    // Greeting
-    expect(find.text('User'), findsOneWidget);
+    // Greeting should contain user name
+    expect(find.textContaining('User'), findsOneWidget);
 
     // Admin specific card should be hidden
-    expect(find.textContaining('Stock\nManagement'), findsNothing);
+    expect(find.textContaining('Stock Management'), findsNothing);
 
     // Shared actions
     expect(find.text('Products'), findsWidgets);
-    expect(find.textContaining('Previous\nQuotations'), findsOneWidget);
+    expect(find.textContaining('Previous Quotations'), findsWidgets);
     expect(find.text('Low Stock'), findsNothing);
   });
 
   testWidgets('Empty database displays zeroes and No quotations yet', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(buildTestableWidget());
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();

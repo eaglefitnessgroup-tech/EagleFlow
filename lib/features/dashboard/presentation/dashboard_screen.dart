@@ -15,8 +15,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final int _currentIndex = 0;
-
   bool _isLoading = true;
   int _totalProducts = 0;
   int _todaysQuotations = 0;
@@ -33,7 +31,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final productRepo = ServiceLocator().productRepository;
       final quotationRepo = ServiceLocator().quotationRepository;
-      final stockController = ServiceLocator().stockController;
 
       final products = await productRepo.getAllProducts();
       final quotations = await quotationRepo.getAllQuotations();
@@ -56,7 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final sortedQuotations = List<Quotation>.from(quotations)
         ..sort((a, b) => b.createdDate.compareTo(a.createdDate));
       
-      final recent = sortedQuotations.take(3).toList();
+      final recent = sortedQuotations.take(5).toList();
 
       if (mounted) {
         setState(() {
@@ -95,141 +92,248 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _onBottomNavTapped(int index) {
-    if (index == _currentIndex) return;
-
-    switch (index) {
-      case 0:
-        break;
-      case 1:
-        Navigator.of(context).pushNamed(AppRoutes.products);
-        break;
-      case 2:
-        Navigator.of(context).pushNamed(AppRoutes.previousQuotations);
-        break;
-      case 3:
-        Navigator.of(context).pushNamed(AppRoutes.profile);
-        break;
-    }
-  }
-
-  void _showComingSoonSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      bottomNavigationBar: _buildBottomNav(),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 800,
-            ),
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.primaryBlue,
-                    ),
-                  )
-                : CustomScrollView(
-                    slivers: [
-                      SliverPadding(
-                        padding: const EdgeInsets.all(20.0),
-                        sliver: SliverList(
-                          delegate: SliverChildListDelegate([
-                            _buildHeader(),
-                            const SizedBox(height: 24),
-                            _buildSearchField(),
-                            const SizedBox(height: 24),
-                            _buildPrimaryActionCard(context),
-                            const SizedBox(height: 24),
-                            _buildQuickActionsGrid(context),
-                            const SizedBox(height: 32),
-                            _buildOverviewSection(),
-                            const SizedBox(height: 32),
-                            _buildRecentQuotationsHeader(context),
-                            const SizedBox(height: 16),
-                            ...(_recentQuotations.isEmpty
-                                ? [
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 32.0),
-                                      child: Center(
-                                        child: Text(
-                                          'No quotations yet',
-                                          style: TextStyle(
-                                            color: AppColors.mutedText,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  ]
-                                : _recentQuotations.map((q) => _buildQuotationRow(q))),
-                            const SizedBox(height: 24),
-                          ]),
-                        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSidebar(context),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryBlue,
                       ),
-                    ],
+                    )
+                  : _buildMainContent(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebar(BuildContext context) {
+    return Container(
+      width: 240,
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(right: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: const Icon(Icons.rocket_launch, color: AppColors.primaryBlue, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'EagleFlow',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.charcoal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildSidebarItem(
+            context,
+            icon: Icons.dashboard_outlined,
+            label: 'Dashboard',
+            route: null,
+            isSelected: true,
+          ),
+          _buildSidebarItem(
+            context,
+            icon: Icons.inventory_2_outlined,
+            label: 'Products',
+            route: AppRoutes.products,
+            isSelected: false,
+          ),
+          _buildSidebarItem(
+            context,
+            icon: Icons.history_outlined,
+            label: 'Quotations',
+            route: AppRoutes.previousQuotations,
+            isSelected: false,
+          ),
+          if (ServiceLocator().authController.canManageStock)
+            _buildSidebarItem(
+              context,
+              icon: Icons.admin_panel_settings_outlined,
+              label: 'Stock Management',
+              route: AppRoutes.stockManagement,
+              isSelected: false,
+            ),
+          const Spacer(),
+          _buildSidebarItem(
+            context,
+            icon: Icons.person_outline,
+            label: 'Profile',
+            route: AppRoutes.profile,
+            isSelected: false,
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String? route,
+    required bool isSelected,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: route != null ? () => Navigator.of(context).pushNamed(route) : null,
+        hoverColor: AppColors.primarySoft.withValues(alpha: 0.5),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: isSelected ? AppColors.primaryBlue : Colors.transparent,
+                width: 4,
+              ),
+            ),
+            color: isSelected ? AppColors.primarySoft.withValues(alpha: 0.3) : Colors.transparent,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: isSelected ? AppColors.primaryBlue : AppColors.mutedText, size: 22),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.primaryBlue : AppColors.mutedText,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
+  Widget _buildMainContent() {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildTopBar(),
+                  const SizedBox(height: 24),
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+                  _buildOverviewSection(),
+                  const SizedBox(height: 24),
+                  _buildPrimaryActionCard(context),
+                  const SizedBox(height: 24),
+                  _buildQuickActionsGrid(context),
+                  const SizedBox(height: 24),
+                  _buildRecentQuotationsSection(context),
+                  const SizedBox(height: 32),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Container(
+      padding: const EdgeInsets.only(bottom: 16),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              alignment: Alignment.centerLeft,
+              child: _buildSearchField(),
+            ),
+          ),
+          const SizedBox(width: 24),
+          InkWell(
+            onTap: () {
+              Navigator.of(context).pushNamed(AppRoutes.profile);
+            },
+            borderRadius: BorderRadius.circular(18),
+            child: const CircleAvatar(
+              radius: 18,
+              backgroundColor: AppColors.primarySoft,
+              child: Icon(
+                Icons.person_outline,
+                color: AppColors.primaryBlue,
+                size: 18,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${_getGreeting()},',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.charcoal,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                ServiceLocator().authController.currentUser?.name ?? 'User',
+                '${_getGreeting()}, ${ServiceLocator().authController.currentUser?.name ?? 'User'}',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.bold,
-                ),
+                      color: AppColors.charcoal,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
-                'Welcome back.\nReady to create your next quotation?',
+                'Here is your overview for today.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.mutedText,
-                  height: 1.6,
-                ),
+                      color: AppColors.mutedText,
+                      fontSize: 15,
+                    ),
               ),
             ],
-          ),
-        ),
-        InkWell(
-          onTap: () {
-            Navigator.of(context).pushNamed(AppRoutes.profile);
-          },
-          borderRadius: BorderRadius.circular(24),
-          child: const CircleAvatar(
-            radius: 28,
-            backgroundColor: AppColors.primarySoft,
-            child: Icon(
-              Icons.person_outline,
-              color: AppColors.primaryBlue,
-              size: 32,
-            ),
           ),
         ),
       ],
@@ -238,259 +342,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSearchField() {
     return Container(
+      width: 400,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-        ],
       ),
       child: const TextField(
         decoration: InputDecoration(
-          hintText: 'Search products or quotations',
-          hintStyle: TextStyle(color: AppColors.mutedText),
-          prefixIcon: Icon(Icons.search, color: AppColors.mutedText),
+          hintText: 'Search...',
+          hintStyle: TextStyle(color: AppColors.mutedText, fontSize: 13),
+          prefixIcon: Icon(Icons.search, color: AppColors.mutedText, size: 18),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPrimaryActionCard(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.of(context).pushNamed(AppRoutes.createQuotation);
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.primaryBlue,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryBlue.withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.request_quote_outlined,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'New Quotation',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Prepare and share a professional quotation',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionsGrid(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-        final children = [
-          _buildActionCard(
-            title: 'Products',
-            icon: Icons.inventory_2_outlined,
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
-          ),
-          _buildActionCard(
-            title: 'Previous\nQuotations',
-            icon: Icons.history_outlined,
-            onTap: () =>
-                Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
-          ),
-          _buildActionCard(
-            title: 'Stock',
-            icon: Icons.warehouse_outlined,
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
-          ),
-          if (ServiceLocator().authController.canManageStock)
-            _buildActionCard(
-              title: 'Stock\nManagement',
-              icon: Icons.admin_panel_settings_outlined,
-              onTap: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.stockManagement),
-            ),
-          if (ServiceLocator().authController.canViewReports)
-            _buildActionCard(
-              title: 'Reports',
-              icon: Icons.bar_chart_outlined,
-              onTap: () => _showComingSoonSnackBar('Reports module coming soon.'),
-            ),
-          if (ServiceLocator().authController.canManageUsers)
-            _buildActionCard(
-              title: 'User\nManagement',
-              icon: Icons.group_outlined,
-              onTap: () => _showComingSoonSnackBar('User Management coming soon.'),
-            ),
-          if (ServiceLocator().authController.isAdmin)
-            _buildActionCard(
-              title: 'Settings',
-              icon: Icons.settings_outlined,
-              onTap: () => _showComingSoonSnackBar('Settings coming soon.'),
-            ),
-        ];
-
-        final rows = <Widget>[];
-        for (var i = 0; i < children.length; i += crossAxisCount) {
-          final rowChildren = <Widget>[];
-          for (var j = 0; j < crossAxisCount; j++) {
-            if (i + j < children.length) {
-              rowChildren.add(Expanded(child: children[i + j]));
-            } else {
-              rowChildren.add(Expanded(child: const SizedBox()));
-            }
-            if (j < crossAxisCount - 1) {
-              rowChildren.add(const SizedBox(width: 16));
-            }
-          }
-          rows.add(
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: rowChildren,
-              ),
-            ),
-          );
-          if (i + crossAxisCount < children.length) {
-            rows.add(const SizedBox(height: 16));
-          }
-        }
-
-        return Column(children: rows);
-      },
-    );
-  }
-
-  Widget _buildActionCard({
-    required String title,
-    required IconData icon,
-    required VoidCallback onTap,
-    Color? iconColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 2,
-              offset: Offset(0, 1),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: iconColor ?? AppColors.primaryBlue, size: 28),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.charcoal,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         ),
       ),
     );
   }
 
   Widget _buildOverviewSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          'Overview',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-            return GridView.count(
-              crossAxisCount: crossAxisCount,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.4,
-              children: [
-                _buildStatCard('Total Products', _totalProducts.toString()),
-                _buildStatCard('Today\'s Quotations', _todaysQuotations.toString()),
-                _buildStatCard('Pending Quotations', _pendingQuotations.toString()),
-              ],
-            );
-          },
-        ),
+        Expanded(child: _buildStatCard('Total Products', _totalProducts.toString(), Icons.inventory_2_outlined)),
+        const SizedBox(width: 24),
+        Expanded(child: _buildStatCard('Today\'s Quotations', _todaysQuotations.toString(), Icons.today_outlined)),
+        const SizedBox(width: 24),
+        Expanded(child: _buildStatCard('Pending Quotations', _pendingQuotations.toString(), Icons.pending_actions_outlined)),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value) {
+  Widget _buildStatCard(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: AppColors.mutedText, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(icon, color: AppColors.primaryBlue.withValues(alpha: 0.5), size: 20),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
             value,
             style: const TextStyle(
@@ -499,38 +409,245 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: AppColors.charcoal,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildRecentQuotationsHeader(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Recent Quotations',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pushNamed(AppRoutes.previousQuotations);
-          },
-          child: const Text(
-            'View All',
-            style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontWeight: FontWeight.w600,
-            ),
+  Widget _buildPrimaryActionCard(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).pushNamed(AppRoutes.createQuotation);
+        },
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: AppColors.primaryBlue.withValues(alpha: 0.9),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.primaryBlue,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryBlue.withValues(alpha: 0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.request_quote_outlined,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'New Quotation',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Prepare and share a professional quotation.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Text(
+                      'Create Now',
+                      style: TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, color: AppColors.primaryBlue, size: 16),
+                  ],
+                ),
+              )
+            ],
           ),
         ),
+      ),
+    );
+  }
+  
+  Widget _buildQuickActionsGrid(BuildContext context) {
+    final children = [
+      _buildActionCard(
+        title: 'Products',
+        icon: Icons.inventory_2_outlined,
+        onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+      ),
+      _buildActionCard(
+        title: 'Previous Quotations',
+        icon: Icons.history_outlined,
+        onTap: () => Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
+      ),
+      _buildActionCard(
+        title: 'Stock',
+        icon: Icons.warehouse_outlined,
+        onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+      ),
+      if (ServiceLocator().authController.canManageStock)
+        _buildActionCard(
+          title: 'Stock Management',
+          icon: Icons.admin_panel_settings_outlined,
+          onTap: () => Navigator.of(context).pushNamed(AppRoutes.stockManagement),
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.charcoal,
+              ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: children.map((child) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: child == children.last ? 0 : 16.0),
+              child: child,
+            ),
+          )).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionCard({
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: AppColors.surface.withValues(alpha: 0.8),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: AppColors.primaryBlue, size: 20),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.charcoal,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentQuotationsSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'Recent Quotations',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.charcoal,
+                    ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed(AppRoutes.previousQuotations);
+              },
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: const Text(
+                'View All',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (_recentQuotations.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'No quotations yet',
+              style: TextStyle(
+                color: AppColors.mutedText,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          )
+        else
+          ..._recentQuotations.map((q) => _buildQuotationRow(q)),
       ],
     );
   }
@@ -568,135 +685,94 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {},
+          borderRadius: BorderRadius.circular(12),
+          hoverColor: AppColors.surface.withValues(alpha: 0.8),
+          child: Ink(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
               children: [
-                Text(
-                  quote.customerInfo.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.charcoal,
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        quote.customerInfo.name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.charcoal,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        quote.quotationNumber.isNotEmpty ? quote.quotationNumber : 'DRAFT',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.mutedText,
+                        ),
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      quote.quotationNumber.isNotEmpty ? quote.quotationNumber : 'DRAFT',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.mutedText,
-                      ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    formattedDate,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.mutedText,
                     ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      '•',
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    formattedAmount,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.charcoal,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                const SizedBox(width: 24),
+                SizedBox(
+                  width: 90,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: statusBg,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      statusLabel,
                       style: TextStyle(
-                        color: AppColors.mutedText,
-                        fontSize: 10,
+                        color: statusText,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      formattedDate,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.mutedText,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                formattedAmount,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.charcoal,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: TextStyle(
-                    color: statusText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      currentIndex: _currentIndex,
-      onTap: _onBottomNavTapped,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: AppColors.surface,
-      selectedItemColor: AppColors.primaryBlue,
-      unselectedItemColor: AppColors.mutedText,
-      showUnselectedLabels: true,
-      elevation: 8,
-      selectedIconTheme: const IconThemeData(size: 28),
-      selectedLabelStyle: const TextStyle(
-        fontWeight: FontWeight.w700,
-        fontSize: 12,
-      ),
-      unselectedLabelStyle: const TextStyle(
-        fontWeight: FontWeight.w500,
-        fontSize: 12,
-      ),
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.inventory_2_outlined),
-          label: 'Products',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.history_outlined),
-          label: 'Quotations',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          label: 'Profile',
-        ),
-      ],
+      ),
     );
   }
 }
