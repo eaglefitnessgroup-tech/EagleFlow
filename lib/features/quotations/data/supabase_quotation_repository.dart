@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sembast/sembast.dart';
 import 'package:uuid/uuid.dart';
 
@@ -94,6 +95,57 @@ class SupabaseQuotationRepository implements QuotationRepository {
       });
     } catch (e) {
       // Ignore sync errors
+    }
+  }
+
+  Future<void> handleRealtimeEvent(PostgresChangePayload payload) async {
+    final table = payload.table;
+    final eventType = payload.eventType;
+    final newRecord = payload.newRecord;
+    final oldRecord = payload.oldRecord;
+
+    String? quotationId;
+
+    if (table == 'quotations') {
+      if (eventType == PostgresChangeEvent.delete) {
+        if (oldRecord.isNotEmpty && oldRecord['id'] != null) {
+          final db = await _db;
+          await _quotationsStore.record(oldRecord['id'] as String).delete(db);
+          return;
+        }
+      } else {
+        quotationId = newRecord['id'] as String?;
+      }
+    } else if (table == 'quotation_items') {
+      if (eventType == PostgresChangeEvent.delete) {
+         quotationId = oldRecord['quotation_id'] as String?;
+      } else {
+         quotationId = newRecord['quotation_id'] as String?;
+      }
+    }
+
+    if (quotationId != null) {
+      try {
+        final client = supabase.client;
+        if (client == null) return;
+        final response = await client
+            .from('quotations')
+            .select('*, quotation_items(*)')
+            .eq('id', quotationId)
+            .maybeSingle();
+            
+        if (response != null) {
+           final serverQ = _fromSupabase(response);
+           final db = await _db;
+           await _quotationsStore.record(serverQ.id).put(db, serverQ.toJson());
+        } else {
+           // It might have been deleted, clean up cache just in case
+           final db = await _db;
+           await _quotationsStore.record(quotationId).delete(db);
+        }
+      } catch (e) {
+        // ignore
+      }
     }
   }
 
@@ -220,57 +272,36 @@ Future<List<Quotation>> getAllQuotations() async {
       throw Exception('Cannot finalize or save a non-draft quotation offline.');
     }
 
-    if (isConnectedToServer) {
-      try {
-        final client = supabase.client;
-        if (client == null) {
-          throw Exception('Supabase client is null while connected');
-        }
-        final payload = _buildQuotationPayload(toSave);
+    if (!isConnectedToServer) {
+      throw Exception('Offline: Cannot save quotation.');
+    }
 
-        final response = await client.rpc(
-          'save_quotation',
-          params: {'p_payload': payload},
-        );
-
-        if (response != null && response is Map<String, dynamic>) {
-          if (response.containsKey('error')) {
-            throw Exception(response['error']);
-          }
-          // Already handled locally, backend just upserts.
-          // Fallback if backend still returns something else (we prefer local though)
-          if (response['quotationNumber'] != null && response['quotationNumber'].toString().isNotEmpty) {
-            toSave = toSave.copyWith(quotationNumber: response['quotationNumber'] as String);
-          }
-        }
-      } catch (e) {
-        if (toSave.status != QuotationStatus.draft) {
-          throw Exception(
-            'Failed to sync quotation to remote. Please try again.',
-          );
-        }
-        final payload = toSave.toJson();
-        if (payload['lineItems'] != null) {
-          for (var item in payload['lineItems'] as List<dynamic>) {
-            item.remove('imageBytes');
-          }
-        }
-        await ServiceLocator().syncCoordinator.queueFailedWrite(
-          'quotations',
-          payload,
-        );
+    try {
+      final client = supabase.client;
+      if (client == null) {
+        throw Exception('Supabase client is null while connected');
       }
-    } else {
-      final payload = toSave.toJson();
-      if (payload['lineItems'] != null) {
-        for (var item in payload['lineItems'] as List<dynamic>) {
-          item.remove('imageBytes');
-        }
-      }
-      await ServiceLocator().syncCoordinator.queueFailedWrite(
-        'quotations',
-        payload,
+      final rpcPayload = _buildQuotationPayload(toSave);
+      
+      final response = await client.rpc(
+        'save_quotation',
+        params: {'p_payload': rpcPayload},
       );
+
+      if (response != null &&
+          response is Map<String, dynamic> &&
+          response.containsKey('error')) {
+        throw Exception(response['error']);
+      }
+      
+      if (response != null &&
+          response is Map<String, dynamic> &&
+          response['quotationNumber'] != null &&
+          response['quotationNumber'].toString().isNotEmpty) {
+        toSave = toSave.copyWith(quotationNumber: response['quotationNumber'] as String);
+      }
+    } catch (e) {
+      throw Exception('Failed to sync quotation to remote: $e');
     }
 
     return await localCache.saveQuotation(toSave);

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sembast/sembast.dart';
 import 'package:sembast/blob.dart';
 import 'package:uuid/uuid.dart';
@@ -123,6 +124,34 @@ class SupabaseProductRepository implements ProductRepository {
     return localCache.getAllProducts();
   }
 
+  Future<void> handleRealtimeEvent(PostgresChangePayload payload) async {
+    final eventType = payload.eventType;
+    final newRecord = payload.newRecord;
+    final oldRecord = payload.oldRecord;
+
+    final db = await _db;
+    await db.transaction((txn) async {
+      if (eventType == PostgresChangeEvent.insert || eventType == PostgresChangeEvent.update) {
+        if (newRecord.isNotEmpty) {
+          final serverProd = _fromSupabase(newRecord);
+          if (newRecord['deleted_at'] != null) {
+            await _productsStore.record(serverProd.id).delete(txn);
+          } else {
+            await _productsStore.record(serverProd.id).put(txn, serverProd.toJson());
+          }
+        }
+      } else if (eventType == PostgresChangeEvent.delete) {
+        if (oldRecord.isNotEmpty && oldRecord['id'] != null) {
+          await _productsStore.record(oldRecord['id'] as String).delete(txn);
+        }
+      }
+    });
+
+    try {
+      await ServiceLocator().productMasterController.refresh();
+    } catch (_) {}
+  }
+
   @override
   Future<Product?> getProductById(String id) async {
     return localCache.getProductById(id);
@@ -167,16 +196,8 @@ class SupabaseProductRepository implements ProductRepository {
       throw Exception('Product code must be unique');
     }
 
-    // 1. Save to Supabase first or queue if offline/fails
-    try {
-      if (!isConnectedToServer) throw Exception('Offline');
-      await insertProductToServer(_toSupabase(updatedProduct));
-    } catch (e) {
-      await ServiceLocator().syncCoordinator.queueFailedWrite(
-        'products',
-        _toSupabase(updatedProduct),
-      );
-    }
+    if (!isConnectedToServer) throw Exception('Offline: Cannot save product.');
+    await insertProductToServer(_toSupabase(updatedProduct));
 
     // 2. Save locally
     final db = await _db;
@@ -227,19 +248,11 @@ class SupabaseProductRepository implements ProductRepository {
       throw Exception('Product code must be unique');
     }
 
-    // 1. Save to Supabase first or queue
-    try {
-      if (!isConnectedToServer) throw Exception('Offline');
-      await updateProductOnServer(
-        updatedProduct.id,
-        _toSupabase(updatedProduct),
-      );
-    } catch (e) {
-      await ServiceLocator().syncCoordinator.queueFailedWrite(
-        'products',
-        _toSupabase(updatedProduct),
-      );
-    }
+    if (!isConnectedToServer) throw Exception('Offline: Cannot update product.');
+    await updateProductOnServer(
+      updatedProduct.id,
+      _toSupabase(updatedProduct),
+    );
 
     // 2. Save locally
     final finalProduct = await localCache.updateProduct(updatedProduct);
@@ -287,25 +300,11 @@ class SupabaseProductRepository implements ProductRepository {
   Future<void> toggleProductStatus(String id, bool isActive) async {
     _checkAdmin();
 
-    try {
-      if (!isConnectedToServer) throw Exception('Offline');
-      await updateProductOnServer(id, {
-        'is_active': isActive,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      });
-    } catch (e) {
-      final p = await getProductById(id);
-      if (p != null) {
-        final updated = p.copyWith(
-          isActive: isActive,
-          updatedAt: DateTime.now(),
-        );
-        await ServiceLocator().syncCoordinator.queueFailedWrite(
-          'products',
-          _toSupabase(updated),
-        );
-      }
-    }
+    if (!isConnectedToServer) throw Exception('Offline: Cannot toggle product status.');
+    await updateProductOnServer(id, {
+      'is_active': isActive,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
 
     await localCache.toggleProductStatus(id, isActive);
   }
@@ -321,40 +320,27 @@ class SupabaseProductRepository implements ProductRepository {
       );
     }
 
-    // Save to Supabase first (soft delete) or queue
-    try {
-      if (!isConnectedToServer) throw Exception('Offline');
+    if (!isConnectedToServer) throw Exception('Offline: Cannot delete product.');
 
-      final product = await getProductById(id);
+    final product = await getProductById(id);
 
-      await updateProductOnServer(id, {
-        'deleted_at': DateTime.now().toUtc().toIso8601String(),
-      });
+    await updateProductOnServer(id, {
+      'deleted_at': DateTime.now().toUtc().toIso8601String(),
+    });
 
-      // Best-effort image cleanup
-      if (product != null &&
-          product.imageId != null &&
-          product.imageId!.isNotEmpty) {
-        try {
-          final removePath = product.imageId!.contains('/')
-              ? product.imageId!
-              : '${product.imageId}/main.jpg';
-          await supabase.client!.storage
-              .from('product-images')
-              .remove([removePath]);
-        } catch (e) {
-          // Ignore deletion errors
-        }
-      }
-    } catch (e) {
-      final p = await getProductById(id);
-      if (p != null) {
-        final payload = _toSupabase(p);
-        payload['deleted_at'] = DateTime.now().toUtc().toIso8601String();
-        await ServiceLocator().syncCoordinator.queueFailedWrite(
-          'products',
-          payload,
-        );
+    // Best-effort image cleanup
+    if (product != null &&
+        product.imageId != null &&
+        product.imageId!.isNotEmpty) {
+      try {
+        final removePath = product.imageId!.contains('/')
+            ? product.imageId!
+            : '${product.imageId}/main.jpg';
+        await supabase.client!.storage
+            .from('product-images')
+            .remove([removePath]);
+      } catch (e) {
+        // Ignore deletion errors
       }
     }
 

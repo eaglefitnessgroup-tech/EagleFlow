@@ -1,6 +1,6 @@
-import 'package:sembast_web/sembast_web.dart';
+
+import 'package:sembast/sembast_memory.dart';
 
 Future<Database> getDatabase() async {
-  final databaseFactory = databaseFactoryWeb;
-  return await databaseFactory.openDatabase('eagleflow_web.db', version: 1);
+  return await databaseFactoryMemory.openDatabase('eagleflow_web.db', version: 1);
 }

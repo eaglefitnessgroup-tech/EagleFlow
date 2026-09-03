@@ -10,6 +10,7 @@ import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/features/authentication/domain/app_user.dart';
 import 'package:sembast/sembast_memory.dart';
 import '../../../../test/features/authentication/fake_auth_repository.dart';
+import 'package:eagleflow/features/quotations/data/sembast_quotation_repository.dart';
 
 void main() {
   group('CreateQuotationScreen Regression Tests', () {
@@ -65,6 +66,7 @@ void main() {
       await localRepo.addProduct(productB);
       await localRepo.addProduct(productC);
       ServiceLocator().mockProductRepository = localRepo;
+      ServiceLocator().mockQuotationRepository = SembastQuotationRepository();
 
       ServiceLocator().mockAuthRepository = FakeAuthRepository();
       await ServiceLocator().init();

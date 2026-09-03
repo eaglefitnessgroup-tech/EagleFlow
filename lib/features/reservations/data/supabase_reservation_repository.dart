@@ -16,7 +16,6 @@ class SupabaseReservationRepository implements ReservationRepository {
       stringMapStoreFactory.store('reservations');
 
   Future<void>? _activeSync;
-  RealtimeChannel? _subscription;
 
   bool get isConnectedToServer => supabase.isConnected;
 
@@ -66,35 +65,29 @@ class SupabaseReservationRepository implements ReservationRepository {
           }
         }
       });
-      
-      _setupRealtime();
     } catch (e) {
       // Ignore sync errors
     }
   }
 
-  void _setupRealtime() {
-    if (_subscription != null) {
-      supabase.client?.removeChannel(_subscription!);
-      _subscription = null;
-    }
-    
-    if (!isConnectedToServer) return;
+  Future<void> handleRealtimeEvent(PostgresChangePayload payload) async {
+    final eventType = payload.eventType;
+    final newRecord = payload.newRecord;
+    final oldRecord = payload.oldRecord;
 
-    _subscription = supabase.client!
-        .channel('public:reservations')
-        .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'reservations',
-            callback: (payload) async {
-              if (payload.newRecord.isNotEmpty) {
-                final serverRes = _fromSupabase(payload.newRecord);
-                final db = await _db;
-                await _store.record(serverRes.id).put(db, serverRes.toJson());
-              }
-            })
-        .subscribe();
+    final db = await _db;
+    await db.transaction((txn) async {
+      if (eventType == PostgresChangeEvent.insert || eventType == PostgresChangeEvent.update) {
+        if (newRecord.isNotEmpty) {
+          final serverRes = _fromSupabase(newRecord);
+          await _store.record(serverRes.id).put(txn, serverRes.toJson());
+        }
+      } else if (eventType == PostgresChangeEvent.delete) {
+        if (oldRecord.isNotEmpty && oldRecord['id'] != null) {
+          await _store.record(oldRecord['id'] as String).delete(txn);
+        }
+      }
+    });
   }
 
   @override
@@ -125,21 +118,13 @@ class SupabaseReservationRepository implements ReservationRepository {
       updatedAt: DateTime.now(),
     );
 
-    // Save to Supabase first or queue
-    try {
-      if (!isConnectedToServer) throw Exception('Offline');
-      
-      final payload = _toSupabase(updatedReservation);
-      
-      await supabase.client!
-          .from('reservations')
-          .upsert(payload);
-    } catch (e) {
-      await ServiceLocator().syncCoordinator.queueFailedWrite(
-        'reservations',
-        _toSupabase(updatedReservation),
-      );
-    }
+    if (!isConnectedToServer) throw Exception('Offline: Cannot save reservation.');
+    
+    final payload = _toSupabase(updatedReservation);
+    
+    await supabase.client!
+        .from('reservations')
+        .upsert(payload);
 
     // Save locally
     final db = await _db;
@@ -176,17 +161,10 @@ class SupabaseReservationRepository implements ReservationRepository {
       updatedAt: DateTime.now(),
     );
 
-    try {
-      if (!isConnectedToServer) throw Exception('Offline');
-      await supabase.client!
-          .from('reservations')
-          .upsert(_toSupabase(reservation));
-    } catch (e) {
-      await ServiceLocator().syncCoordinator.queueFailedWrite(
-        'reservations',
-        _toSupabase(reservation),
-      );
-    }
+    if (!isConnectedToServer) throw Exception('Offline: Cannot update reservation status.');
+    await supabase.client!
+        .from('reservations')
+        .upsert(_toSupabase(reservation));
 
     await _store.record(id).put(db, reservation.toJson());
   }
@@ -229,9 +207,6 @@ class SupabaseReservationRepository implements ReservationRepository {
 
   @override
   void dispose() {
-    if (_subscription != null) {
-      supabase.client?.removeChannel(_subscription!);
-      _subscription = null;
-    }
+    // No-op, managed by SyncCoordinator now
   }
 }

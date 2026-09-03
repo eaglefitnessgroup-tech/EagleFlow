@@ -2,12 +2,87 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/quotations/presentation/widgets/create/product_picker.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
-import 'package:eagleflow/features/products/data/sample_products.dart';
+
 import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
 import '../../../../../features/authentication/fake_auth_repository.dart';
+import 'package:eagleflow/features/stock/domain/stock_movement.dart';
+import 'package:eagleflow/features/stock/data/sembast_stock_repository.dart';
+
+final List<Product> sampleProducts = [
+  Product(
+    id: 'test-1',
+    productCode: 'PROD1',
+    name: 'Motorized Treadmill',
+    category: 'Cardio',
+    brand: 'BrandA',
+    sellingPrice: 1000,
+    isVatApplicable: true,
+    isActive: true,
+    minStockLevel: 5,
+    openingStock: 10,
+    createdAt: DateTime(2023, 1, 1),
+    updatedAt: DateTime(2023, 1, 1),
+  ),
+  Product(
+    id: 'test-2',
+    productCode: 'PROD2',
+    name: 'Gym Rubber Mat',
+    category: 'Accessories',
+    brand: 'BrandB',
+    sellingPrice: 50,
+    isVatApplicable: true,
+    isActive: true,
+    minStockLevel: 5,
+    openingStock: 0,
+    createdAt: DateTime(2023, 1, 2),
+    updatedAt: DateTime(2023, 1, 2),
+  ),
+  Product(
+    id: 'test-3',
+    productCode: 'PROD3',
+    name: 'Dumbbell Set',
+    category: 'Weights',
+    brand: 'BrandC',
+    sellingPrice: 150,
+    isVatApplicable: true,
+    isActive: true,
+    minStockLevel: 5,
+    openingStock: 20,
+    createdAt: DateTime(2023, 1, 3),
+    updatedAt: DateTime(2023, 1, 3),
+  ),
+  Product(
+    id: 'test-4',
+    productCode: 'PROD4',
+    name: 'Weight Bench',
+    category: 'Weights',
+    brand: 'BrandD',
+    sellingPrice: 200,
+    isVatApplicable: true,
+    isActive: true,
+    minStockLevel: 5,
+    openingStock: 15,
+    createdAt: DateTime(2023, 1, 4),
+    updatedAt: DateTime(2023, 1, 4),
+  ),
+  Product(
+    id: 'test-5',
+    productCode: 'PROD5',
+    name: 'Exercise Bike',
+    category: 'Cardio',
+    brand: 'BrandE',
+    sellingPrice: 500,
+    isVatApplicable: true,
+    isActive: true,
+    minStockLevel: 5,
+    openingStock: 5,
+    createdAt: DateTime(2023, 1, 5),
+    updatedAt: DateTime(2023, 1, 5),
+  ),
+];
 
 void main() {
   group('ProductPicker Widget Tests', () {
@@ -100,8 +175,7 @@ void main() {
       await tester.tap(find.byKey(const Key('open_picker')));
       await tester.pumpAndSettle();
 
-      final firstProductName = sampleProducts[4]
-          .name; // Gym Rubber Mat (first alphabetically in stock)
+      final firstProductName = sampleProducts[2].name; // Dumbbell Set (first alphabetically in stock)
 
       // Tap row
       await tester.tap(find.text(firstProductName).first);
@@ -123,8 +197,8 @@ void main() {
         await tester.tap(find.byKey(const Key('open_picker')));
         await tester.pumpAndSettle();
 
-        // Select first product
-        final firstProduct = sampleProducts[4]; // Gym Rubber Mat
+        // Select first product (Dumbbell Set)
+        final firstProduct = sampleProducts[2];
         await tester.tap(find.text(firstProduct.name).first);
         await tester.pump();
         expect(find.text('1 Product Selected'), findsOneWidget);
@@ -170,9 +244,9 @@ void main() {
         await tester.tap(find.text('Open'));
         await tester.pumpAndSettle();
 
-        // Select Gym Rubber Mat (index 4, 1st in UI) and Motorized Treadmill (index 0, 2nd in UI).
-        // They should be returned as index 0 then index 4 (catalogue order).
-        final p1 = sampleProducts[0];
+        // Select Dumbbell Set (index 2) and Exercise Bike (index 4).
+        // They should be returned as index 2 then index 4.
+        final p1 = sampleProducts[2];
         final p2 = sampleProducts[4];
 
         await tester.tap(find.text(p1.name).first);
@@ -268,6 +342,40 @@ void main() {
         controller.products.any((p) => p.name == 'Brand New Test Product'),
         isTrue,
       );
+    });
+    
+    testWidgets('ProductPicker displays correct stock after Stock Out', (tester) async {
+      // 1. Initial product has openingStock > 0
+      final product = ServiceLocator().productMasterController.products.firstWhere((p) => p.name == sampleProducts.first.name);
+      expect(product.openingStock > 0, isTrue);
+
+      // 2. Add Stock Out to bring current stock to 0
+      final sembastRepo = SembastStockRepository();
+      final m = StockMovement(
+        id: 'test-movement-123',
+        productId: product.id,
+        type: StockMovementType.stockOut,
+        quantity: product.openingStock,
+        reference: 'Test Out',
+        movementDate: DateTime.now(),
+        createdAt: DateTime.now(),
+        createdBy: 'test_user',
+      );
+      await sembastRepo.addMovement(m);
+      
+      // Wait for movement to be saved
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 3. Open Picker
+      await tester.pumpWidget(buildTestApp(null));
+      await tester.tap(find.byKey(const Key('open_picker')));
+      await tester.pumpAndSettle();
+
+      // 4. Verify product shows "Out of stock" instead of openingStock
+      
+      final outOfStockWidgets = find.text('Out of stock');
+      
+      expect(outOfStockWidgets, findsNWidgets(2), reason: 'Product should display Out of stock after a stock out brings its quantity to 0 (total 2 out of stock products)');
     });
   });
 }

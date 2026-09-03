@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sembast/sembast.dart';
 
 import '../../../core/database/database_service.dart';
@@ -88,6 +89,30 @@ class SupabaseStockRepository implements StockRepository {
     } finally {
       _syncing = false;
     }
+  }
+
+  Future<void> handleRealtimeEvent(PostgresChangePayload payload) async {
+    final eventType = payload.eventType;
+    final newRecord = payload.newRecord;
+    final oldRecord = payload.oldRecord;
+
+    final db = await _db;
+    await db.transaction((txn) async {
+      if (eventType == PostgresChangeEvent.insert || eventType == PostgresChangeEvent.update) {
+        if (newRecord.isNotEmpty) {
+          final serverMovement = _fromSupabase(newRecord);
+          await _movementsStore.record(serverMovement.id).put(txn, serverMovement.toJson());
+        }
+      } else if (eventType == PostgresChangeEvent.delete) {
+        if (oldRecord.isNotEmpty && oldRecord['id'] != null) {
+          await _movementsStore.record(oldRecord['id'] as String).delete(txn);
+        }
+      }
+    });
+
+    try {
+      await ServiceLocator().stockController.loadAllMovements();
+    } catch (_) {}
   }
 
   StockMovement _fromSupabase(Map<String, dynamic> row) {

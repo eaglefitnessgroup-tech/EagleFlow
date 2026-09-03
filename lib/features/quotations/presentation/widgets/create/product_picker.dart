@@ -51,6 +51,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
 
   List<Product> _filteredProducts = [];
   List<Reservation> _activeReservations = [];
+  Map<String, int> _currentStockMap = {};
   bool _isLoading = true;
   bool _isSubmitting = false;
 
@@ -73,9 +74,23 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
 
   Future<void> _loadProducts() async {
     final reservations = await ServiceLocator().reservationRepository.getActiveReservations();
+    
+    final allActiveProducts = ServiceLocator().productMasterController.products
+        .where((p) => p.isActive)
+        .toList();
+        
+    final stockFutures = allActiveProducts.map((p) async {
+      final stock = await ServiceLocator().stockController.getCurrentStock(p);
+      return MapEntry(p.id, stock);
+    });
+    
+    final stockEntries = await Future.wait(stockFutures);
+    final stockMap = Map.fromEntries(stockEntries);
+
     if (mounted) {
       setState(() {
         _activeReservations = reservations;
+        _currentStockMap = stockMap;
         _isLoading = false;
         _onSearchChanged();
       });
@@ -113,8 +128,11 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   List<Product> _sortProducts(List<Product> products) {
     final List<Product> sorted = List.from(products);
     sorted.sort((a, b) {
-      final aInStock = a.openingStock > 0;
-      final bInStock = b.openingStock > 0;
+      final aStock = _currentStockMap[a.id] ?? a.openingStock;
+      final bStock = _currentStockMap[b.id] ?? b.openingStock;
+      
+      final aInStock = aStock > 0;
+      final bInStock = bStock > 0;
 
       if (aInStock && !bInStock) return -1;
       if (!aInStock && bInStock) return 1;
@@ -378,14 +396,15 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
       itemBuilder: (context, index) {
         final product = _filteredProducts[index];
         final isSelected = _selectedIds.contains(product.id);
-        final inStock = product.openingStock > 0;
+        final currentStock = _currentStockMap[product.id] ?? product.openingStock;
+        final inStock = currentStock > 0;
 
-        return _buildProductTile(product, isSelected, inStock);
+        return _buildProductTile(product, isSelected, inStock, currentStock);
       },
     );
   }
 
-  Widget _buildProductTile(Product product, bool isSelected, bool inStock) {
+  Widget _buildProductTile(Product product, bool isSelected, bool inStock, int currentStock) {
     return GestureDetector(
       onTap: () {
         // Stock confirmation is skipped for step 2.1 as per instruction: "Do NOT implement stock confirmation."
@@ -481,7 +500,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                           ),
                           child: Text(
                             inStock
-                                ? '${product.openingStock} in stock'
+                                ? '$currentStock in stock'
                                 : 'Out of stock',
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

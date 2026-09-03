@@ -51,8 +51,11 @@ class ServiceLocator {
   late final SembastQuotationRepository _sembastQuotationRepository =
       SembastQuotationRepository();
 
+  @visibleForTesting
+  QuotationRepository? mockQuotationRepository;
+
   late final QuotationRepository quotationRepository =
-      SupabaseQuotationRepository(_sembastQuotationRepository, supabaseService);
+      mockQuotationRepository ?? SupabaseQuotationRepository(_sembastQuotationRepository, supabaseService);
 
   late final SembastProductRepository _sembastProductRepository =
       SembastProductRepository();
