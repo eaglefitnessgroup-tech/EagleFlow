@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/routes/app_routes.dart';
 import '../domain/quotation_defaults.dart';
 
 import '../application/quotation_calculator.dart';
@@ -188,72 +189,190 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const QuotationStatusStrip(),
+            _buildSidebar(context),
             Expanded(
-              child: ListenableBuilder(
-                listenable: _controller,
-                builder: (context, _) {
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final bool isDesktop = constraints.maxWidth >= 1024;
-                      final quotation = _controller.quotation;
+              child: Column(
+                children: [
+                  const QuotationStatusStrip(),
+                  Expanded(
+                    child: ListenableBuilder(
+                      listenable: _controller,
+                      builder: (context, _) {
+                        final quotation = _controller.quotation;
+                        final subtotal = QuotationCalculator.calculateSubtotal(
+                          quotation.lineItems,
+                        );
+                        final vat = QuotationCalculator.calculateVAT(
+                          subtotal,
+                          quotation.charges,
+                        );
+                        final grandTotal = QuotationCalculator.calculateGrandTotal(
+                          subtotal,
+                          quotation.charges,
+                        );
 
-                      final subtotal = QuotationCalculator.calculateSubtotal(
-                        quotation.lineItems,
-                      );
-                      final vat = QuotationCalculator.calculateVAT(
-                        subtotal,
-                        quotation.charges,
-                      );
-                      final grandTotal =
-                          QuotationCalculator.calculateGrandTotal(
-                            subtotal,
-                            quotation.charges,
-                          );
-
-                      if (isDesktop) {
                         return _buildDesktopLayout(
                           context,
                           subtotal,
                           vat,
                           grandTotal,
                         );
-                      }
-
-                      return _buildMobileTabletLayout(
-                        context,
-                        subtotal,
-                        vat,
-                        grandTotal,
+                      },
+                    ),
+                  ),
+                  ListenableBuilder(
+                    listenable: _controller,
+                    builder: (context, _) {
+                      final canPreview = QuotationValidator.canPreview(
+                        _controller.quotation,
+                      );
+                      return QuotationBottomActionBar(
+                        canPreview: canPreview,
+                        isSaving: _isSaving,
+                        onSaveDraft: _handleSave,
+                        onPreview: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/quotation-preview',
+                            arguments: _controller,
+                          );
+                        },
                       );
                     },
-                  );
-                },
+                  ),
+                ],
               ),
             ),
-            ListenableBuilder(
-              listenable: _controller,
-              builder: (context, _) {
-                final canPreview = QuotationValidator.canPreview(
-                  _controller.quotation,
-                );
-                return QuotationBottomActionBar(
-                  canPreview: canPreview,
-                  isSaving: _isSaving,
-                  onSaveDraft: _handleSave,
-                  onPreview: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/quotation-preview',
-                      arguments: _controller,
-                    );
-                  },
-                );
-              },
-            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebar(BuildContext context) {
+    return Container(
+      width: 240,
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(right: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.rocket_launch, color: AppColors.primaryBlue, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'EagleFlow',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.charcoal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildSidebarItem(
+            context,
+            icon: Icons.dashboard_outlined,
+            label: 'Dashboard',
+            route: AppRoutes.dashboard,
+            isSelected: false,
+          ),
+          _buildSidebarItem(
+            context,
+            icon: Icons.inventory_2_outlined,
+            label: 'Products',
+            route: AppRoutes.products,
+            isSelected: false,
+          ),
+          _buildSidebarItem(
+            context,
+            icon: Icons.history_outlined,
+            label: 'Quotations',
+            route: AppRoutes.previousQuotations,
+            isSelected: true,
+          ),
+          if (ServiceLocator().authController.canManageStock)
+            _buildSidebarItem(
+              context,
+              icon: Icons.admin_panel_settings_outlined,
+              label: 'Stock Management',
+              route: AppRoutes.stockManagement,
+              isSelected: false,
+            ),
+          const Spacer(),
+          _buildSidebarItem(
+            context,
+            icon: Icons.person_outline,
+            label: 'Profile',
+            route: AppRoutes.profile,
+            isSelected: false,
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String? route,
+    required bool isSelected,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: route != null && !isSelected ? () => Navigator.of(context).pushNamed(route) : null,
+        hoverColor: AppColors.primarySoft.withValues(alpha: 0.5),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: isSelected ? AppColors.primaryBlue : Colors.transparent,
+                width: 4,
+              ),
+            ),
+            color: isSelected ? AppColors.primarySoft.withValues(alpha: 0.3) : Colors.transparent,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: isSelected ? AppColors.primaryBlue : AppColors.mutedText, size: 22),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.primaryBlue : AppColors.mutedText,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -267,183 +386,102 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
   ) {
     final quotation = _controller.quotation;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          QuotationPageHeader(quotationNumber: quotation.quotationNumber),
-          const SizedBox(height: 20),
-          Row(
+      padding: const EdgeInsets.fromLTRB(32, 24, 32, 120),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 2,
-                child: Column(
-                  children: [
-                    CustomerInformationCard(
+              QuotationPageHeader(quotationNumber: quotation.quotationNumber),
+              const SizedBox(height: 24),
+              // Compact Customer and Quotation Info
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: CustomerInformationCard(
                       initialName: quotation.customerInfo.name,
                       initialCompany: quotation.customerInfo.company,
                       initialPhone: quotation.customerInfo.phone,
                       initialEmail: quotation.customerInfo.email,
-                      initialProjectLocation:
-                          quotation.customerInfo.projectLocation,
+                      initialProjectLocation: quotation.customerInfo.projectLocation,
                       onNameChanged: _controller.updateCustomerName,
-                      onCompanyChanged: (val) =>
-                          _controller.updateCustomerDetails(company: val),
-                      onPhoneChanged: (val) =>
-                          _controller.updateCustomerDetails(phone: val),
-                      onEmailChanged: (val) =>
-                          _controller.updateCustomerDetails(email: val),
-                      onProjectLocationChanged: (val) => _controller
-                          .updateCustomerDetails(projectLocation: val),
+                      onCompanyChanged: (val) => _controller.updateCustomerDetails(company: val),
+                      onPhoneChanged: (val) => _controller.updateCustomerDetails(phone: val),
+                      onEmailChanged: (val) => _controller.updateCustomerDetails(email: val),
+                      onProjectLocationChanged: (val) => _controller.updateCustomerDetails(projectLocation: val),
                     ),
-                    const SizedBox(height: 20),
-                    QuotationInformationCard(
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: QuotationInformationCard(
                       quotationNumber: quotation.quotationNumber,
                       salespersonId: quotation.salespersonId,
                       date: quotation.createdDate,
                       validUntil: quotation.validUntil,
                       expectedDelivery: quotation.expectedDelivery,
                     ),
-                    const SizedBox(height: 20),
-                    SelectedProductsSection(
-                      items: quotation.lineItems,
-                      onQuantityChanged: _handleQuantityChanged,
-                      onUnitPriceChanged: _controller.updateUnitPrice,
-                      onDiscountChanged: _controller.updateLineDiscount,
-                      onRemove: _controller.removeItem,
-                      onProductsAdded: _handleProductsAdded,
-                      onCustomItemAdded: _controller.addCustomItem,
-                      onCustomItemUpdated: _controller.updateCustomItem,
-                    ),
-                    const SizedBox(height: 20),
-                    QuotationNotesCard(
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SelectedProductsSection(
+                items: quotation.lineItems,
+                onQuantityChanged: _handleQuantityChanged,
+                onUnitPriceChanged: _controller.updateUnitPrice,
+                onDiscountChanged: _controller.updateLineDiscount,
+                onRemove: _controller.removeItem,
+                onProductsAdded: _handleProductsAdded,
+                onCustomItemAdded: _controller.addCustomItem,
+                onCustomItemUpdated: _controller.updateCustomItem,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: QuotationNotesCard(
                       initialCustomerNotes: quotation.customerNotes,
                       initialInternalNotes: quotation.internalNotes,
-                      onCustomerNotesChanged: (val) =>
-                          _controller.updateNotes(customerNotes: val),
-                      onInternalNotesChanged: (val) =>
-                          _controller.updateNotes(internalNotes: val),
+                      onCustomerNotesChanged: (val) => _controller.updateNotes(customerNotes: val),
+                      onInternalNotesChanged: (val) => _controller.updateNotes(internalNotes: val),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 32),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  children: [
-                    AdditionalChargesCard(
-                      initialDelivery: quotation.charges.deliveryCharges,
-                      initialInstallation:
-                          quotation.charges.installationCharges,
-                      initialOther: quotation.charges.otherCharges,
-                      initialDiscount: quotation.charges.overallDiscount,
-                      initialVat: quotation.charges.vatPercentage,
-                      onUpdateCharges: _controller.updateCharges,
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      children: [
+                        AdditionalChargesCard(
+                          initialDelivery: quotation.charges.deliveryCharges,
+                          initialInstallation: quotation.charges.installationCharges,
+                          initialOther: quotation.charges.otherCharges,
+                          initialDiscount: quotation.charges.overallDiscount,
+                          initialVat: quotation.charges.vatPercentage,
+                          onUpdateCharges: _controller.updateCharges,
+                        ),
+                        const SizedBox(height: 24),
+                        QuotationSummaryCard(
+                          totalQuantity: quotation.lineItems.fold(
+                            0,
+                            (sum, i) => sum + i.quantity,
+                          ),
+                          subtotal: subtotal,
+                          overallDiscount: quotation.charges.overallDiscount,
+                          vat: vat,
+                          vatPercent: quotation.charges.vatPercentage,
+                          grandTotal: grandTotal,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
-                    QuotationSummaryCard(
-                      totalQuantity: quotation.lineItems.fold(
-                        0,
-                        (sum, i) => sum + i.quantity,
-                      ),
-                      subtotal: subtotal,
-                      overallDiscount: quotation.charges.overallDiscount,
-                      vat: vat,
-                      vatPercent: quotation.charges.vatPercentage,
-                      grandTotal: grandTotal,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMobileTabletLayout(
-    BuildContext context,
-    double subtotal,
-    double vat,
-    double grandTotal,
-  ) {
-    final quotation = _controller.quotation;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          QuotationPageHeader(quotationNumber: quotation.quotationNumber),
-          const SizedBox(height: 20),
-          CustomerInformationCard(
-            initialName: quotation.customerInfo.name,
-            initialCompany: quotation.customerInfo.company,
-            initialPhone: quotation.customerInfo.phone,
-            initialEmail: quotation.customerInfo.email,
-            initialProjectLocation: quotation.customerInfo.projectLocation,
-            onNameChanged: _controller.updateCustomerName,
-            onCompanyChanged: (val) =>
-                _controller.updateCustomerDetails(company: val),
-            onPhoneChanged: (val) =>
-                _controller.updateCustomerDetails(phone: val),
-            onEmailChanged: (val) =>
-                _controller.updateCustomerDetails(email: val),
-            onProjectLocationChanged: (val) =>
-                _controller.updateCustomerDetails(projectLocation: val),
-          ),
-          const SizedBox(height: 20),
-          QuotationInformationCard(
-            quotationNumber: quotation.quotationNumber,
-            salespersonId: quotation.salespersonId,
-            date: quotation.createdDate,
-            validUntil: quotation.validUntil,
-            expectedDelivery: quotation.expectedDelivery,
-          ),
-          const SizedBox(height: 20),
-          SelectedProductsSection(
-            items: quotation.lineItems,
-            onQuantityChanged: _handleQuantityChanged,
-            onUnitPriceChanged: _controller.updateUnitPrice,
-            onDiscountChanged: _controller.updateLineDiscount,
-            onRemove: _controller.removeItem,
-            onProductsAdded: _handleProductsAdded,
-            onCustomItemAdded: _controller.addCustomItem,
-            onCustomItemUpdated: _controller.updateCustomItem,
-          ),
-          const SizedBox(height: 20),
-          AdditionalChargesCard(
-            initialDelivery: quotation.charges.deliveryCharges,
-            initialInstallation: quotation.charges.installationCharges,
-            initialOther: quotation.charges.otherCharges,
-            initialDiscount: quotation.charges.overallDiscount,
-            initialVat: quotation.charges.vatPercentage,
-            onUpdateCharges: _controller.updateCharges,
-          ),
-          const SizedBox(height: 20),
-          QuotationSummaryCard(
-            totalQuantity: quotation.lineItems.fold(
-              0,
-              (sum, i) => sum + i.quantity,
-            ),
-            subtotal: subtotal,
-            overallDiscount: quotation.charges.overallDiscount,
-            vat: vat,
-            vatPercent: quotation.charges.vatPercentage,
-            grandTotal: grandTotal,
-          ),
-          const SizedBox(height: 20),
-          QuotationNotesCard(
-            initialCustomerNotes: quotation.customerNotes,
-            initialInternalNotes: quotation.internalNotes,
-            onCustomerNotesChanged: (val) =>
-                _controller.updateNotes(customerNotes: val),
-            onInternalNotesChanged: (val) =>
-                _controller.updateNotes(internalNotes: val),
-          ),
-        ],
+        ),
       ),
     );
   }

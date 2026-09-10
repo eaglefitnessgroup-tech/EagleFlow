@@ -39,6 +39,8 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
   late final TextEditingController _emailController;
   late final TextEditingController _projectController;
 
+  bool _isEditing = false;
+
   @override
   void initState() {
     super.initState();
@@ -148,56 +150,76 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
                   ),
                 ),
               ] else ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        'Customer Name *',
-                        _nameController,
-                        widget.onNameChanged,
-                        TextInputAction.next,
+                if (_isEditing) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          'Customer Name *',
+                          _nameController,
+                          widget.onNameChanged,
+                          TextInputAction.next,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        'Company',
-                        _companyController,
-                        widget.onCompanyChanged,
-                        TextInputAction.next,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildTextField(
+                          'Company',
+                          _companyController,
+                          widget.onCompanyChanged,
+                          TextInputAction.next,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        'Phone',
-                        _phoneController,
-                        widget.onPhoneChanged,
-                        TextInputAction.next,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildTextField(
+                          'Phone',
+                          _phoneController,
+                          widget.onPhoneChanged,
+                          TextInputAction.next,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        'Email',
-                        _emailController,
-                        widget.onEmailChanged,
-                        TextInputAction.next,
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          'Email',
+                          _emailController,
+                          widget.onEmailChanged,
+                          TextInputAction.next,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  'Project / Location',
-                  _projectController,
-                  widget.onProjectLocationChanged,
-                  TextInputAction.done,
-                ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: _buildTextField(
+                          'Project / Location',
+                          _projectController,
+                          widget.onProjectLocationChanged,
+                          TextInputAction.done,
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Row(
+                    children: [
+                      Expanded(child: _buildSummaryItem('Name', _nameController.text)),
+                      Expanded(child: _buildSummaryItem('Company', _companyController.text)),
+                      Expanded(child: _buildSummaryItem('Phone', _phoneController.text)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: _buildSummaryItem('Email', _emailController.text)),
+                      Expanded(flex: 2, child: _buildSummaryItem('Project/Location', _projectController.text)),
+                    ],
+                  ),
+                ],
               ],
             ],
           ),
@@ -212,10 +234,10 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
     required Widget child,
   }) {
     return Container(
-      padding: EdgeInsets.all(isMobile ? 20 : 24),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
@@ -228,15 +250,35 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.charcoal,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.charcoal,
+                ),
+              ),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _isEditing = !_isEditing;
+                  });
+                },
+                child: Text(
+                  _isEditing ? 'Done' : 'Edit',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.primaryBlue,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           child,
         ],
       ),
@@ -256,6 +298,8 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: AppColors.mutedText),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.border),
@@ -271,6 +315,22 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
         filled: true,
         fillColor: AppColors.surface,
       ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.mutedText)),
+        const SizedBox(height: 2),
+        Text(
+          value.isEmpty ? '-' : value,
+          style: const TextStyle(fontSize: 13, color: AppColors.charcoal, fontWeight: FontWeight.w500),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }
