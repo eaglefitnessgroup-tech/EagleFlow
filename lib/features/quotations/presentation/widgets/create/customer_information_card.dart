@@ -34,23 +34,15 @@ class CustomerInformationCard extends StatefulWidget {
 
 class _CustomerInformationCardState extends State<CustomerInformationCard> {
   late final TextEditingController _nameController;
-  late final TextEditingController _companyController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _emailController;
-  late final TextEditingController _projectController;
-
-  bool _isEditing = false;
+  late final TextEditingController _addressController;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
-    _companyController = TextEditingController(text: widget.initialCompany);
     _phoneController = TextEditingController(text: widget.initialPhone);
-    _emailController = TextEditingController(text: widget.initialEmail);
-    _projectController = TextEditingController(
-      text: widget.initialProjectLocation,
-    );
+    _addressController = TextEditingController(text: widget.initialProjectLocation);
   }
 
   @override
@@ -60,188 +52,35 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
         _nameController.text != widget.initialName) {
       _nameController.text = widget.initialName;
     }
-    if (oldWidget.initialCompany != widget.initialCompany &&
-        _companyController.text != widget.initialCompany) {
-      _companyController.text = widget.initialCompany;
-    }
     if (oldWidget.initialPhone != widget.initialPhone &&
         _phoneController.text != widget.initialPhone) {
       _phoneController.text = widget.initialPhone;
     }
-    if (oldWidget.initialEmail != widget.initialEmail &&
-        _emailController.text != widget.initialEmail) {
-      _emailController.text = widget.initialEmail;
-    }
     if (oldWidget.initialProjectLocation != widget.initialProjectLocation &&
-        _projectController.text != widget.initialProjectLocation) {
-      _projectController.text = widget.initialProjectLocation;
+        _addressController.text != widget.initialProjectLocation) {
+      _addressController.text = widget.initialProjectLocation;
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _companyController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
-    _projectController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
-
-        return _buildCard(
-          isMobile,
-          title: isMobile ? 'Customer' : 'Customer Information',
-          child: Column(
-            children: [
-              if (isMobile) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: _buildTextField(
-                    'Customer Name *',
-                    _nameController,
-                    widget.onNameChanged,
-                    TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: _buildTextField(
-                    'Company',
-                    _companyController,
-                    widget.onCompanyChanged,
-                    TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: _buildTextField(
-                    'Phone',
-                    _phoneController,
-                    widget.onPhoneChanged,
-                    TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: _buildTextField(
-                    'Email',
-                    _emailController,
-                    widget.onEmailChanged,
-                    TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: _buildTextField(
-                    'Project / Location',
-                    _projectController,
-                    widget.onProjectLocationChanged,
-                    TextInputAction.done,
-                  ),
-                ),
-              ] else ...[
-                if (_isEditing) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          'Customer Name *',
-                          _nameController,
-                          widget.onNameChanged,
-                          TextInputAction.next,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField(
-                          'Company',
-                          _companyController,
-                          widget.onCompanyChanged,
-                          TextInputAction.next,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField(
-                          'Phone',
-                          _phoneController,
-                          widget.onPhoneChanged,
-                          TextInputAction.next,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          'Email',
-                          _emailController,
-                          widget.onEmailChanged,
-                          TextInputAction.next,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: _buildTextField(
-                          'Project / Location',
-                          _projectController,
-                          widget.onProjectLocationChanged,
-                          TextInputAction.done,
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  Row(
-                    children: [
-                      Expanded(child: _buildSummaryItem('Name', _nameController.text)),
-                      Expanded(child: _buildSummaryItem('Company', _companyController.text)),
-                      Expanded(child: _buildSummaryItem('Phone', _phoneController.text)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(child: _buildSummaryItem('Email', _emailController.text)),
-                      Expanded(flex: 2, child: _buildSummaryItem('Project/Location', _projectController.text)),
-                    ],
-                  ),
-                ],
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCard(
-    bool isMobile, {
-    required String title,
-    required Widget child,
-  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -253,82 +92,142 @@ class _CustomerInformationCardState extends State<CustomerInformationCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.charcoal,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.person_outline, color: AppColors.charcoal, size: 18),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Customer Information',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                ],
               ),
               InkWell(
-                onTap: () {
-                  setState(() {
-                    _isEditing = !_isEditing;
-                  });
-                },
-                child: Text(
-                  _isEditing ? 'Done' : 'Edit',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.primaryBlue,
-                    fontWeight: FontWeight.w500,
-                  ),
+                onTap: () {},
+                child: const Row(
+                  children: [
+                    Icon(Icons.add, color: AppColors.primaryBlue, size: 16),
+                    SizedBox(width: 4),
+                    Text(
+                      'New Customer',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.primaryBlue,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          child,
+          // Customer Field
+          RichText(
+            text: const TextSpan(
+              text: 'Customer ',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.charcoal),
+              children: [
+                TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: _nameController,
+            onChanged: widget.onNameChanged,
+            decoration: InputDecoration(
+              hintText: 'Search or select customer...',
+              hintStyle: const TextStyle(color: AppColors.mutedText, fontSize: 13),
+              suffixIcon: const Icon(Icons.search, color: AppColors.mutedText, size: 18),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.primaryBlue),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildField(
+                  label: 'Phone',
+                  controller: _phoneController,
+                  onChanged: widget.onPhoneChanged,
+                  hintText: 'Enter phone...',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildField(
+                  label: 'Project / Location',
+                  controller: _addressController,
+                  onChanged: widget.onProjectLocationChanged,
+                  hintText: 'Enter project / location...',
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTextField(
-    String label,
-    TextEditingController controller, [
+  Widget _buildField({
+    required String label,
+    required TextEditingController controller,
     ValueChanged<String>? onChanged,
-    TextInputAction? textInputAction,
-  ]) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      textInputAction: textInputAction,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: AppColors.mutedText),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primaryBlue),
-        ),
-        filled: true,
-        fillColor: AppColors.surface,
-      ),
-    );
-  }
-
-  Widget _buildSummaryItem(String label, String value) {
+    String? hintText,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.mutedText)),
-        const SizedBox(height: 2),
         Text(
-          value.isEmpty ? '-' : value,
-          style: const TextStyle(fontSize: 13, color: AppColors.charcoal, fontWeight: FontWeight.w500),
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.charcoal),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        TextField(
+          controller: controller,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(color: AppColors.mutedText, fontSize: 13),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.primaryBlue),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          style: const TextStyle(fontSize: 13, color: AppColors.charcoal),
         ),
       ],
     );

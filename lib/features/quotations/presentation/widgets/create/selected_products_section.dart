@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
+import '../../../../../../core/di/service_locator.dart';
 import '../../../../products/domain/product.dart';
 import '../../../domain/quotation_line_item.dart';
 import 'quotation_product_tile.dart';
@@ -35,6 +36,15 @@ class SelectedProductsSection extends StatefulWidget {
 
 class _SelectedProductsSectionState extends State<SelectedProductsSection> {
   bool _isPickerOpen = false;
+  final TextEditingController _autocompleteController = TextEditingController();
+  final FocusNode _autocompleteFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _autocompleteController.dispose();
+    _autocompleteFocusNode.dispose();
+    super.dispose();
+  }
 
   Future<void> _openProductPicker(BuildContext context) async {
     if (_isPickerOpen) return;
@@ -93,27 +103,39 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isMobile ? 'Products' : 'Selected Products',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.charcoal,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.inventory_2_outlined, color: AppColors.charcoal, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        isMobile ? 'Items' : 'Quotation Items',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.charcoal,
+                        ),
+                      ),
+                    ],
                   ),
                   if (!isMobile)
                     Row(
                       children: [
-                        TextButton.icon(
-                          onPressed: () => _openProductPicker(context),
-                          icon: const Icon(Icons.add, size: 20),
-                          label: const Text('Add Product'),
-                        ),
+                        _buildAutocompleteField(),
                         const SizedBox(width: 12),
-                        TextButton.icon(
-                          onPressed: () => _openCustomProductForm(context),
-                          icon: const Icon(Icons.add, size: 20),
-                          label: const Text('Add Custom Item'),
+                        ElevatedButton.icon(
+                          onPressed: () => _openProductPicker(context),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Item'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
                         ),
                       ],
                     ),
@@ -149,34 +171,19 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
+                  child: ElevatedButton.icon(
                     onPressed: () => _openProductPicker(context),
                     icon: const Icon(Icons.add, size: 20),
-                    label: const Text('Add Product'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: const BorderSide(color: AppColors.border),
+                    label: const Text('Add Item'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      foregroundColor: AppColors.charcoal,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openCustomProductForm(context),
-                    icon: const Icon(Icons.add_box_outlined, size: 20),
-                    label: const Text('Add Custom Item'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: const BorderSide(color: AppColors.border),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      foregroundColor: AppColors.charcoal,
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -256,4 +263,178 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
       },
     );
   }
+
+  Widget _buildAutocompleteField() {
+    return SizedBox(
+      width: 250,
+      child: RawAutocomplete<Product>(
+        textEditingController: _autocompleteController,
+        focusNode: _autocompleteFocusNode,
+        optionsBuilder: (TextEditingValue textEditingValue) {
+          final query = textEditingValue.text.trim().toLowerCase();
+          if (query.isEmpty) {
+            return const Iterable<Product>.empty();
+          }
+
+          final allActiveProducts = ServiceLocator()
+              .productMasterController
+              .products
+              .where((p) => p.isActive);
+
+          final scoredProducts = <_ScoredProduct>[];
+
+          for (final p in allActiveProducts) {
+            final code = p.productCode.toLowerCase();
+            final name = p.name.toLowerCase();
+            final brand = p.brand.toLowerCase();
+            final category = p.category.toLowerCase();
+
+            if (code == query) {
+              scoredProducts.add(_ScoredProduct(p, 0));
+            } else if (code.startsWith(query)) {
+              scoredProducts.add(_ScoredProduct(p, 1));
+            } else if (name.startsWith(query)) {
+              scoredProducts.add(_ScoredProduct(p, 2));
+            } else if (name.contains(query)) {
+              scoredProducts.add(_ScoredProduct(p, 3));
+            } else if (code.contains(query)) {
+              scoredProducts.add(_ScoredProduct(p, 4));
+            } else if (brand.contains(query) || category.contains(query)) {
+              scoredProducts.add(_ScoredProduct(p, 5));
+            }
+          }
+
+          scoredProducts.sort((a, b) {
+            if (a.score != b.score) return a.score.compareTo(b.score);
+            return a.product.name.compareTo(b.product.name);
+          });
+
+          return scoredProducts.take(8).map((sp) => sp.product);
+        },
+        displayStringForOption: (Product option) => option.name,
+        onSelected: (Product selection) {
+          widget.onProductsAdded([selection]);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _autocompleteController.clear();
+            _autocompleteFocusNode.requestFocus();
+          });
+        },
+        fieldViewBuilder: (BuildContext context,
+            TextEditingController textEditingController,
+            FocusNode focusNode,
+            VoidCallback onFieldSubmitted) {
+          return TextField(
+            controller: textEditingController,
+            focusNode: focusNode,
+            onSubmitted: (String value) {
+              onFieldSubmitted();
+            },
+            decoration: InputDecoration(
+              hintText: 'Search product by name, code...',
+              hintStyle: const TextStyle(color: AppColors.mutedText, fontSize: 13),
+              prefixIcon: const Icon(Icons.search, color: AppColors.mutedText, size: 18),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.primaryBlue),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            style: const TextStyle(fontSize: 13, color: AppColors.charcoal),
+          );
+        },
+        optionsViewBuilder: (BuildContext context,
+            AutocompleteOnSelected<Product> onSelected,
+            Iterable<Product> options) {
+          return Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 4,
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 250, maxWidth: 350),
+                child: ListView.separated(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1, color: AppColors.border),
+                  itemBuilder: (BuildContext context, int index) {
+                    final Product option = options.elementAt(index);
+                    return InkWell(
+                      onTap: () {
+                        onSelected(option);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              option.name,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.charcoal,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    option.productCode,
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.mutedText),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  'AED ${option.sellingPrice.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primaryBlue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ScoredProduct {
+  final Product product;
+  final int score;
+
+  _ScoredProduct(this.product, this.score);
 }

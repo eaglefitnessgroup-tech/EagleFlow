@@ -22,133 +22,21 @@ class QuotationInformationCard extends StatefulWidget {
 }
 
 class _QuotationInformationCardState extends State<QuotationInformationCard> {
-  bool _isEditing = false;
-
   String _formatDate(DateTime d) {
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
-
-        return _buildCard(
-          isMobile,
-          title: isMobile ? 'Quotation' : 'Quotation Information',
-          child: Column(
-            children: [
-              if (isMobile) ...[
-                _buildTextField(
-                  'Quotation No.',
-                  initialValue: widget.quotationNumber,
-                  readOnly: true,
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  'Date',
-                  initialValue: _formatDate(widget.date),
-                  readOnly: true,
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  'Valid Until',
-                  initialValue: _formatDate(widget.validUntil),
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  'Delivery Date',
-                  initialValue: _formatDate(widget.expectedDelivery),
-                ),
-              ] else ...[
-                if (_isEditing) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          'Quotation No.',
-                          initialValue: widget.quotationNumber,
-                          readOnly: true,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField(
-                          'Date',
-                          initialValue: _formatDate(widget.date),
-                          readOnly: true,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField(
-                          'Salesperson',
-                          initialValue: widget.salespersonId,
-                          readOnly: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          'Valid Until',
-                          initialValue: _formatDate(widget.validUntil),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField(
-                          'Delivery Date',
-                          initialValue: _formatDate(widget.expectedDelivery),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(child: SizedBox()),
-                    ],
-                  ),
-                ] else ...[
-                  Row(
-                    children: [
-                      Expanded(child: _buildSummaryItem('Quotation No.', widget.quotationNumber)),
-                      Expanded(child: _buildSummaryItem('Date', _formatDate(widget.date))),
-                      Expanded(child: _buildSummaryItem('Salesperson', widget.salespersonId)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(child: _buildSummaryItem('Valid Until', _formatDate(widget.validUntil))),
-                      Expanded(child: _buildSummaryItem('Delivery Date', _formatDate(widget.expectedDelivery))),
-                      const Expanded(child: SizedBox()),
-                    ],
-                  ),
-                ],
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCard(
-    bool isMobile, {
-    required String title,
-    required Widget child,
-  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -158,86 +46,182 @@ class _QuotationInformationCardState extends State<QuotationInformationCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
+              const Icon(Icons.description_outlined, color: AppColors.charcoal, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Quotation Information',
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.charcoal,
                 ),
               ),
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    _isEditing = !_isEditing;
-                  });
-                },
-                child: Text(
-                  _isEditing ? 'Done' : 'Edit',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.primaryBlue,
-                    fontWeight: FontWeight.w500,
-                  ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildField(
+                  label: 'Quotation No.',
+                  initialValue: widget.quotationNumber,
+                  readOnly: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildField(
+                  label: 'Quotation Date',
+                  isRequired: true,
+                  initialValue: _formatDate(widget.date),
+                  icon: Icons.calendar_today_outlined,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          child,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildField(
+                  label: 'Valid Until',
+                  isRequired: true,
+                  initialValue: _formatDate(widget.validUntil),
+                  icon: Icons.calendar_today_outlined,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildDropdownField(
+                  label: 'Sales Person',
+                  value: widget.salespersonId.isNotEmpty ? widget.salespersonId : null,
+                  hint: 'Select...',
+                  items: widget.salespersonId.isNotEmpty ? [widget.salespersonId] : [],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTextField(
-    String label, {
-    String? initialValue,
+  Widget _buildField({
+    required String label,
+    required String initialValue,
+    bool isRequired = false,
     bool readOnly = false,
+    IconData? icon,
   }) {
-    return TextField(
-      controller: initialValue != null
-          ? TextEditingController(text: initialValue)
-          : null,
-      readOnly: readOnly,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: AppColors.mutedText),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: readOnly ? AppColors.border : AppColors.primaryBlue,
-          ),
-        ),
-        filled: true,
-        fillColor: readOnly ? AppColors.surface : Colors.white,
-      ),
-    );
-  }
-
-  Widget _buildSummaryItem(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.mutedText)),
-        const SizedBox(height: 2),
-        Text(
-          value.isEmpty ? '-' : value,
-          style: const TextStyle(fontSize: 13, color: AppColors.charcoal, fontWeight: FontWeight.w500),
+        RichText(
+          text: TextSpan(
+            text: label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.charcoal),
+            children: isRequired
+                ? const [TextSpan(text: ' *', style: TextStyle(color: Colors.red))]
+                : null,
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        TextField(
+          controller: TextEditingController(text: initialValue),
+          readOnly: readOnly,
+          decoration: InputDecoration(
+            suffixIcon: icon != null ? Icon(icon, color: AppColors.mutedText, size: 16) : null,
+            suffixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(
+                color: readOnly ? AppColors.border : AppColors.primaryBlue,
+              ),
+            ),
+            filled: true,
+            fillColor: readOnly ? AppColors.surface : Colors.white,
+          ),
+          style: TextStyle(
+            fontSize: 13,
+            color: readOnly ? AppColors.mutedText : AppColors.charcoal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required String hint,
+    required List<String> items,
+    String? displayText,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.charcoal),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.mutedText, size: 18),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: AppColors.primaryBlue),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          hint: Text(
+            hint,
+            style: const TextStyle(color: AppColors.mutedText, fontSize: 13),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          items: items.map((item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item == value && displayText != null ? displayText : item,
+                style: const TextStyle(fontSize: 13, color: AppColors.charcoal),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            );
+          }).toList(),
+          onChanged: (val) {},
         ),
       ],
     );

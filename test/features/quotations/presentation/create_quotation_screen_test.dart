@@ -193,7 +193,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter customer info so it allows saving
-      await tester.enterText(find.widgetWithText(TextField, 'Customer Name *').first, 'Test Customer');
+      await tester.enterText(find.byType(TextField).first, 'Test Customer');
       await tester.pumpAndSettle();
       
       // Simulate tapping the save button

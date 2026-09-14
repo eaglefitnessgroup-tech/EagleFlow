@@ -386,7 +386,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
   ) {
     final quotation = _controller.quotation;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 120),
+      padding: const EdgeInsets.fromLTRB(32, 16, 32, 120),
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 1400),
@@ -394,12 +394,13 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               QuotationPageHeader(quotationNumber: quotation.quotationNumber),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               // Compact Customer and Quotation Info
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
+                    flex: 4,
                     child: CustomerInformationCard(
                       initialName: quotation.customerInfo.name,
                       initialCompany: quotation.customerInfo.company,
@@ -415,6 +416,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                   ),
                   const SizedBox(width: 24),
                   Expanded(
+                    flex: 5,
                     child: QuotationInformationCard(
                       quotationNumber: quotation.quotationNumber,
                       salespersonId: quotation.salespersonId,
@@ -425,7 +427,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               SelectedProductsSection(
                 items: quotation.lineItems,
                 onQuantityChanged: _handleQuantityChanged,
