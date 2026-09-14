@@ -5,6 +5,7 @@ import '../../../../core/di/service_locator.dart';
 import '../domain/product.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/guards/admin_guard.dart';
+import 'widgets/image_adjust_dialog.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   final Product? product; // null if adding
@@ -33,6 +34,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   Uint8List? _imageBytes;
 
   bool _isSaving = false;
+  bool _isLoadingImage = false;
   String? _errorMessage;
 
   @override
@@ -60,6 +62,35 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _isActive = p.isActive;
       // Image would be passed or we need to load it
       _imageBytes = p.imageBytes;
+      if (_imageBytes == null && p.imageId != null) {
+        _loadExistingImageBytes(p.imageId!);
+      }
+    }
+  }
+
+  Future<void> _loadExistingImageBytes(String imageId) async {
+    setState(() {
+      _isLoadingImage = true;
+    });
+    try {
+      final client = ServiceLocator().supabaseService.client;
+      if (client != null) {
+        final downloadPath = imageId.contains('/') ? imageId : '$imageId/main.jpg';
+        final bytes = await client.storage.from('product-images').download(downloadPath);
+        if (mounted) {
+          setState(() {
+            _imageBytes = bytes;
+          });
+        }
+      }
+    } catch (e) {
+      // Fallback to "Add Image" if fetching fails
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingImage = false;
+        });
+      }
     }
   }
 
@@ -82,8 +113,35 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final xfile = await picker.pickImage(source: ImageSource.gallery);
     if (xfile != null) {
       final bytes = await xfile.readAsBytes();
+      
+      if (!mounted) return;
+      
+      final adjustedBytes = await showDialog<Uint8List>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ImageAdjustDialog(imageBytes: bytes),
+      );
+      
+      if (adjustedBytes != null) {
+        setState(() {
+          _imageBytes = adjustedBytes;
+        });
+      }
+    }
+  }
+
+  Future<void> _adjustExistingImage() async {
+    if (_imageBytes == null) return;
+    
+    final adjustedBytes = await showDialog<Uint8List>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => ImageAdjustDialog(imageBytes: _imageBytes!),
+    );
+    
+    if (adjustedBytes != null) {
       setState(() {
-        _imageBytes = bytes;
+        _imageBytes = adjustedBytes;
       });
     }
   }
@@ -284,50 +342,82 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       border: Border.all(color: AppColors.border),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: _imageBytes != null
-                        ? Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Image.memory(_imageBytes!, fit: BoxFit.cover),
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: GestureDetector(
-                                  onTap: _removeImage,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.black54,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      size: 16,
-                                      color: Colors.white,
+                    child: _isLoadingImage
+                        ? const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.primaryBlue),
+                              ),
+                            ),
+                          )
+                        : _imageBytes != null
+                            ? Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.memory(_imageBytes!, fit: BoxFit.cover),
+                                  Positioned(
+                                    top: 4,
+                                    right: 32, // Offset slightly so it's next to the close button
+                                    child: GestureDetector(
+                                      onTap: _adjustExistingImage,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.crop,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: GestureDetector(
+                                      onTap: _removeImage,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_photo_alternate_outlined,
+                                    size: 32,
+                                    color: AppColors.mutedText,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Add Image',
+                                    style: TextStyle(
+                                      color: AppColors.mutedText,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          )
-                        : const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.add_photo_alternate_outlined,
-                                color: AppColors.mutedText,
-                                size: 32,
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Add Image',
-                                style: TextStyle(
-                                  color: AppColors.mutedText,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
                   ),
                 ),
               ),
