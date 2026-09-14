@@ -92,6 +92,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _handleViewQuotation(Quotation quote) async {
+    setState(() => _isLoading = true);
+    try {
+      final repo = ServiceLocator().quotationRepository;
+      final fullQuotation = await repo.getQuotationWithImages(quote);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pushNamed(
+          context,
+          AppRoutes.quotationPreview,
+          arguments: fullQuotation,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load quotation preview: $e'),
+            backgroundColor: AppColors.statusRejectedText,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -688,7 +714,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {},
+          onTap: () => _handleViewQuotation(quote),
           borderRadius: BorderRadius.circular(12),
           hoverColor: AppColors.surface.withValues(alpha: 0.8),
           child: Ink(
