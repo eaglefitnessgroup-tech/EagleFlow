@@ -52,7 +52,7 @@ class BulkImportService {
   Future<BulkImportPreview> previewImport(
     String csvData, {
     List<int>? excelBytes,
-    List<int>? zipBytes,
+    Map<String, List<int>>? folderFiles,
   }) async {
     List<List<dynamic>> rows = [];
     List<List<String>> rowErrors = [];
@@ -60,15 +60,16 @@ class BulkImportService {
     Map<String, String> productImageStatus = {};
     bool isZip = false;
 
-    if (zipBytes != null) {
-      isZip = true;
-      final archive = ZipDecoder().decodeBytes(zipBytes);
-      ArchiveFile? excelFile;
-      final imageFiles = <ArchiveFile>[];
+    if (folderFiles != null) {
+      isZip = true; // Retain flag name for existing matching logic
       final imageNames = <String>{};
+      final Map<String, List<List<int>>> imagesByCode = {};
 
-      for (final file in archive) {
-        if (file.name.toLowerCase().endsWith('.zip')) {
+      for (final entry in folderFiles.entries) {
+        final filename = entry.key;
+        final bytes = entry.value;
+
+        if (filename.toLowerCase().endsWith('.zip')) {
           return const BulkImportPreview(
             rows: [],
             totalRows: 0,
@@ -77,82 +78,30 @@ class BulkImportService {
             globalError: 'Nested zip files are not allowed.',
           );
         }
-        if (file.name.contains('..') ||
-            file.name.startsWith('/') ||
-            file.name.startsWith('\\') ||
-            file.name.contains(':\\')) {
-          return const BulkImportPreview(
-            rows: [],
-            totalRows: 0,
-            validCount: 0,
-            errorCount: 0,
-            globalError: 'Unsafe file paths detected in ZIP.',
-          );
-        }
-      }
 
-      for (final file in archive) {
-        if (!file.isFile) continue;
-        if (file.name.toLowerCase().endsWith('products.xlsx')) {
-          if (excelFile != null) {
-            return const BulkImportPreview(
-              rows: [],
+        final ext = filename.split('.').last.toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
+          if (imageNames.contains(filename)) {
+            return BulkImportPreview(
+              rows: const [],
               totalRows: 0,
               validCount: 0,
               errorCount: 0,
-              globalError: 'Duplicate workbook files found.',
+              globalError: 'Duplicate image filenames found: $filename',
             );
           }
-          excelFile = file;
+          imageNames.add(filename);
+          final code = filename
+              .substring(0, filename.lastIndexOf('.'))
+              .trim()
+              .toUpperCase();
+          imagesByCode.putIfAbsent(code, () => []).add(bytes);
         } else {
-          final ext = file.name.split('.').last.toLowerCase();
-          if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
-            final filename = file.name.split('/').last.split('\\').last;
-            if (imageNames.contains(filename)) {
-              return BulkImportPreview(
-                rows: const [],
-                totalRows: 0,
-                validCount: 0,
-                errorCount: 0,
-                globalError: 'Duplicate image filenames found: $filename',
-              );
-            }
-            imageNames.add(filename);
-            imageFiles.add(file);
-          } else {
-            if (!file.name.contains('__MACOSX') &&
-                !file.name.contains('.DS_Store')) {
-              return const BulkImportPreview(
-                rows: [],
-                totalRows: 0,
-                validCount: 0,
-                errorCount: 0,
-                globalError: 'Unsupported files are not allowed in ZIP.',
-              );
-            }
+          if (!filename.contains('__MACOSX') &&
+              !filename.contains('.DS_Store')) {
+            // Unsupported files in the image folder are silently ignored.
           }
         }
-      }
-
-      if (excelFile == null) {
-        return const BulkImportPreview(
-          rows: [],
-          totalRows: 0,
-          validCount: 0,
-          errorCount: 0,
-          globalError: 'products.xlsx not found in ZIP.',
-        );
-      }
-      excelBytes = excelFile.content as List<int>;
-
-      final Map<String, List<ArchiveFile>> imagesByCode = {};
-      for (final file in imageFiles) {
-        final filename = file.name.split('/').last.split('\\').last;
-        final code = filename
-            .substring(0, filename.lastIndexOf('.'))
-            .trim()
-            .toUpperCase();
-        imagesByCode.putIfAbsent(code, () => []).add(file);
       }
 
       for (final entry in imagesByCode.entries) {
@@ -161,29 +110,46 @@ class BulkImportService {
         if (files.length > 1) {
           productImageStatus[code] = 'Duplicate Image';
         } else {
-          final file = files.first;
-          final bytes = file.content as List<int>;
+          final bytes = files.first;
           if (bytes.isEmpty) {
             productImageStatus[code] = 'Invalid Image';
             continue;
           }
-          final decoder = img.findDecoderForData(Uint8List.fromList(bytes));
-          if (decoder == null) {
+          try {
+            final decoder = img.findDecoderForData(Uint8List.fromList(bytes));
+            if (decoder == null) {
+              productImageStatus[code] = 'Invalid Image';
+            } else if (decoder is img.GifDecoder ||
+                decoder is img.BmpDecoder ||
+                decoder is img.TiffDecoder) {
+              productImageStatus[code] = 'Unsupported Image';
+            } else {
+              productImageStatus[code] = 'Image Found';
+              productImages[code] = bytes;
+            }
+          } catch (_) {
             productImageStatus[code] = 'Invalid Image';
-          } else if (decoder is img.GifDecoder ||
-              decoder is img.BmpDecoder ||
-              decoder is img.TiffDecoder) {
-            productImageStatus[code] = 'Unsupported Image';
-          } else {
-            productImageStatus[code] = 'Image Found';
-            productImages[code] = bytes;
           }
         }
       }
     }
 
     if (excelBytes != null) {
-      final excelFile = Excel.decodeBytes(excelBytes);
+      Excel excelFile;
+      try {
+        excelFile = Excel.decodeBytes(excelBytes);
+      } catch (e) {
+        if (_isCustomNumFmtException(e)) {
+          final normalized = _tryNormalizeExcelNumFmts(excelBytes);
+          if (normalized != null) {
+            excelFile = Excel.decodeBytes(normalized);
+          } else {
+            rethrow;
+          }
+        } else {
+          rethrow;
+        }
+      }
       final sheet = excelFile.tables['Products'];
       if (sheet == null) {
         return const BulkImportPreview(
@@ -879,5 +845,88 @@ class BulkImportService {
     archive.addFile(ArchiveFile('images/EXAMPLE-003.jpg', img3.length, img3));
 
     return ZipEncoder().encode(archive)!;
+  }
+
+  /// Checks whether an exception was caused by excel package's custom numFmtId check (< 164).
+  bool _isCustomNumFmtException(Object e) {
+    return e.toString().contains('custom numFmtId starts at 164 but found a value of');
+  }
+
+  /// Narrow fallback to normalize custom numFmtId values in xl/styles.xml when id < 164.
+  List<int>? _tryNormalizeExcelNumFmts(List<int> bytes) {
+    try {
+      final archive = ZipDecoder().decodeBytes(bytes);
+      ArchiveFile? stylesFile;
+      for (final file in archive) {
+        if (file.name == 'xl/styles.xml') {
+          stylesFile = file;
+          break;
+        }
+      }
+      if (stylesFile == null) return null;
+
+      final contentBytes = stylesFile.content as List<int>;
+      final xml = String.fromCharCodes(contentBytes);
+
+      final numFmtsMatch = RegExp(r'<numFmts[^>]*>(.*?)</numFmts>', dotAll: true).firstMatch(xml);
+      if (numFmtsMatch == null) return null;
+
+      final numFmtsBlock = numFmtsMatch.group(1) ?? '';
+      final numFmtRegex = RegExp(r'<numFmt[^>]*numFmtId="(\d+)"[^>]*>');
+      final customMatches = numFmtRegex.allMatches(numFmtsBlock);
+
+      final allDeclaredIds = <int>{};
+      final conflictingIds = <int>[];
+
+      for (final m in customMatches) {
+        final id = int.tryParse(m.group(1) ?? '');
+        if (id != null) {
+          allDeclaredIds.add(id);
+          if (id < 164) {
+            conflictingIds.add(id);
+          }
+        }
+      }
+
+      if (conflictingIds.isEmpty) return null;
+
+      final idMap = <int, int>{};
+      int nextId = 164;
+      for (final oldId in conflictingIds) {
+        while (allDeclaredIds.contains(nextId) || idMap.containsValue(nextId)) {
+          nextId++;
+        }
+        idMap[oldId] = nextId;
+        nextId++;
+      }
+
+      String updatedXml = xml;
+      idMap.forEach((oldId, newId) {
+        updatedXml = updatedXml.replaceAll(
+          'numFmtId="$oldId"',
+          'numFmtId="$newId"',
+        );
+      });
+
+      final updatedBytes = updatedXml.codeUnits;
+      final newStylesFile = ArchiveFile(
+        stylesFile.name,
+        updatedBytes.length,
+        updatedBytes,
+      );
+
+      final newArchive = Archive();
+      for (final file in archive) {
+        if (file.name == stylesFile.name) {
+          newArchive.addFile(newStylesFile);
+        } else {
+          newArchive.addFile(file);
+        }
+      }
+
+      return ZipEncoder().encode(newArchive);
+    } catch (_) {
+      return null;
+    }
   }
 }

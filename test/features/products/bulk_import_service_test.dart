@@ -701,12 +701,13 @@ void main() {
       0x46,
     ]);
 
-    List<int> createZip(List<ArchiveFile> files) {
-      final archive = Archive();
+    Map<String, List<int>> createFolderFiles(List<ArchiveFile> files) {
+      final map = <String, List<int>>{};
       for (var f in files) {
-        archive.addFile(f);
+        final fileName = f.name.split('/').last;
+        map[fileName] = f.content as List<int>;
       }
-      return ZipEncoder().encode(archive)!;
+      return map;
     }
 
     test('generateSampleZip creates valid visible images', () async {
@@ -736,53 +737,48 @@ void main() {
       }
     });
 
-    test('valid ZIP parses successfully', () async {
+    test('valid folder parses successfully', () async {
+      // Excel bytes come in via excelBytes; folder contains images only.
       final excelBytes = service.generateTemplate();
-      final zip = createZip([
-        ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
+      final folder = createFolderFiles([
         ArchiveFile('images/EXAMPLE-001.jpg', validJpg.length, validJpg),
-        ArchiveFile(
-          'images/EXAMPLE-002.png',
-          validJpg.length,
-          validJpg,
-        ), // image decoder will actually read it as jpeg despite name
+        ArchiveFile('images/EXAMPLE-002.png', validJpg.length, validJpg),
         ArchiveFile('EXAMPLE-003.webp', validJpg.length, validJpg),
       ]);
-      final preview = await service.previewImport('', zipBytes: zip);
+      final preview = await service.previewImport(
+        '',
+        excelBytes: excelBytes,
+        folderFiles: folder,
+      );
       expect(preview.canImport, true);
       expect(preview.rows[0].imageStatus, 'Image Found');
       expect(preview.rows[1].imageStatus, 'Image Found');
       expect(preview.rows[2].imageStatus, 'Image Found');
     });
 
-    test('missing workbook rejects ZIP', () async {
-      final zip = createZip([
+    test('image folder without Excel still requires excelBytes parameter', () async {
+      // If no excelBytes and no csvData are passed, the service returns no rows.
+      // (Validation that the UI must enforce both inputs.)
+      final folder = createFolderFiles([
         ArchiveFile('images/EXAMPLE-001.jpg', validJpg.length, validJpg),
       ]);
-      final preview = await service.previewImport('', zipBytes: zip);
+      final preview = await service.previewImport('', folderFiles: folder);
+      // No rows, canImport false — Excel parsing never ran.
       expect(preview.canImport, false);
-      expect(preview.globalError, contains('products.xlsx not found'));
-    });
-
-    test('duplicate workbook rejects ZIP', () async {
-      final excelBytes = service.generateTemplate();
-      final zip = createZip([
-        ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
-        ArchiveFile('subfolder/products.xlsx', excelBytes.length, excelBytes),
-      ]);
-      final preview = await service.previewImport('', zipBytes: zip);
-      expect(preview.canImport, false);
-      expect(preview.globalError, contains('Duplicate workbook files found'));
+      expect(preview.rows, isEmpty);
     });
 
     test('missing image causes validation error', () async {
       final excelBytes = service.generateTemplate();
-      final zip = createZip([
-        ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
+      final folder = createFolderFiles([
         ArchiveFile('images/EXAMPLE-001.jpg', validJpg.length, validJpg),
         // missing EXAMPLE-002 and 003
       ]);
-      final preview = await service.previewImport('', zipBytes: zip);
+      final preview = await service.previewImport(
+        '',
+        excelBytes: excelBytes,
+        folderFiles: folder,
+      );
       expect(preview.canImport, false);
       expect(preview.rows[0].imageStatus, 'Image Found');
       expect(preview.rows[1].imageStatus, 'Image Missing');
@@ -795,14 +791,17 @@ void main() {
 
     test('duplicate image causes validation error', () async {
       final excelBytes = service.generateTemplate();
-      final zip = createZip([
-        ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
+      final folder = createFolderFiles([
         ArchiveFile('images/EXAMPLE-001.jpg', validJpg.length, validJpg),
         ArchiveFile('images/EXAMPLE-001.png', validJpg.length, validJpg),
         ArchiveFile('images/EXAMPLE-002.jpg', validJpg.length, validJpg),
         ArchiveFile('images/EXAMPLE-003.jpg', validJpg.length, validJpg),
       ]);
-      final preview = await service.previewImport('', zipBytes: zip);
+      final preview = await service.previewImport(
+        '',
+        excelBytes: excelBytes,
+        folderFiles: folder,
+      );
       expect(preview.canImport, false);
       expect(preview.rows[0].imageStatus, 'Duplicate Image');
       expect(
@@ -811,81 +810,90 @@ void main() {
       );
     });
 
-    test(
-      'unsupported image rejects ZIP if not matching image extension',
-      () async {
-        final excelBytes = service.generateTemplate();
-        final zip = createZip([
-          ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
-          ArchiveFile(
-            'images/EXAMPLE-001.gif',
-            validJpg.length,
-            validJpg,
-          ), // .gif is rejected immediately
-        ]);
-        final preview = await service.previewImport('', zipBytes: zip);
-        expect(preview.canImport, false);
-        expect(
-          preview.globalError,
-          contains('Unsupported files are not allowed'),
-        );
-      },
-    );
+    test('unsupported image format (gif) causes validation error', () async {
+      final excelBytes = service.generateTemplate();
+      final folder = createFolderFiles([
+        ArchiveFile(
+          'images/EXAMPLE-001.gif',
+          validJpg.length,
+          validJpg,
+        ), // .gif is rejected immediately
+      ]);
+      final preview = await service.previewImport(
+        '',
+        excelBytes: excelBytes,
+        folderFiles: folder,
+      );
+      expect(preview.canImport, false);
+      expect(
+        preview.rows[0].errors.join(),
+        contains('Missing image -> validation error'), // We don't read .gif at all in folder picker
+      );
+    });
 
     test('corrupt image causes validation error', () async {
       final excelBytes = service.generateTemplate();
-      final zip = createZip([
-        ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
+      final folder = createFolderFiles([
         ArchiveFile('images/EXAMPLE-001.jpg', corruptJpg.length, corruptJpg),
         ArchiveFile('images/EXAMPLE-002.jpg', validJpg.length, validJpg),
         ArchiveFile('images/EXAMPLE-003.jpg', validJpg.length, validJpg),
       ]);
-      final preview = await service.previewImport('', zipBytes: zip);
+      final preview = await service.previewImport(
+        '',
+        excelBytes: excelBytes,
+        folderFiles: folder,
+      );
       expect(preview.canImport, false);
       expect(preview.rows[0].imageStatus, 'Invalid Image');
     });
 
     test('zero-byte image causes validation error', () async {
       final excelBytes = service.generateTemplate();
-      final zip = createZip([
-        ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
+      final folder = createFolderFiles([
         ArchiveFile('images/EXAMPLE-001.jpg', 0, <int>[]),
         ArchiveFile('images/EXAMPLE-002.jpg', validJpg.length, validJpg),
         ArchiveFile('images/EXAMPLE-003.jpg', validJpg.length, validJpg),
       ]);
-      final preview = await service.previewImport('', zipBytes: zip);
+      final preview = await service.previewImport(
+        '',
+        excelBytes: excelBytes,
+        folderFiles: folder,
+      );
       expect(preview.canImport, false);
       expect(preview.rows[0].imageStatus, 'Invalid Image');
     });
 
-    test('unsafe ZIP path rejects ZIP', () async {
-      final excelBytes = service.generateTemplate();
-      final zip = createZip([
-        ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
-        ArchiveFile('../images/EXAMPLE-001.jpg', validJpg.length, validJpg),
-      ]);
-      final preview = await service.previewImport('', zipBytes: zip);
-      expect(preview.canImport, false);
-      expect(
-        preview.globalError,
-        contains('Unsafe file paths detected in ZIP'),
-      );
-    });
+
 
     test('nested ZIP rejected', () async {
-      final excelBytes = service.generateTemplate();
-      final zip = createZip([
-        ArchiveFile('products.xlsx', excelBytes.length, excelBytes),
+      final folder = createFolderFiles([
         ArchiveFile('nested.zip', 0, <int>[]),
       ]);
-      final preview = await service.previewImport('', zipBytes: zip);
+      final preview = await service.previewImport('', folderFiles: folder);
       expect(preview.canImport, false);
       expect(preview.globalError, contains('Nested zip files are not allowed'));
     });
 
-    test('sample ZIP validates successfully', () async {
+    test('sample folder validates successfully', () async {
+      // The sample ZIP contains both xlsx and images. Extract them separately
+      // to reflect the new two-input workflow.
       final sampleZip = service.generateSampleZip();
-      final preview = await service.previewImport('', zipBytes: sampleZip);
+      final archive = ZipDecoder().decodeBytes(sampleZip);
+      List<int>? excelBytes;
+      final imageFolder = <String, List<int>>{};
+      for (final f in archive.files) {
+        if (f.name.endsWith('.xlsx')) {
+          excelBytes = f.content as List<int>;
+        } else {
+          final name = f.name.split('/').last;
+          imageFolder[name] = f.content as List<int>;
+        }
+      }
+      final preview = await service.previewImport(
+        '',
+        excelBytes: excelBytes,
+        folderFiles: imageFolder,
+      );
       expect(preview.canImport, true);
       expect(preview.rows.length, 3);
       for (final row in preview.rows) {
@@ -1069,6 +1077,72 @@ void main() {
       expect(second.message, contains('already been processed'));
       // upload count must not have increased.
       expect(fake.uploadCallCount, equals(uploadCountAfterFirst));
+    });
+
+    group('XLSX custom numFmtId decoder compatibility fallback', () {
+      test('normal XLSX parses successfully without fallback', () async {
+        final normalBytes = service.generateTemplate();
+        final preview = await service.previewImport('', excelBytes: normalBytes);
+        expect(preview.globalError, isNull);
+        expect(preview.totalRows, equals(3));
+        expect(preview.validCount, equals(3));
+      });
+
+      test(
+        'XLSX with custom numFmtId < 164 fails raw Excel.decodeBytes but succeeds via previewImport fallback',
+        () async {
+          final templateBytes = service.generateTemplate();
+          final archive = ZipDecoder().decodeBytes(templateBytes);
+
+          ArchiveFile? stylesFile;
+          for (final f in archive) {
+            if (f.name == 'xl/styles.xml') {
+              stylesFile = f;
+              break;
+            }
+          }
+          expect(stylesFile, isNotNull);
+
+          final xml = String.fromCharCodes(stylesFile!.content as List<int>);
+          // Inject a custom numFmtId="43" inside <styleSheet>
+          final injectedXml = xml.replaceFirst(
+            '</styleSheet>',
+            '<numFmts count="1"><numFmt numFmtId="43" formatCode="_(* #,##0_);_(* (#,##0);_(* &quot;-&quot;_);_(@_)"/></numFmts></styleSheet>',
+          );
+          final injectedBytes = injectedXml.codeUnits;
+          final newStylesFile = ArchiveFile(stylesFile.name, injectedBytes.length, injectedBytes);
+
+          final newArchive = Archive();
+          for (final f in archive) {
+            if (f.name == stylesFile.name) {
+              newArchive.addFile(newStylesFile);
+            } else {
+              newArchive.addFile(f);
+            }
+          }
+          final conflictXlsxBytes = ZipEncoder().encode(newArchive)!;
+
+          // Prove raw Excel.decodeBytes fails with custom numFmtId exception
+          expect(
+            () => Excel.decodeBytes(conflictXlsxBytes),
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'description',
+                contains('custom numFmtId starts at 164 but found a value of 43'),
+              ),
+            ),
+          );
+
+          // Prove previewImport succeeds via narrow fallback
+          final preview = await service.previewImport('', excelBytes: conflictXlsxBytes);
+          expect(preview.globalError, isNull);
+          expect(preview.totalRows, equals(3));
+          expect(preview.validCount, equals(3));
+          expect(preview.rows.first.product?.productCode, equals('EXAMPLE-001'));
+          expect(preview.rows.first.product?.name, equals('Standard Example Product'));
+        },
+      );
     });
   });
 }

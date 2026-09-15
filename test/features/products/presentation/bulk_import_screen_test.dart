@@ -1,6 +1,5 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/core/database/database_service.dart';
@@ -11,6 +10,8 @@ import 'package:eagleflow/app/routes/app_routes.dart';
 import 'package:eagleflow/core/guards/admin_guard.dart';
 import 'package:eagleflow/core/supabase/supabase_service.dart';
 import '../../../features/authentication/fake_auth_repository.dart';
+import 'package:eagleflow/features/products/presentation/folder_picker/folder_picker.dart';
+import 'package:image/image.dart' as img;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -42,27 +43,18 @@ Future<void> _failingSaver({
   throw Exception('Disk full');
 }
 
-/// Sets up the FilePicker method channel mock to return [csvContent].
-void _mockFilePicker(String csvContent, {String filename = 'test.csv'}) {
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMethodCallHandler(
-        const MethodChannel('miguelruivo.flutter.plugins.filepicker'),
-        (MethodCall methodCall) async {
-          if (methodCall.method == 'custom' ||
-              methodCall.method == 'pickFiles' ||
-              methodCall.method == 'any') {
-            return [
-              {
-                'name': filename,
-                'path': '/test/$filename',
-                'bytes': utf8.encode(csvContent),
-                'size': csvContent.length,
-              },
-            ];
-          }
-          return null;
-        },
-      );
+void _mockFolderPicker() {
+  final imgImage = img.Image(width: 10, height: 10);
+  img.fill(imgImage, color: img.ColorRgb8(255, 0, 0));
+  final validJpg = img.encodeJpg(imgImage);
+
+  mockFolderFilesForTesting = {
+    'TEST1.jpg': validJpg,
+  };
+}
+
+void _mockExcelFile(String csvContent, {String filename = 'products.csv'}) {
+  mockExcelFileForTesting = {filename: utf8.encode(csvContent)};
 }
 
 void main() {
@@ -81,13 +73,16 @@ void main() {
     await ServiceLocator().init();
     await ServiceLocator().authController.logout();
 
-    _mockFilePicker(_validCsvRow);
+    _mockFolderPicker();
+    _mockExcelFile(_validCsvRow, filename: 'products.csv');
   });
 
   tearDown(() async {
     await DatabaseService().closeAndResetForTesting();
     ServiceLocator.resetForTesting();
     SupabaseService.resetForTesting();
+    mockFolderFilesForTesting = null;
+    mockExcelFileForTesting = null;
   });
 
   /// Builds a [MaterialApp] with the given child.
@@ -151,12 +146,13 @@ void main() {
 
   // â”€â”€ initial state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  testWidgets('Shows Choose ZIP File button on initial state', (tester) async {
+  testWidgets('Shows Select Excel File and Select Image Folder buttons on initial state', (tester) async {
     await loginAdmin(tester);
     await tester.pumpWidget(buildApp(screen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Choose ZIP File'), findsOneWidget);
+    expect(find.text('Select Excel File'), findsOneWidget);
+    expect(find.text('Select Image Folder'), findsOneWidget);
   });
 
   testWidgets('Shows Excel Template and Sample ZIP download buttons', (
@@ -167,24 +163,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Excel Template'), findsOneWidget);
-    expect(find.text('Sample ZIP'), findsOneWidget);
+    expect(find.text('Sample Data'), findsOneWidget);
   });
 
   // â”€â”€ CSV parse and preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   testWidgets('Valid CSV shows Confirm Import button', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
     await loginAdmin(tester);
     await tester.pumpWidget(buildApp(screen()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('pick_zip_btn')));
+    // Pick Excel file first, then image folder—preview runs automatically.
+    await tester.tap(find.byKey(const Key('pick_excel_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick_folder_btn')));
     await tester.pumpAndSettle();
 
     expect(find.text('Confirm Import'), findsOneWidget);
   });
 
   testWidgets('Invalid rows disable Confirm Import button', (tester) async {
-    _mockFilePicker(_invalidCsvRow, filename: 'invalid.csv');
+    _mockExcelFile(_invalidCsvRow, filename: 'products.csv');
 
     // Larger viewport so the preview table has room to render.
     await tester.binding.setSurfaceSize(const Size(800, 1400));
@@ -194,7 +194,9 @@ void main() {
     await tester.pumpWidget(buildApp(screen()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('pick_zip_btn')));
+    await tester.tap(find.byKey(const Key('pick_excel_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick_folder_btn')));
     await tester.pumpAndSettle();
 
     // Confirm Import button must be disabled (invalid row present)
@@ -209,35 +211,41 @@ void main() {
   testWidgets('Summary bar shows valid/invalid counts after parse', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
     await loginAdmin(tester);
     await tester.pumpWidget(buildApp(screen()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('pick_zip_btn')));
+    await tester.tap(find.byKey(const Key('pick_excel_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick_folder_btn')));
     await tester.pumpAndSettle();
 
     // Summary bar should appear
     expect(find.byKey(const Key('summary_bar')), findsOneWidget);
-    // Valid count â€” 1 row
+    // Valid count — 1 row
     expect(find.text('1'), findsWidgets);
     expect(find.text('Valid'), findsOneWidget);
     expect(find.text('Invalid'), findsOneWidget);
   });
 
-  // â”€â”€ image column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── image column ────────────────────────────────────────────────────────────
 
   testWidgets('Preview table shows Image column header', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
     await loginAdmin(tester);
     await tester.pumpWidget(buildApp(screen()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('pick_zip_btn')));
+    await tester.tap(find.byKey(const Key('pick_excel_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick_folder_btn')));
     await tester.pumpAndSettle();
 
     expect(find.text('Image'), findsOneWidget);
   });
 
-  // â”€â”€ offline state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── offline state ───────────────────────────────────────────────────────────
 
   testWidgets('Offline banner visible when disconnected', (tester) async {
     // Supabase is not connected in tests by default.
@@ -251,33 +259,43 @@ void main() {
   testWidgets('Confirm Import blocked offline (button disabled)', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
     await loginAdmin(tester);
     await tester.pumpWidget(buildApp(screen()));
     await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('pick_zip_btn')));
+    await tester.tap(find.byKey(const Key('pick_excel_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick_folder_btn')));
     await tester.pumpAndSettle();
 
-    // Offline â†’ button disabled (isOnline=false)
+    // Offline → button disabled (isOnline=false)
     final btn = tester.widget<ElevatedButton>(
       find.byKey(const Key('confirm_import_btn')),
     );
     expect(btn.onPressed, isNull);
   });
 
-  // â”€â”€ file name display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── file name display ────────────────────────────────────────────────────────
 
   testWidgets('Picked filename is shown after selection', (tester) async {
-    _mockFilePicker(_validCsvRow, filename: 'products.csv');
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    _mockExcelFile(_validCsvRow, filename: 'products.csv');
 
     await loginAdmin(tester);
     await tester.pumpWidget(buildApp(screen()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('pick_zip_btn')));
+    await tester.tap(find.byKey(const Key('pick_excel_btn')));
     await tester.pumpAndSettle();
 
+    // Excel filename shown under the Excel button
     expect(find.text('products.csv'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('pick_folder_btn')));
+    await tester.pumpAndSettle();
+
+    // Folder label shown under the folder button
+    expect(find.text('Image Folder'), findsOneWidget);
   });
 
   // â”€â”€ template / sample download â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -356,7 +374,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Could not download sample ZIP. Please try again.'),
+      find.text('Could not download sample. Please try again.'),
       findsOneWidget,
     );
     expect(find.textContaining('Sample downloaded'), findsNothing);

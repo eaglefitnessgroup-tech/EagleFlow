@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
+import 'folder_picker/folder_picker.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/utils/file_download_util.dart';
@@ -35,7 +35,12 @@ enum _ImportPhase {
 class _BulkImportScreenState extends State<BulkImportScreen> {
   BulkImportPreview? _preview;
   _ImportPhase _phase = _ImportPhase.idle;
-  String _pickedFileName = '';
+  // ── separate inputs ──────────────────────────────────────────────────────
+  List<int>? _excelBytes;             // bytes from the chosen Excel/CSV file
+  String _excelFileName = '';         // display name shown under the button
+  Map<String, List<int>>? _folderFiles; // images from the chosen folder
+  String _pickedFileName = '';        // display name shown under folder button
+  // ─────────────────────────────────────────────────────────────────────────
   String _userMessage = '';
   bool _submitting = false; // double-submit guard
 
@@ -52,7 +57,12 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
   String get _phaseMessage {
     switch (_phase) {
       case _ImportPhase.idle:
-        return 'Select a ZIP package or CSV file to begin.';
+        if (_excelBytes == null && _folderFiles == null) {
+          return 'Select an Excel file and an image folder to begin.';
+        }
+        if (_excelBytes == null) { return 'Now select the Excel file to continue.'; }
+        if (_folderFiles == null) { return 'Now select the image folder to continue.'; }
+        return 'Ready to parse.';
       case _ImportPhase.parsing:
         return 'Parsing file…';
       case _ImportPhase.readyValid:
@@ -88,43 +98,66 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 
   // ── actions ────────────────────────────────────────────────────────────────
 
-  Future<void> _pickZip() async {
+  Future<void> _pickExcelFile() async {
     if (_submitting) return;
     try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['zip', 'xlsx', 'csv'],
-      );
-      if (result == null || result.files.isEmpty) return;
-
-      final file = result.files.first;
-      final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) {
-        _showError('Could not read file data.');
-        return;
-      }
-
+      final picked = await pickExcelFile();
+      if (picked == null || picked.isEmpty) return;
+      final filename = picked.keys.first;
+      final bytes = picked.values.first;
       setState(() {
-        _phase = _ImportPhase.parsing;
-        _pickedFileName = file.name;
+        _excelBytes = bytes;
+        _excelFileName = filename;
         _preview = null;
+        _phase = _ImportPhase.idle;
         _userMessage = '';
       });
+      await _maybeRunPreview();
+    } catch (_) {
+      _showError('Could not read the Excel file. Please try again.');
+    }
+  }
 
-      final name = file.name.toLowerCase();
+  Future<void> _pickFolder() async {
+    if (_submitting) return;
+    try {
+      final folderFiles = await pickFolderFiles();
+      if (folderFiles == null || folderFiles.isEmpty) return;
+      setState(() {
+        _folderFiles = folderFiles;
+        _pickedFileName = 'Image Folder';
+        _preview = null;
+        _phase = _ImportPhase.idle;
+        _userMessage = '';
+      });
+      await _maybeRunPreview();
+    } catch (_) {
+      _showError('Could not read the folder. Please try again.');
+    }
+  }
+
+  /// Runs previewImport only when BOTH Excel and image folder have been selected.
+  Future<void> _maybeRunPreview() async {
+    if (_excelBytes == null || _folderFiles == null) return;
+    if (!mounted) return;
+    setState(() {
+      _phase = _ImportPhase.parsing;
+    });
+    try {
       final service = ServiceLocator().bulkImportService;
-
-      BulkImportPreview preview;
-      if (name.endsWith('.zip')) {
-        preview = await service.previewImport('', zipBytes: bytes);
-      } else if (name.endsWith('.xlsx')) {
-        preview = await service.previewImport('', excelBytes: bytes);
+      // Distinguish CSV from Excel by filename extension.
+      String csvData = '';
+      List<int>? excelBytes;
+      if (_excelFileName.toLowerCase().endsWith('.csv')) {
+        csvData = String.fromCharCodes(_excelBytes!);
       } else {
-        // CSV fallback
-        final csv = String.fromCharCodes(bytes);
-        preview = await service.previewImport(csv);
+        excelBytes = _excelBytes;
       }
-
+      final preview = await service.previewImport(
+        csvData,
+        excelBytes: excelBytes,
+        folderFiles: _folderFiles,
+      );
       if (!mounted) return;
       setState(() {
         _preview = preview;
@@ -138,7 +171,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
         }
       });
     } catch (_) {
-      _showError('Could not read the file. Please try again.');
+      _showError('Could not parse the import files. Please try again.');
     }
   }
 
@@ -158,7 +191,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
     }
   }
 
-  Future<void> _downloadSampleZip() async {
+  Future<void> _downloadSampleFolder() async {
     if (_submitting) return;
     try {
       final bytes = ServiceLocator().bulkImportService.generateSampleZip();
@@ -170,7 +203,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
         ),
       );
     } catch (_) {
-      _showError('Could not download sample ZIP. Please try again.');
+      _showError('Could not download sample. Please try again.');
     }
   }
 
@@ -316,18 +349,68 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Pick button
+                      // ── Excel file picker ─────────────────────────────────
                       ElevatedButton.icon(
-                        key: const Key('pick_zip_btn'),
+                        key: const Key('pick_excel_btn'),
                         onPressed:
                             (_phase == _ImportPhase.parsing || _submitting)
                             ? null
-                            : _pickZip,
-                        icon: const Icon(Icons.upload_file),
+                            : _pickExcelFile,
+                        icon: const Icon(Icons.table_chart_outlined),
+                        label: Text(
+                          _excelFileName.isEmpty
+                              ? 'Select Excel File'
+                              : 'Replace Excel File',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+
+                      if (_excelFileName.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.attach_file,
+                              size: 14,
+                              color: AppColors.mutedText,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                _excelFileName,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.mutedText,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      const SizedBox(height: 12),
+
+                      // ── Image folder picker ───────────────────────────────
+                      // Pick button
+                      ElevatedButton.icon(
+                        key: const Key('pick_folder_btn'),
+                        onPressed:
+                            (_phase == _ImportPhase.parsing || _submitting)
+                            ? null
+                            : _pickFolder,
+                        icon: const Icon(Icons.folder),
                         label: Text(
                           _pickedFileName.isEmpty
-                              ? 'Choose ZIP File'
-                              : 'Replace ZIP / File',
+                              ? 'Select Image Folder'
+                              : 'Replace Folder',
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
@@ -362,6 +445,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                           ],
                         ),
                       ],
+
 
                       const SizedBox(height: 12),
 
@@ -412,9 +496,9 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                               key: const Key('download_sample_btn'),
                               onPressed: _submitting
                                   ? null
-                                  : _downloadSampleZip,
-                              icon: const Icon(Icons.folder_zip, size: 16),
-                              label: const Text('Sample ZIP'),
+                                  : _downloadSampleFolder,
+                              icon: const Icon(Icons.download_for_offline, size: 16),
+                              label: const Text('Sample Data'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.mutedText,
                                 side: const BorderSide(color: AppColors.border),
