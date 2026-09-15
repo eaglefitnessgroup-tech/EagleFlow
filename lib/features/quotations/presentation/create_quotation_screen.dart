@@ -73,41 +73,11 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
       return;
     }
 
-    final stock = await ServiceLocator().stockController.getCurrentStock(product);
-
-    if (qty > stock) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Only $stock unit(s) available for ${product.name}.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    }
-    
     _controller.updateQuantity(itemId, qty);
   }
 
-  Future<void> _handleProductsAdded(List<Product> products) async {
+  void _handleProductsAdded(List<Product> products) {
     for (final product in products) {
-      final existingItemIndex = _controller.quotation.lineItems.indexWhere((i) => i.productId == product.id);
-      final existingQty = existingItemIndex >= 0 ? _controller.quotation.lineItems[existingItemIndex].quantity : 0;
-      final requestedQty = existingQty + 1;
-      
-      final stock = await ServiceLocator().stockController.getCurrentStock(product);
-      
-      if (requestedQty > stock) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Only $stock unit(s) available for ${product.name}.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-      
       _controller.addProduct(product);
     }
   }
@@ -130,32 +100,6 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     }
 
     setState(() => _isSaving = true);
-
-    // Validate stock before saving
-    final Map<String, int> cachedStock = {};
-    for (final item in _controller.quotation.lineItems) {
-      if (item.isCustom || item.productId == null) continue;
-      
-      final product = ServiceLocator().productMasterController.products.where(
-        (p) => p.id == item.productId,
-      ).firstOrNull;
-      
-      if (product == null) continue;
-      
-      final stock = cachedStock[product.id] ?? await ServiceLocator().stockController.getCurrentStock(product);
-      cachedStock[product.id] = stock;
-      
-      if (item.quantity > stock) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Insufficient stock. Only $stock unit(s) available for ${product.name}.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    }
 
     try {
       final repo = ServiceLocator().quotationRepository;

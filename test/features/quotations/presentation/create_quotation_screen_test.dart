@@ -107,7 +107,7 @@ void main() {
       await db.close();
     });
 
-    testWidgets('Quotation stock validation allows over-stock quoting with warnings', (WidgetTester tester) async {
+    testWidgets('Quotation creation allows products regardless of stock without warnings', (WidgetTester tester) async {
       final originalOnError = FlutterError.onError;
       FlutterError.onError = (FlutterErrorDetails details) {
         if (details.exceptionAsString().contains('A RenderFlex overflowed')) {
@@ -144,21 +144,16 @@ void main() {
       expect(tiles.length, 1, reason: 'Product A added');
       expect(tiles[0].item.quantity, 1);
       
-      // 2. Stock 1 / Qty 2 -> quantity remains 2 and is not reverted
+      // 2. Stock 1 / Qty 2 -> quantity accepted without warning SnackBar
       section = tester.widget<SelectedProductsSection>(find.byType(SelectedProductsSection));
       section.onQuantityChanged(tiles[0].item.id, 2);
       await tester.pumpAndSettle();
-      await tester.pump(const Duration(milliseconds: 100)); // wait for delayed fallback if any
-      await tester.pumpAndSettle();
       
       tiles = tester.widgetList<QuotationProductTile>(find.byType(QuotationProductTile)).toList();
-      expect(tiles[0].item.quantity, 2, reason: 'Quantity should NOT be reverted');
-      expect(find.byType(SnackBar), findsWidgets, reason: 'Warning SnackBar should appear');
-      
-      ScaffoldMessenger.of(tester.element(find.byType(CreateQuotationScreen))).clearSnackBars();
-      await tester.pumpAndSettle();
+      expect(tiles[0].item.quantity, 2, reason: 'Quantity should be updated to 2');
+      expect(find.byType(SnackBar), findsNothing, reason: 'No warning SnackBar should appear');
 
-      // 3. Stock 5 / Qty 10 -> quantity remains 10 and is not blocked
+      // 3. Stock 5 / Qty 10 -> quantity accepted without warning SnackBar
       section = tester.widget<SelectedProductsSection>(find.byType(SelectedProductsSection));
       section.onProductsAdded([productB]);
       await tester.pumpAndSettle();
@@ -169,17 +164,12 @@ void main() {
       section = tester.widget<SelectedProductsSection>(find.byType(SelectedProductsSection));
       section.onQuantityChanged(tiles[1].item.id, 10);
       await tester.pumpAndSettle();
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pumpAndSettle();
       
       tiles = tester.widgetList<QuotationProductTile>(find.byType(QuotationProductTile)).toList();
       expect(tiles[1].item.quantity, 10, reason: 'Quantity should be 10');
-      expect(find.byType(SnackBar), findsWidgets, reason: 'Warning SnackBar should appear');
+      expect(find.byType(SnackBar), findsNothing, reason: 'No warning SnackBar should appear');
 
-      ScaffoldMessenger.of(tester.element(find.byType(CreateQuotationScreen))).clearSnackBars();
-      await tester.pumpAndSettle();
-
-      // 4. Stock 0 / Qty 1 -> product/quantity is still accepted
+      // 4. Stock 0 / Qty 1 -> product/quantity is accepted without warning SnackBar
       section = tester.widget<SelectedProductsSection>(find.byType(SelectedProductsSection));
       section.onProductsAdded([productC]);
       await tester.pumpAndSettle();
@@ -187,10 +177,7 @@ void main() {
       tiles = tester.widgetList<QuotationProductTile>(find.byType(QuotationProductTile)).toList();
       expect(tiles.length, 3, reason: 'Product C added');
       expect(tiles[2].item.quantity, 1, reason: 'Quantity should be 1');
-      expect(find.byType(SnackBar), findsWidgets, reason: 'Warning SnackBar should appear');
-      
-      ScaffoldMessenger.of(tester.element(find.byType(CreateQuotationScreen))).clearSnackBars();
-      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing, reason: 'No warning SnackBar should appear');
 
       // Enter customer info so it allows saving
       await tester.enterText(find.byType(TextField).first, 'Test Customer');
@@ -200,8 +187,6 @@ void main() {
       await tester.tap(find.text('Save Draft').last);
       await tester.pumpAndSettle();
       
-      // Should show 'Insufficient stock' warning and 'Quotation saved successfully'
-      expect(find.byType(SnackBar), findsWidgets, reason: 'Should show snackbars on save');
       expect(find.text('Quotation saved successfully'), findsWidgets);
     });
   });

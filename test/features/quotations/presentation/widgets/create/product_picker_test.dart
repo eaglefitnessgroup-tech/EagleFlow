@@ -371,11 +371,10 @@ void main() {
       await tester.tap(find.byKey(const Key('open_picker')));
       await tester.pumpAndSettle();
 
-      // 4. Verify product shows "Out of stock" instead of openingStock
+      // 4. Verify product tiles load without stock labels
       
-      final outOfStockWidgets = find.text('Out of stock');
-      
-      expect(outOfStockWidgets, findsNWidgets(2), reason: 'Product should display Out of stock after a stock out brings its quantity to 0 (total 2 out of stock products)');
+      final inStockWidgets = find.textContaining('in stock');
+      expect(inStockWidgets, findsNothing, reason: 'Stock labels are hidden in product picker');
     });
   });
 }
