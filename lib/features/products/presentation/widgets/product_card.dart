@@ -251,8 +251,7 @@ class _ProductCardState extends State<ProductCard> {
                 : 5);
 
     if (isOutOfStock) {
-      textColor = const Color(0xFFB42318);
-      label = 'Out of Stock';
+      return const SizedBox.shrink();
     } else if (isLowStock) {
       textColor = AppColors.statusPendingText;
       label = 'Low Stock • $_currentStock';
