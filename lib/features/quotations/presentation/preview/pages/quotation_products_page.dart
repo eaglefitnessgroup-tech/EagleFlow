@@ -10,12 +10,14 @@ class QuotationProductsPage extends StatelessWidget {
   final Quotation quotation;
   final QuotationProductsPageModel model;
   final int startIndex;
+  final String? salespersonName;
 
   const QuotationProductsPage({
     super.key,
     required this.quotation,
     required this.model,
     required this.startIndex,
+    this.salespersonName,
   });
 
   @override
@@ -23,7 +25,7 @@ class QuotationProductsPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (model.hasCover) QuotationCoverSection(quotation: quotation),
+        if (model.hasCover) QuotationCoverSection(quotation: quotation, salespersonName: salespersonName),
         if (model.items.isNotEmpty) const QuotationProductTableHeader(),
         ...model.items.asMap().entries.map((entry) {
           final itemIndex = startIndex + entry.key + 1;

@@ -43,6 +43,8 @@ void main() {
         ),
       );
 
+      await tester.pumpAndSettle();
+
       expect(tester.takeException(), isNull);
 
       // Verify layout specifics

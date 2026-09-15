@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../domain/product.dart';
@@ -14,6 +14,10 @@ class AddEditProductScreen extends StatefulWidget {
 
   @override
   State<AddEditProductScreen> createState() => _AddEditProductScreenState();
+}
+
+class _InsertNewlineIntent extends Intent {
+  const _InsertNewlineIntent();
 }
 
 class _AddEditProductScreenState extends State<AddEditProductScreen> {
@@ -480,10 +484,35 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 ],
               ),
 
-              _buildTextField(
-                'Description / Notes',
-                _descriptionController,
-                maxLines: 3,
+              Shortcuts(
+                shortcuts: <ShortcutActivator, Intent>{
+                  SingleActivator(LogicalKeyboardKey.enter, control: true): const _InsertNewlineIntent(),
+                },
+                child: Actions(
+                  actions: <Type, Action<Intent>>{
+                    _InsertNewlineIntent: CallbackAction<_InsertNewlineIntent>(
+                      onInvoke: (intent) {
+                        final text = _descriptionController.text;
+                        final selection = _descriptionController.selection;
+                        
+                        if (selection.isValid) {
+                          final newText = text.replaceRange(selection.start, selection.end, '\n');
+                          _descriptionController.value = TextEditingValue(
+                            text: newText,
+                            selection: TextSelection.collapsed(offset: selection.start + 1),
+                          );
+                        }
+                        return null;
+                      },
+                    ),
+                  },
+                  child: _buildTextField(
+                    'Description / Notes',
+                    _descriptionController,
+                    maxLines: 3,
+                    keyboardType: TextInputType.multiline,
+                  ),
+                ),
               ),
 
               const SizedBox(height: 16),
@@ -538,6 +567,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     bool required = false,
     int maxLines = 1,
     bool readOnly = false,
+    TextInputType? keyboardType,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -545,9 +575,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         controller: controller,
         readOnly: readOnly,
         enableInteractiveSelection: !readOnly,
-        keyboardType: isNumber
+        keyboardType: keyboardType ?? (isNumber
             ? const TextInputType.numberWithOptions(decimal: true)
-            : TextInputType.text,
+            : TextInputType.text),
         maxLines: maxLines,
         decoration: InputDecoration(
           filled: readOnly,

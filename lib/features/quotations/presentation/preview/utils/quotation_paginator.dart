@@ -4,6 +4,7 @@ import '../../../domain/quotation.dart';
 import '../models/quotation_preview_page.dart';
 import '../quotation_layout_spec.dart';
 import '../quotation_document_theme.dart';
+import '../quotation_document_formatters.dart';
 import 'quotation_cover_section_measurer.dart';
 import '../../../domain/quotation_line_item.dart';
 
@@ -83,8 +84,9 @@ class QuotationPaginator {
       if (item.description != null && item.description!.isNotEmpty) {
         final TextPainter descPainter = TextPainter(
           text: TextSpan(
-            text: item.description,
+            text: QuotationDocumentFormatters.formatSpecification(item.description) ?? '',
             style: QuotationDocumentTheme.small.copyWith(
+              fontSize: 8.0,
               color: QuotationDocumentTheme.textMain,
               height: 1.3,
             ),

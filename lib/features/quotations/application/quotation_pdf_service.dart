@@ -12,6 +12,8 @@ import '../presentation/preview/quotation_document_formatters.dart';
 import '../presentation/preview/utils/quotation_paginator.dart';
 import '../presentation/preview/quotation_layout_spec.dart';
 import 'quotation_calculator.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../authentication/domain/app_user.dart';
 
 class QuotationPdfService {
   late pw.Font _fontRegular;
@@ -46,6 +48,19 @@ class QuotationPdfService {
     // Also preload the company logo
     await PdfImageLoader.loadAsset('assets/logos/logo_head_cropped.png');
 
+    // Resolve Salesperson Name
+    String resolvedSalesmanName = quotation.salespersonId;
+    try {
+      final users = await ServiceLocator().authRepository.getUsers();
+      final user = users.cast<AppUser?>().firstWhere(
+        (u) => u?.id == quotation.salespersonId,
+        orElse: () => null,
+      );
+      if (user != null) {
+        resolvedSalesmanName = user.name;
+      }
+    } catch (_) {}
+
     // 2. Setup Document & Fonts
     final pdf = pw.Document();
     _fontRegular = pw.Font.ttf(await rootBundle.load('assets/fonts/ibm_plex_sans_condensed/IBMPlexSansCondensed-Regular.ttf'));
@@ -79,7 +94,7 @@ class QuotationPdfService {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       if (pageModel is QuotationProductsPageModel) ...[
-                        if (pageModel.hasCover) _buildCoverSection(quotation),
+                        if (pageModel.hasCover) _buildCoverSection(quotation, resolvedSalesmanName),
                         if (pageModel.items.isNotEmpty) _buildTableHeader(),
                         ...pageModel.items.asMap().entries.map((entry) {
                           final itemIndex = pageStartIndex + entry.key + 1;
@@ -145,7 +160,7 @@ class QuotationPdfService {
     );
   }
 
-  pw.Widget _buildCoverSection(Quotation quotation) {
+  pw.Widget _buildCoverSection(Quotation quotation, String salesmanName) {
     final profile = CompanyProfile.defaultProfile;
 
     return pw.Column(
@@ -200,7 +215,7 @@ class QuotationPdfService {
                   _buildCustomerRow('DATE', QuotationDocumentFormatters.formatDate(quotation.createdDate)),
                   _buildCustomerRow('QT NO', quotation.quotationNumber.isNotEmpty ? quotation.quotationNumber : '-'),
                   _buildCustomerRow('EXPIRED', QuotationDocumentFormatters.formatDate(quotation.validUntil)),
-                  _buildCustomerRow('SALESMAN', quotation.salespersonId.isNotEmpty ? quotation.salespersonId : '-'),
+                  _buildCustomerRow('SALESMAN', salesmanName.isNotEmpty ? salesmanName : '-'),
                 ],
               ),
             ),
@@ -365,8 +380,8 @@ class QuotationPdfService {
                     pw.Padding(
                       padding: const pw.EdgeInsets.only(top: 2),
                       child: pw.Text(
-                        item.description!,
-                        style: pw.TextStyle(font: _fontRegular, fontSize: 10, color: _textMain, lineSpacing: 1.3),
+                        QuotationDocumentFormatters.formatSpecification(item.description) ?? '',
+                        style: pw.TextStyle(font: _fontRegular, fontSize: 8, color: _textMain, lineSpacing: 1.3),
                         maxLines: 2,
                       ),
                     ),

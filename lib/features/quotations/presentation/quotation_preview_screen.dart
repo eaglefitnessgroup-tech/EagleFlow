@@ -12,6 +12,8 @@ import 'preview/pages/quotation_info_page.dart';
 import 'package:printing/printing.dart';
 import '../application/quotation_pdf_service.dart';
 import '../../../core/utils/pdf_saver.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../authentication/domain/app_user.dart';
 
 class QuotationPreviewScreen extends StatefulWidget {
   const QuotationPreviewScreen({super.key});
@@ -27,6 +29,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
   bool _isError = false;
   String _errorMsg = '';
   bool _isGeneratingPdf = false;
+  String? _resolvedSalespersonName;
 
   @override
   void didChangeDependencies() {
@@ -44,6 +47,24 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       _isError = true;
       _errorMsg = 'Invalid quotation data provided.';
     }
+    
+    _resolveSalespersonName();
+  }
+
+  Future<void> _resolveSalespersonName() async {
+    if (_controller == null) return;
+    try {
+      final users = await ServiceLocator().authRepository.getUsers();
+      final user = users.cast<AppUser?>().firstWhere(
+        (u) => u?.id == _controller!.quotation.salespersonId,
+        orElse: () => null,
+      );
+      if (mounted && user != null) {
+        setState(() {
+          _resolvedSalespersonName = user.name;
+        });
+      }
+    } catch (_) {}
   }
 
   void _nextPage() {
@@ -122,9 +143,13 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         quotation: _controller!.quotation,
         model: pageModel,
         startIndex: startIndex,
+        salespersonName: _resolvedSalespersonName,
       );
     } else if (pageModel is QuotationInfoPageModel) {
-      return QuotationInfoPage(quotation: _controller!.quotation);
+      return QuotationInfoPage(
+        quotation: _controller!.quotation,
+        salespersonName: _resolvedSalespersonName,
+      );
     }
     return const SizedBox.shrink();
   }

@@ -6,8 +6,13 @@ import '../components/quotation_document_header.dart';
 
 class QuotationInfoPage extends StatelessWidget {
   final Quotation quotation;
+  final String? salespersonName;
 
-  const QuotationInfoPage({super.key, required this.quotation});
+  const QuotationInfoPage({
+    super.key,
+    required this.quotation,
+    this.salespersonName,
+  });
 
   @override
   Widget build(BuildContext context) {

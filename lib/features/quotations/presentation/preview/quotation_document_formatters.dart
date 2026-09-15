@@ -27,4 +27,23 @@ class QuotationDocumentFormatters {
     final year = date.year;
     return '$day $month $year';
   }
+
+  static String? formatSpecification(String? description) {
+    if (description == null || description.trim().isEmpty) return description;
+    
+    if (description.contains('\n')) {
+      return description;
+    }
+
+    final parts = description.split('|');
+    if (parts.length <= 2) {
+      return description;
+    }
+
+    final int midpoint = (parts.length / 2).ceil();
+    final String firstGroup = parts.sublist(0, midpoint).map((p) => p.trim()).join(' | ');
+    final String secondGroup = parts.sublist(midpoint).map((p) => p.trim()).join(' | ');
+
+    return '$firstGroup\n$secondGroup';
+  }
 }

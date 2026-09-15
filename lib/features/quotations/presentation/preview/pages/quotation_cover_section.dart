@@ -7,8 +7,13 @@ import '../components/quotation_document_header.dart';
 
 class QuotationCoverSection extends StatelessWidget {
   final Quotation quotation;
+  final String? salespersonName;
 
-  const QuotationCoverSection({super.key, required this.quotation});
+  const QuotationCoverSection({
+    super.key,
+    required this.quotation,
+    this.salespersonName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +89,8 @@ class QuotationCoverSection extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 32),
-            Expanded(
+            SizedBox(
+              width: 170,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -114,9 +120,11 @@ class QuotationCoverSection extends StatelessWidget {
                   ),
                   _buildCustomerRow(
                     'SALESMAN',
-                    quotation.salespersonId.isNotEmpty
-                        ? quotation.salespersonId
-                        : '—',
+                    (salespersonName != null && salespersonName!.isNotEmpty)
+                        ? salespersonName!
+                        : (quotation.salespersonId.isNotEmpty
+                            ? quotation.salespersonId
+                            : '—'),
                   ),
                 ],
               ),
@@ -131,19 +139,19 @@ class QuotationCoverSection extends StatelessWidget {
 
   Widget _buildCompanyRow(String label, String value, {int maxLines = 1}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2.0),
+      padding: const EdgeInsets.only(bottom: 0.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 100,
-            child: Text(label, style: QuotationDocumentTheme.small),
+            child: Text(label, style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0)),
           ),
-          const Text(' : ', style: QuotationDocumentTheme.small),
+          Text(' : ', style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0)),
           Expanded(
             child: Text(
               value,
-              style: QuotationDocumentTheme.small,
+              style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0),
               maxLines: maxLines,
               overflow: TextOverflow.ellipsis,
             ),

@@ -71,8 +71,9 @@ class QuotationProductRow extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        item.description!,
+                        QuotationDocumentFormatters.formatSpecification(item.description) ?? '',
                         style: QuotationDocumentTheme.small.copyWith(
+                          fontSize: 8.0,
                           color: QuotationDocumentTheme.textMain,
                           height: 1.3,
                         ),
