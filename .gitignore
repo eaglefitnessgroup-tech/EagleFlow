@@ -49,3 +49,6 @@ app.*.map.json
 
 # Supabase secrets
 supabase.json
+.vercel
+.env*
+!.env.example
