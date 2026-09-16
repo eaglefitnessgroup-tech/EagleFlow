@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/eagle_bottom_nav.dart';
 
 class AreaEstimatorScreen extends StatefulWidget {
   const AreaEstimatorScreen({super.key});
@@ -115,9 +116,14 @@ class _AreaEstimatorScreenState extends State<AreaEstimatorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final showBottomNavigation = MediaQuery.sizeOf(context).width < 800;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Area Estimator')),
+      bottomNavigationBar: showBottomNavigation
+          ? const EagleBottomNav(currentIndex: 3)
+          : null,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 700;

@@ -17,11 +17,14 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
   int _totalProducts = 0;
   int _todaysQuotations = 0;
   int _pendingQuotations = 0;
+  List<Quotation> _allQuotations = [];
   List<Quotation> _recentQuotations = [];
+  String _quotationSearchQuery = '';
 
   @override
   void initState() {
@@ -62,6 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _totalProducts = products.length;
           _todaysQuotations = todayQuotationsCount;
           _pendingQuotations = pendingQuotationsCount;
+          _allQuotations = sortedQuotations;
           _recentQuotations = recent;
           _isLoading = false;
         });
@@ -79,6 +83,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
     }
+  }
+
+  List<Quotation> get _quotationSearchResults {
+    final query = _quotationSearchQuery.trim().toLowerCase();
+    if (query.length < 2) return const [];
+
+    return _allQuotations
+        .where(
+          (quotation) =>
+              quotation.customerInfo.name.toLowerCase().contains(query) ||
+              quotation.quotationNumber.toLowerCase().contains(query),
+        )
+        .take(8)
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   String _getGreeting() {
@@ -330,6 +354,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: _buildSearchField(),
@@ -387,20 +412,138 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSearchField() {
-    return Container(
+    final results = _quotationSearchResults;
+
+    return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 400),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: TextField(
+              key: const Key('dashboard-quotation-search'),
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() => _quotationSearchQuery = value);
+              },
+              decoration: const InputDecoration(
+                hintText: 'Search quotations...',
+                hintStyle: TextStyle(color: AppColors.mutedText, fontSize: 13),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: AppColors.mutedText,
+                  size: 18,
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ),
+          if (results.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Container(
+              key: const Key('dashboard-search-results'),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: results
+                        .map((quotation) => _buildSearchResult(quotation))
+                        .toList(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
-      child: const TextField(
-        decoration: InputDecoration(
-          hintText: 'Search...',
-          hintStyle: TextStyle(color: AppColors.mutedText, fontSize: 13),
-          prefixIcon: Icon(Icons.search, color: AppColors.mutedText, size: 18),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    );
+  }
+
+  Widget _buildSearchResult(Quotation quotation) {
+    final formatter = NumberFormat('#,##0.00');
+    final amount = QuotationCalculator.calculateGrandTotal(
+      quotation.lineItems,
+      quotation.charges,
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: Key('dashboard-search-result-${quotation.id}'),
+        onTap: () {
+          _searchController.clear();
+          setState(() => _quotationSearchQuery = '');
+          _handleViewQuotation(quotation);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      quotation.customerInfo.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.charcoal,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      quotation.quotationNumber,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.mutedText,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'AED ${formatter.format(amount)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    color: AppColors.charcoal,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

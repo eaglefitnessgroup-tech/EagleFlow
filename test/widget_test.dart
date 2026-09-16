@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/app/app.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/core/database/database_service.dart';
+import 'package:eagleflow/features/authentication/presentation/login_screen.dart';
+import 'package:eagleflow/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'features/authentication/fake_auth_repository.dart';
 
@@ -20,19 +22,17 @@ void main() {
     ServiceLocator.resetForTesting();
   });
 
-  testWidgets('App starts on Splash Screen and displays title', (
+  testWidgets('Unauthenticated app starts on Login without Dashboard', (
     WidgetTester tester,
   ) async {
-    // Build our app and trigger a frame.
     await tester.pumpWidget(const EagleFlowApp());
 
-    // Verify that the Splash screen title is shown.
-    expect(find.text('EagleFlow'), findsOneWidget);
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(DashboardScreen), findsNothing);
 
-    // Advance time to allow the splash screen's Future.delayed to complete
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 3));
 
-    // Allow the navigation animation to finish
-    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(DashboardScreen), findsNothing);
   });
 }

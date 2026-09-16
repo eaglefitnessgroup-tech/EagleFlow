@@ -117,7 +117,11 @@ void main() {
 
       for (final key in horizontallyBoundedKeys) {
         final rect = tester.getRect(find.byKey(key));
-        expect(rect.left, greaterThanOrEqualTo(0), reason: '$key at ${width}px');
+        expect(
+          rect.left,
+          greaterThanOrEqualTo(0),
+          reason: '$key at ${width}px',
+        );
         expect(
           rect.right,
           lessThanOrEqualTo(width),
@@ -130,6 +134,16 @@ void main() {
         greaterThanOrEqualTo(48),
         reason: 'Calculate touch target at ${width}px',
       );
+
+      if (width < 800) {
+        final navigation = tester.widget<BottomNavigationBar>(
+          find.byType(BottomNavigationBar),
+        );
+        expect(navigation.currentIndex, 3);
+        expect(navigation.items[3].label, 'Area Estimator');
+      } else {
+        expect(find.byType(BottomNavigationBar), findsNothing);
+      }
     }
   });
 

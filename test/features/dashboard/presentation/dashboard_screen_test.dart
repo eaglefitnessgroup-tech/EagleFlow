@@ -5,9 +5,15 @@ import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:eagleflow/app/routes/app_routes.dart';
+import 'package:eagleflow/features/quotations/data/quotation_repository.dart';
+import 'package:eagleflow/features/quotations/domain/customer_info.dart';
+import 'package:eagleflow/features/quotations/domain/quotation.dart';
+import 'package:eagleflow/features/quotations/domain/quotation_charges.dart';
 import '../../../features/authentication/fake_auth_repository.dart';
 
 void main() {
+  late _FakeQuotationRepository quotationRepository;
+
   setUp(() async {
     ServiceLocator.resetForTesting();
 
@@ -16,6 +22,8 @@ void main() {
     DatabaseService().setDatabaseForTesting(db);
 
     ServiceLocator().mockAuthRepository = FakeAuthRepository();
+    quotationRepository = _FakeQuotationRepository();
+    ServiceLocator().mockQuotationRepository = quotationRepository;
     await ServiceLocator().init();
     await ServiceLocator().authController.logout();
   });
@@ -41,6 +49,11 @@ void main() {
             const Scaffold(body: Text('Profile Screen')),
         AppRoutes.createQuotation: (context) =>
             const Scaffold(body: Text('Create Quotation Screen')),
+        AppRoutes.quotationPreview: (context) {
+          final quotation =
+              ModalRoute.of(context)!.settings.arguments! as Quotation;
+          return Scaffold(body: Text('Preview ${quotation.quotationNumber}'));
+        },
       },
       initialRoute: AppRoutes.dashboard,
     );
@@ -181,4 +194,176 @@ void main() {
   ) async {
     // Empty test is fine, empty UI covers all stats reading logic
   });
+
+  testWidgets(
+    'quotation search uses two-character case-insensitive partial matches and caps results',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      quotationRepository.quotations.addAll(
+        List.generate(
+          9,
+          (index) => _quotation(
+            id: 'alpha-$index',
+            customerName: 'Alpha Customer $index',
+            quotationNumber: 'QT-ALPHA-$index',
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpAndSettle();
+
+      final searchField = find.byKey(const Key('dashboard-quotation-search'));
+      await tester.enterText(searchField, 'a');
+      await tester.pump();
+      expect(find.byKey(const Key('dashboard-search-results')), findsNothing);
+
+      await tester.enterText(searchField, 'AL');
+      await tester.pump();
+
+      expect(find.byKey(const Key('dashboard-search-results')), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget.key is ValueKey<String> &&
+              (widget.key! as ValueKey<String>).value.startsWith(
+                'dashboard-search-result-',
+              ),
+        ),
+        findsNWidgets(8),
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('dashboard-search-results')),
+          matching: find.text('AED 105.00'),
+        ),
+        findsNWidgets(8),
+      );
+    },
+  );
+
+  testWidgets('quotation-number match opens the existing preview route', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final quotation = _quotation(
+      id: 'special',
+      customerName: 'Northwind Trading',
+      quotationNumber: 'QT-SPECIAL-204',
+    );
+    quotationRepository.quotations.add(quotation);
+
+    await tester.pumpWidget(buildTestableWidget());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('dashboard-quotation-search')),
+      'cial-2',
+    );
+    await tester.pump();
+
+    final searchResult = find.byKey(
+      const Key('dashboard-search-result-special'),
+    );
+    expect(
+      find.descendant(
+        of: searchResult,
+        matching: find.text('Northwind Trading'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: searchResult, matching: find.text('QT-SPECIAL-204')),
+      findsOneWidget,
+    );
+
+    await tester.tap(searchResult);
+    await tester.pumpAndSettle();
+
+    expect(quotationRepository.previewedQuotation, same(quotation));
+    expect(find.text('Preview QT-SPECIAL-204'), findsOneWidget);
+  });
+
+  testWidgets('quotation search results fit a narrow mobile dashboard', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    quotationRepository.quotations.add(
+      _quotation(
+        id: 'mobile',
+        customerName: 'A Very Long Customer Name For Mobile',
+        quotationNumber: 'QT-MOBILE-123456789',
+      ),
+    );
+
+    await tester.pumpWidget(buildTestableWidget());
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('dashboard-quotation-search')),
+      'mobile',
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('dashboard-search-results')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+Quotation _quotation({
+  required String id,
+  required String customerName,
+  required String quotationNumber,
+}) {
+  final now = DateTime(2026, 9, 16);
+  return Quotation(
+    id: id,
+    quotationNumber: quotationNumber,
+    customerInfo: CustomerInfo(name: customerName),
+    salespersonId: 'salesperson-1',
+    createdDate: now,
+    modifiedDate: now,
+    validUntil: now.add(const Duration(days: 14)),
+    expectedDelivery: now.add(const Duration(days: 3)),
+    charges: const QuotationCharges(deliveryCharges: 100),
+  );
+}
+
+class _FakeQuotationRepository implements QuotationRepository {
+  final List<Quotation> quotations = [];
+  Quotation? previewedQuotation;
+
+  @override
+  Future<List<Quotation>> getAllQuotations() async => quotations;
+
+  @override
+  Future<Quotation> getQuotationWithImages(Quotation quotation) async {
+    previewedQuotation = quotation;
+    return quotation;
+  }
+
+  @override
+  Future<Quotation> saveQuotation(Quotation quotation) async => quotation;
+
+  @override
+  Future<void> deleteQuotation(String id) async {}
+
+  @override
+  Future<Quotation> duplicateQuotation(Quotation sourceQuotation) async =>
+      sourceQuotation;
+
+  @override
+  Future<Quotation?> getQuotationByNumber(String quotationNumber) async =>
+      quotations.cast<Quotation?>().firstWhere(
+        (quotation) => quotation?.quotationNumber == quotationNumber,
+        orElse: () => null,
+      );
 }

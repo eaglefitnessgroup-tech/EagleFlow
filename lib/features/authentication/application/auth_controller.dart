@@ -2,18 +2,22 @@ import 'package:flutter/foundation.dart';
 import '../domain/app_user.dart';
 import '../domain/auth_repository.dart';
 
+enum AuthBootstrapState { initializing, authenticated, unauthenticated }
+
 class AuthController extends ChangeNotifier {
   final AuthRepository _repository;
 
   AppUser? _currentUser;
-  bool _isInitializing = false;
+  AuthBootstrapState _bootstrapState = AuthBootstrapState.initializing;
+  bool _initializationInProgress = false;
   bool _isLoading = false;
   String? _errorMessage;
 
   AuthController(this._repository);
 
   AppUser? get currentUser => _currentUser;
-  bool get isInitializing => _isInitializing;
+  AuthBootstrapState get bootstrapState => _bootstrapState;
+  bool get isInitializing => _bootstrapState == AuthBootstrapState.initializing;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -31,12 +35,16 @@ class AuthController extends ChangeNotifier {
   @visibleForTesting
   void setCurrentUserForTesting(AppUser? user) {
     _currentUser = user;
+    _bootstrapState = user == null
+        ? AuthBootstrapState.unauthenticated
+        : AuthBootstrapState.authenticated;
   }
 
   Future<void> initialize() async {
-    if (_isInitializing) return;
+    if (_initializationInProgress) return;
 
-    _isInitializing = true;
+    _initializationInProgress = true;
+    _bootstrapState = AuthBootstrapState.initializing;
     _errorMessage = null;
     notifyListeners();
 
@@ -45,7 +53,10 @@ class AuthController extends ChangeNotifier {
     } catch (e) {
       _currentUser = null;
     } finally {
-      _isInitializing = false;
+      _bootstrapState = _currentUser == null
+          ? AuthBootstrapState.unauthenticated
+          : AuthBootstrapState.authenticated;
+      _initializationInProgress = false;
       notifyListeners();
     }
   }
@@ -62,13 +73,11 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _repository.login(
-        email: email,
-        password: password,
-      );
+      final result = await _repository.login(email: email, password: password);
 
       if (result.success && result.user != null) {
         _currentUser = result.user;
+        _bootstrapState = AuthBootstrapState.authenticated;
 
         return true;
       } else {
@@ -91,6 +100,7 @@ class AuthController extends ChangeNotifier {
       // Ignored for logout
     } finally {
       _currentUser = null;
+      _bootstrapState = AuthBootstrapState.unauthenticated;
       _errorMessage = null;
       notifyListeners();
     }

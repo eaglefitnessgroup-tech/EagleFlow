@@ -23,7 +23,7 @@ class EagleBottomNav extends StatelessWidget {
         ).pushReplacementNamed(AppRoutes.previousQuotations);
         break;
       case 3:
-        Navigator.of(context).pushReplacementNamed(AppRoutes.profile);
+        Navigator.of(context).pushReplacementNamed(AppRoutes.areaEstimator);
         break;
     }
   }
@@ -42,11 +42,11 @@ class EagleBottomNav extends StatelessWidget {
       selectedIconTheme: const IconThemeData(size: 28),
       selectedLabelStyle: const TextStyle(
         fontWeight: FontWeight.w700,
-        fontSize: 12,
+        fontSize: 10,
       ),
       unselectedLabelStyle: const TextStyle(
         fontWeight: FontWeight.w500,
-        fontSize: 12,
+        fontSize: 10,
       ),
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -59,8 +59,8 @@ class EagleBottomNav extends StatelessWidget {
           label: 'Quotations',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          label: 'Profile',
+          icon: Icon(Icons.calculate_outlined),
+          label: 'Area Estimator',
         ),
       ],
     );
