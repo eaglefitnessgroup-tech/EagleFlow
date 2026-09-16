@@ -41,11 +41,13 @@ class SupabaseQuotationRepository implements QuotationRepository {
   @visibleForTesting
   Future<List<dynamic>> fetchQuotationsFromServer() async {
     final client = supabase.client;
-    if (client == null) return [];
+    final user = ServiceLocator().authController.currentUser;
+    if (client == null || user == null) return [];
 
     final response = await client
         .from('quotations')
         .select('*, quotation_items(*)')
+        .eq('salesperson_id', user.id)
         .order('created_at', ascending: false);
     return response as List<dynamic>;
   }
@@ -99,6 +101,9 @@ class SupabaseQuotationRepository implements QuotationRepository {
   }
 
   Future<void> handleRealtimeEvent(PostgresChangePayload payload) async {
+    final user = ServiceLocator().authController.currentUser;
+    if (user == null) return;
+
     final table = payload.table;
     final eventType = payload.eventType;
     final newRecord = payload.newRecord;
@@ -132,6 +137,7 @@ class SupabaseQuotationRepository implements QuotationRepository {
             .from('quotations')
             .select('*, quotation_items(*)')
             .eq('id', quotationId)
+            .eq('salesperson_id', user.id)
             .maybeSingle();
             
         if (response != null) {
@@ -220,6 +226,8 @@ class SupabaseQuotationRepository implements QuotationRepository {
 Future<List<Quotation>> getAllQuotations() async {
   final user = ServiceLocator().authController.currentUser;
 
+  if (user == null) return [];
+
   // Pull latest quotations from Supabase
   if (isConnectedToServer) {
     await _syncQuotationsDown();
@@ -227,37 +235,35 @@ Future<List<Quotation>> getAllQuotations() async {
 
   final all = await localCache.getAllQuotations();
 
-  if (user != null && !user.isAdmin) {
-    return all.where((q) => q.salespersonId == user.id).toList();
-  }
-
-  return all;
+  return all.where((q) => q.salespersonId == user.id).toList();
 }
 
   @override
   Future<Quotation?> getQuotationByNumber(String quotationNumber) async {
     final user = ServiceLocator().authController.currentUser;
     final q = await localCache.getQuotationByNumber(quotationNumber);
-    if (q != null && user != null && !user.isAdmin) {
-      if (q.salespersonId != user.id) return null;
-    }
+    if (user == null || q == null || q.salespersonId != user.id) return null;
     return q;
   }
 
   @override
   Future<Quotation> getQuotationWithImages(Quotation quotation) async {
+    final user = ServiceLocator().authController.currentUser;
+    if (user == null || quotation.salespersonId != user.id) {
+      throw Exception(
+        'Unauthorized: Cannot access quotations belonging to others.',
+      );
+    }
     return await localCache.getQuotationWithImages(quotation);
   }
 
   @override
   Future<Quotation> saveQuotation(Quotation quotation) async {
     final user = ServiceLocator().authController.currentUser;
-    if (user != null && !user.isAdmin) {
-      if (quotation.salespersonId != user.id) {
-        throw Exception(
-          'Unauthorized: Cannot modify quotations belonging to others.',
-        );
-      }
+    if (user == null || quotation.salespersonId != user.id) {
+      throw Exception(
+        'Unauthorized: Cannot modify quotations belonging to others.',
+      );
     }
 
     Quotation toSave = quotation;
@@ -319,12 +325,10 @@ Future<List<Quotation>> getAllQuotations() async {
     if (record == null) return;
     final q = Quotation.fromJson(record);
 
-    if (user != null && !user.isAdmin) {
-      if (q.salespersonId != user.id) {
-        throw Exception(
-          'Unauthorized: Cannot delete quotations belonging to others.',
-        );
-      }
+    if (user == null || q.salespersonId != user.id) {
+      throw Exception(
+        'Unauthorized: Cannot delete quotations belonging to others.',
+      );
     }
 
     try {
@@ -343,6 +347,13 @@ Future<List<Quotation>> getAllQuotations() async {
 
   @override
   Future<Quotation> duplicateQuotation(Quotation sourceQuotation) async {
+    final user = ServiceLocator().authController.currentUser;
+    if (user == null || sourceQuotation.salespersonId != user.id) {
+      throw Exception(
+        'Unauthorized: Cannot duplicate quotations belonging to others.',
+      );
+    }
+
     final now = DateTime.now();
     final validityDuration = sourceQuotation.validUntil.difference(
       sourceQuotation.createdDate,

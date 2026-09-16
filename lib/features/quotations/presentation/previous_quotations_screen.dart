@@ -7,6 +7,7 @@ import 'widgets/previous/quotations_summary_row.dart';
 import 'widgets/previous/quotation_filter_bar.dart';
 import 'widgets/previous/quotation_list_view.dart';
 import '../application/quotation_calculator.dart';
+import '../application/salesperson_name_resolver.dart';
 import '../../../../core/di/service_locator.dart';
 
 class PreviousQuotationsScreen extends StatefulWidget {
@@ -27,6 +28,18 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
 
   bool _isLoading = true;
   String? _errorMessage;
+
+  String _salespersonName(Quotation quotation) {
+    return SalespersonNameResolver.resolve(
+      salespersonId: quotation.salespersonId,
+      currentUser: ServiceLocator().authController.currentUser,
+    );
+  }
+
+  Map<String, String> get _salespersonNames {
+    final user = ServiceLocator().authController.currentUser;
+    return user == null ? const {} : {user.id: user.name};
+  }
 
   @override
   void initState() {
@@ -69,6 +82,9 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
               _searchQuery.toLowerCase(),
             ) ||
             q.customerInfo.name.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ) ||
+            _salespersonName(q).toLowerCase().contains(
               _searchQuery.toLowerCase(),
             ) ||
             q.salespersonId.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -298,6 +314,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                       _buildResultCount(_filteredQuotations.length, total),
                       QuotationListView(
                         quotations: _filteredQuotations,
+                        salespersonNames: _salespersonNames,
                         onView: _handleView,
                         onEdit: _handleEdit,
                         onDuplicate: _handleDuplicate,

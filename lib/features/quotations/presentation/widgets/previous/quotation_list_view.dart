@@ -8,6 +8,7 @@ import 'quotation_status_badge.dart';
 
 class QuotationListView extends StatelessWidget {
   final List<Quotation> quotations;
+  final Map<String, String> salespersonNames;
   final ValueChanged<Quotation> onView;
   final ValueChanged<Quotation> onEdit;
   final ValueChanged<Quotation> onDuplicate;
@@ -18,6 +19,7 @@ class QuotationListView extends StatelessWidget {
   const QuotationListView({
     super.key,
     required this.quotations,
+    this.salespersonNames = const {},
     required this.onView,
     required this.onEdit,
     required this.onDuplicate,
@@ -315,7 +317,10 @@ class QuotationListView extends StatelessWidget {
                 DataCell(Text(dateFmt.format(q.createdDate))),
                 DataCell(Text(q.customerInfo.name)),
                 DataCell(
-                  Text(q.salespersonId.isNotEmpty ? q.salespersonId : '—'),
+                  Text(
+                    salespersonNames[q.salespersonId] ??
+                        (q.salespersonId.isNotEmpty ? q.salespersonId : '—'),
+                  ),
                 ),
                 DataCell(
                   Text(

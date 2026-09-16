@@ -4,6 +4,7 @@ import '../../../../../../app/theme/app_colors.dart';
 class QuotationInformationCard extends StatefulWidget {
   final String quotationNumber;
   final String salespersonId;
+  final String salespersonName;
   final DateTime date;
   final DateTime validUntil;
   final DateTime expectedDelivery;
@@ -12,6 +13,7 @@ class QuotationInformationCard extends StatefulWidget {
     super.key,
     required this.quotationNumber,
     required this.salespersonId,
+    required this.salespersonName,
     required this.date,
     required this.validUntil,
     required this.expectedDelivery,
@@ -100,6 +102,7 @@ class _QuotationInformationCardState extends State<QuotationInformationCard> {
                   value: widget.salespersonId.isNotEmpty ? widget.salespersonId : null,
                   hint: 'Select...',
                   items: widget.salespersonId.isNotEmpty ? [widget.salespersonId] : [],
+                  displayText: widget.salespersonName,
                 ),
               ),
             ],

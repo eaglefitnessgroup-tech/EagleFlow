@@ -11,9 +11,9 @@ import 'preview/pages/quotation_info_page.dart';
 
 import 'package:printing/printing.dart';
 import '../application/quotation_pdf_service.dart';
+import '../application/salesperson_name_resolver.dart';
 import '../../../core/utils/pdf_saver.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../authentication/domain/app_user.dart';
 
 class QuotationPreviewScreen extends StatefulWidget {
   const QuotationPreviewScreen({super.key});
@@ -30,6 +30,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
   String _errorMsg = '';
   bool _isGeneratingPdf = false;
   String? _resolvedSalespersonName;
+  int _salespersonResolutionRequest = 0;
 
   @override
   void didChangeDependencies() {
@@ -53,15 +54,45 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
 
   Future<void> _resolveSalespersonName() async {
     if (_controller == null) return;
+    final request = ++_salespersonResolutionRequest;
+    final controller = _controller!;
+    final quotation = controller.quotation;
+    final quotationId = quotation.id;
+    final quotationNumber = quotation.quotationNumber;
+    final salespersonId = quotation.salespersonId;
+    final currentUser = ServiceLocator().authController.currentUser;
+
+    if (currentUser != null && currentUser.id == salespersonId) {
+      _resolvedSalespersonName = SalespersonNameResolver.resolve(
+        salespersonId: salespersonId,
+        currentUser: currentUser,
+      );
+      return;
+    }
+
     try {
       final users = await ServiceLocator().authRepository.getUsers();
-      final user = users.cast<AppUser?>().firstWhere(
-        (u) => u?.id == _controller!.quotation.salespersonId,
-        orElse: () => null,
-      );
-      if (mounted && user != null) {
+      final latestCurrentUser = ServiceLocator().authController.currentUser;
+      final currentQuotation = _controller?.quotation;
+      final authenticationIsCurrent =
+          latestCurrentUser?.id == currentUser?.id ||
+          latestCurrentUser?.id == salespersonId;
+      final isCurrentRequest =
+          mounted &&
+          authenticationIsCurrent &&
+          request == _salespersonResolutionRequest &&
+          identical(_controller, controller) &&
+          currentQuotation?.id == quotationId &&
+          currentQuotation?.quotationNumber == quotationNumber &&
+          currentQuotation?.salespersonId == salespersonId;
+
+      if (isCurrentRequest) {
         setState(() {
-          _resolvedSalespersonName = user.name;
+          _resolvedSalespersonName = SalespersonNameResolver.resolve(
+            salespersonId: salespersonId,
+            currentUser: latestCurrentUser,
+            profiles: users,
+          );
         });
       }
     } catch (_) {}

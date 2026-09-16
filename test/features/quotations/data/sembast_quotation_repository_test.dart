@@ -136,5 +136,20 @@ void main() {
       final loadedDup = await repository.getQuotationWithImages(duplicated);
       expect(loadedDup.lineItems.first.imageBytes, equals(bytes));
     });
+
+    test('saved and reopened quotation preserves its salesperson owner', () async {
+      final draft = QuotationDefaults.createEmptyDraft(
+        salespersonId: 'SALES-005',
+      );
+
+      final saved = await repository.saveQuotation(draft);
+      final reopened = await repository.getQuotationByNumber(
+        saved.quotationNumber,
+      );
+
+      expect(saved.salespersonId, 'SALES-005');
+      expect(reopened, isNotNull);
+      expect(reopened!.salespersonId, 'SALES-005');
+    });
   });
 }

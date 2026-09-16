@@ -13,7 +13,7 @@ import '../presentation/preview/utils/quotation_paginator.dart';
 import '../presentation/preview/quotation_layout_spec.dart';
 import 'quotation_calculator.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../authentication/domain/app_user.dart';
+import 'salesperson_name_resolver.dart';
 
 class QuotationPdfService {
   late pw.Font _fontRegular;
@@ -49,15 +49,19 @@ class QuotationPdfService {
     await PdfImageLoader.loadAsset('assets/logos/logo_head_cropped.png');
 
     // Resolve Salesperson Name
-    String resolvedSalesmanName = quotation.salespersonId;
+    final currentUser = ServiceLocator().authController.currentUser;
+    String resolvedSalesmanName = SalespersonNameResolver.resolve(
+      salespersonId: quotation.salespersonId,
+      currentUser: currentUser,
+    );
     try {
-      final users = await ServiceLocator().authRepository.getUsers();
-      final user = users.cast<AppUser?>().firstWhere(
-        (u) => u?.id == quotation.salespersonId,
-        orElse: () => null,
-      );
-      if (user != null) {
-        resolvedSalesmanName = user.name;
+      if (currentUser == null || currentUser.id != quotation.salespersonId) {
+        final users = await ServiceLocator().authRepository.getUsers();
+        resolvedSalesmanName = SalespersonNameResolver.resolve(
+          salespersonId: quotation.salespersonId,
+          currentUser: currentUser,
+          profiles: users,
+        );
       }
     } catch (_) {}
 

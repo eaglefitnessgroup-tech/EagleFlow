@@ -6,6 +6,7 @@ import '../domain/quotation_defaults.dart';
 import '../application/quotation_calculator.dart';
 import '../application/quotation_controller.dart';
 import '../application/quotation_validator.dart';
+import '../application/salesperson_name_resolver.dart';
 import '../../../../core/di/service_locator.dart';
 import '../domain/quotation.dart';
 import '../../products/domain/product.dart';
@@ -364,6 +365,10 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                     child: QuotationInformationCard(
                       quotationNumber: quotation.quotationNumber,
                       salespersonId: quotation.salespersonId,
+                      salespersonName: SalespersonNameResolver.resolve(
+                        salespersonId: quotation.salespersonId,
+                        currentUser: ServiceLocator().authController.currentUser,
+                      ),
                       date: quotation.createdDate,
                       validUntil: quotation.validUntil,
                       expectedDelivery: quotation.expectedDelivery,

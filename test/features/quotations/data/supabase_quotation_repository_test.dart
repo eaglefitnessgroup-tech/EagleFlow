@@ -27,6 +27,32 @@ class FakeSupabaseQuotationRepository extends SupabaseQuotationRepository {
   }
 }
 
+class TrackingSembastQuotationRepository extends SembastQuotationRepository {
+  int imageReadCount = 0;
+
+  @override
+  Future<Quotation> getQuotationWithImages(Quotation quotation) async {
+    imageReadCount++;
+    return super.getQuotationWithImages(quotation);
+  }
+}
+
+class DuplicateTestQuotationRepository
+    extends FakeSupabaseQuotationRepository {
+  int saveCount = 0;
+
+  DuplicateTestQuotationRepository(super.localCache, super.supabase);
+
+  @override
+  Future<Quotation> saveQuotation(Quotation quotation) async {
+    saveCount++;
+    return quotation.copyWith(
+      id: 'DUPLICATED-QUOTATION',
+      quotationNumber: 'DRAFT-DUPLICATE',
+    );
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -215,7 +241,7 @@ void main() {
       );
     });
 
-    test('6. Admin read-all', () async {
+    test('6. Admin only reads own quotations', () async {
       final qAdmin = createTestQuotation(
         salespersonId: 'ADMIN-001',
       ).copyWith(id: 'Q-ADMIN', quotationNumber: 'QT-A');
@@ -226,7 +252,78 @@ void main() {
       await localCache.saveQuotation(qSales);
 
       final list = await repo.getAllQuotations();
-      expect(list.length, 2);
+      expect(list, hasLength(1));
+      expect(list.single.salespersonId, 'ADMIN-001');
+      expect(
+        await repo.getQuotationByNumber('QT-S'),
+        isNull,
+      );
+      expect(
+        () => repo.getQuotationWithImages(qSales),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'msg',
+            contains('Cannot access quotations belonging to others'),
+          ),
+        ),
+      );
+      expect(
+        () => repo.saveQuotation(qSales),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'msg',
+            contains('Cannot modify quotations belonging to others'),
+          ),
+        ),
+      );
+    });
+
+    test(
+      '7. Duplicate rejects a foreign owner before cached images are read',
+      () async {
+        final trackingCache = TrackingSembastQuotationRepository();
+        final duplicateRepo = DuplicateTestQuotationRepository(
+          trackingCache,
+          locator.supabaseService,
+        );
+        final foreignQuotation = createTestQuotation(
+          salespersonId: 'SALES-001',
+        );
+
+        await expectLater(
+          duplicateRepo.duplicateQuotation(foreignQuotation),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'msg',
+              contains('Cannot duplicate quotations belonging to others'),
+            ),
+          ),
+        );
+
+        expect(trackingCache.imageReadCount, 0);
+        expect(duplicateRepo.saveCount, 0);
+      },
+    );
+
+    test('8. Duplicate works for the current owner', () async {
+      final trackingCache = TrackingSembastQuotationRepository();
+      final duplicateRepo = DuplicateTestQuotationRepository(
+        trackingCache,
+        locator.supabaseService,
+      );
+      final source = createTestQuotation();
+
+      final duplicated = await duplicateRepo.duplicateQuotation(source);
+
+      expect(trackingCache.imageReadCount, 1);
+      expect(duplicateRepo.saveCount, 1);
+      expect(duplicated.id, 'DUPLICATED-QUOTATION');
+      expect(duplicated.quotationNumber, 'DRAFT-DUPLICATE');
+      expect(duplicated.salespersonId, 'ADMIN-001');
+      expect(duplicated.status, QuotationStatus.draft);
     });
   });
 }
