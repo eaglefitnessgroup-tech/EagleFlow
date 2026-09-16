@@ -41,18 +41,176 @@ void main() {
       expect(subtotal, 250.0);
     });
 
+    test('calculates VAT when all items are VAT-applicable', () {
+      const items = [
+        QuotationLineItem(
+          id: 'taxable-1',
+          name: 'Taxable 1',
+          brand: 'Brand',
+          unitPrice: 100.0,
+          quantity: 2,
+          discount: 10.0,
+        ),
+      ];
+      const charges = QuotationCharges(
+        deliveryCharges: 20.0,
+        overallDiscount: 50.0,
+        vatPercentage: 5.0,
+      );
+
+      expect(QuotationCalculator.calculateVAT(items, charges), 7.5);
+      expect(QuotationCalculator.calculateGrandTotal(items, charges), 157.5);
+    });
+
+    test('calculates VAT only on taxable items in a mixed quotation', () {
+      const items = [
+        QuotationLineItem(
+          id: 'taxable',
+          name: 'Taxable',
+          brand: 'Brand',
+          unitPrice: 100.0,
+          quantity: 1,
+          discount: 20.0,
+        ),
+        QuotationLineItem(
+          id: 'exempt',
+          name: 'Exempt',
+          brand: 'Brand',
+          unitPrice: 200.0,
+          quantity: 1,
+          discount: 50.0,
+          isVatApplicable: false,
+        ),
+      ];
+      const charges = QuotationCharges(vatPercentage: 5.0);
+
+      expect(QuotationCalculator.calculateVAT(items, charges), 4.0);
+      expect(QuotationCalculator.calculateGrandTotal(items, charges), 184.0);
+    });
+
+    test('allocates overall discount proportionally in a mixed quotation', () {
+      const items = [
+        QuotationLineItem(
+          id: 'taxable',
+          name: 'Taxable',
+          brand: 'Brand',
+          unitPrice: 100.0,
+          quantity: 1,
+        ),
+        QuotationLineItem(
+          id: 'exempt',
+          name: 'Exempt',
+          brand: 'Brand',
+          unitPrice: 100.0,
+          quantity: 1,
+          isVatApplicable: false,
+        ),
+      ];
+      const charges = QuotationCharges(
+        overallDiscount: 20.0,
+        vatPercentage: 5.0,
+      );
+
+      expect(QuotationCalculator.calculateVAT(items, charges), 4.5);
+      expect(QuotationCalculator.calculateGrandTotal(items, charges), 184.5);
+    });
+
+    test('allocates all overall discount to taxable-only merchandise', () {
+      const items = [
+        QuotationLineItem(
+          id: 'taxable',
+          name: 'Taxable',
+          brand: 'Brand',
+          unitPrice: 100.0,
+          quantity: 1,
+        ),
+      ];
+      const charges = QuotationCharges(
+        overallDiscount: 20.0,
+        vatPercentage: 5.0,
+      );
+
+      expect(QuotationCalculator.calculateVAT(items, charges), 4.0);
+      expect(QuotationCalculator.calculateGrandTotal(items, charges), 84.0);
+    });
+
+    test('allocates no overall discount to exempt-only merchandise VAT', () {
+      const items = [
+        QuotationLineItem(
+          id: 'exempt',
+          name: 'Exempt',
+          brand: 'Brand',
+          unitPrice: 100.0,
+          quantity: 1,
+          isVatApplicable: false,
+        ),
+      ];
+      const charges = QuotationCharges(
+        overallDiscount: 20.0,
+        vatPercentage: 5.0,
+      );
+
+      expect(QuotationCalculator.calculateVAT(items, charges), 0.0);
+      expect(QuotationCalculator.calculateGrandTotal(items, charges), 80.0);
+    });
+
+    test('handles zero merchandise subtotal without dividing by zero', () {
+      const charges = QuotationCharges(
+        deliveryCharges: 20.0,
+        overallDiscount: 10.0,
+        vatPercentage: 5.0,
+      );
+
+      expect(QuotationCalculator.calculateVAT(const [], charges), 1.0);
+      expect(QuotationCalculator.calculateGrandTotal(const [], charges), 11.0);
+    });
+
+    test('calculates no VAT when all items are VAT-exempt', () {
+      const items = [
+        QuotationLineItem(
+          id: 'exempt-1',
+          name: 'Exempt 1',
+          brand: 'Brand',
+          unitPrice: 100.0,
+          quantity: 1,
+          isVatApplicable: false,
+        ),
+        QuotationLineItem(
+          id: 'exempt-2',
+          name: 'Exempt 2',
+          brand: 'Brand',
+          unitPrice: 200.0,
+          quantity: 1,
+          isVatApplicable: false,
+        ),
+      ];
+      const charges = QuotationCharges(vatPercentage: 5.0);
+
+      expect(QuotationCalculator.calculateVAT(items, charges), 0.0);
+      expect(QuotationCalculator.calculateGrandTotal(items, charges), 300.0);
+    });
+
     test('VAT calculation order and negative subtotal clamping', () {
       // If overall discount is very high, adjusted subtotal could go negative before VAT.
       // Math.max(adjustedSubtotal, 0) should clamp it.
+      const items = [
+        QuotationLineItem(
+          id: '1',
+          name: 'Item',
+          brand: 'Brand',
+          unitPrice: 500.0,
+          quantity: 1,
+        ),
+      ];
       const charges = QuotationCharges(
         overallDiscount: 1000.0, // excessive discount
         vatPercentage: 5.0,
       );
-      final vat = QuotationCalculator.calculateVAT(500.0, charges);
+      final vat = QuotationCalculator.calculateVAT(items, charges);
       expect(vat, 0.0);
 
       final grandTotal = QuotationCalculator.calculateGrandTotal(
-        500.0,
+        items,
         charges,
       );
       expect(grandTotal, 0.0); // Grand total shouldn't be negative

@@ -427,8 +427,8 @@ class QuotationPdfService {
 
   pw.Widget _buildTotalsBlock(Quotation quotation) {
     final subtotal = QuotationCalculator.calculateSubtotal(quotation.lineItems);
-    final vat = QuotationCalculator.calculateVAT(subtotal, quotation.charges);
-    final grandTotal = QuotationCalculator.calculateGrandTotal(subtotal, quotation.charges);
+    final vat = QuotationCalculator.calculateVAT(quotation.lineItems, quotation.charges);
+    final grandTotal = QuotationCalculator.calculateGrandTotal(quotation.lineItems, quotation.charges);
 
     return pw.Container(
       width: double.infinity,

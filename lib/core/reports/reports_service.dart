@@ -179,11 +179,8 @@ class ReportsService {
 
       // Customer
       final custName = q.customerInfo.name.trim();
-      final double subTotal = QuotationCalculator.calculateSubtotal(
-        q.lineItems,
-      );
       final double grandTotal = QuotationCalculator.calculateGrandTotal(
-        subTotal,
+        q.lineItems,
         q.charges,
       );
       if (custName.isNotEmpty) {

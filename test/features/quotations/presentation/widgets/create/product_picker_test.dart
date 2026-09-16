@@ -361,7 +361,9 @@ void main() {
         createdAt: DateTime.now(),
         createdBy: 'test_user',
       );
-      await sembastRepo.addMovement(m);
+      await tester.runAsync(() async {
+        await sembastRepo.addMovement(m);
+      });
       
       // Wait for movement to be saved
       await tester.pump(const Duration(milliseconds: 100));
@@ -369,12 +371,30 @@ void main() {
       // 3. Open Picker
       await tester.pumpWidget(buildTestApp(null));
       await tester.tap(find.byKey(const Key('open_picker')));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
+      for (var i = 0;
+          i < 20 && find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
+          i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Add Selected'), findsOneWidget);
 
       // 4. Verify product tiles load without stock labels
       
       final inStockWidgets = find.textContaining('in stock');
       expect(inStockWidgets, findsNothing, reason: 'Stock labels are hidden in product picker');
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Add Selected'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     });
   });
 }

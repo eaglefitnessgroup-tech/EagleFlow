@@ -703,7 +703,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final formatter = NumberFormat('#,##0.00');
     final grandTotal = QuotationCalculator.calculateGrandTotal(
-      QuotationCalculator.calculateSubtotal(quote.lineItems),
+      quote.lineItems,
       quote.charges,
     );
     final formattedAmount = 'AED ${formatter.format(grandTotal)}';

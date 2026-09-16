@@ -165,7 +165,7 @@ class QuotationListView extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildMobileRow(
                   'Amount',
-                  'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(QuotationCalculator.calculateSubtotal(quotation.lineItems), quotation.charges))}',
+                  'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(quotation.lineItems, quotation.charges))}',
                   isBold: true,
                 ),
               ],
@@ -319,7 +319,7 @@ class QuotationListView extends StatelessWidget {
                 ),
                 DataCell(
                   Text(
-                    'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(QuotationCalculator.calculateSubtotal(q.lineItems), q.charges))}',
+                    'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(q.lineItems, q.charges))}',
                   ),
                 ),
                 DataCell(QuotationStatusBadge(status: q.status)),

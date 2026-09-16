@@ -221,6 +221,7 @@ class QuotationController extends ChangeNotifier {
           imageBytes: product.imageBytes,
           description: product.description,
           isCustom: false,
+          isVatApplicable: product.isVatApplicable,
         );
         newItemsList.add(newItem);
       }

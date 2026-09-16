@@ -12,9 +12,12 @@ class QuotationTotalsBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtotal = QuotationCalculator.calculateSubtotal(quotation.lineItems);
-    final vat = QuotationCalculator.calculateVAT(subtotal, quotation.charges);
+    final vat = QuotationCalculator.calculateVAT(
+      quotation.lineItems,
+      quotation.charges,
+    );
     final grandTotal = QuotationCalculator.calculateGrandTotal(
-      subtotal,
+      quotation.lineItems,
       quotation.charges,
     );
 

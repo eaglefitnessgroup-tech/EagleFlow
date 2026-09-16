@@ -63,6 +63,7 @@ void main() {
         productCode: 'c_1',
         category: 'cat',
         sellingPrice: 100.0,
+        isVatApplicable: false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         openingStock: 10,
@@ -142,6 +143,20 @@ void main() {
         expect(items.length, 3);
         expect(items[1].productId, p1.id);
         expect(items[2].productId, p2.id);
+      });
+
+      test('addProducts preserves product VAT applicability', () {
+        controller.addProducts([p1, p2]);
+
+        final items = controller.quotation.lineItems;
+        expect(
+          items.firstWhere((item) => item.productId == p1.id).isVatApplicable,
+          isFalse,
+        );
+        expect(
+          items.firstWhere((item) => item.productId == p2.id).isVatApplicable,
+          isTrue,
+        );
       });
 
       test('addProducts empty list leaves quotation unchanged', () {

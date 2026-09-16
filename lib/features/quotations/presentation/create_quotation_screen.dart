@@ -150,11 +150,11 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                           quotation.lineItems,
                         );
                         final vat = QuotationCalculator.calculateVAT(
-                          subtotal,
+                          quotation.lineItems,
                           quotation.charges,
                         );
                         final grandTotal = QuotationCalculator.calculateGrandTotal(
-                          subtotal,
+                          quotation.lineItems,
                           quotation.charges,
                         );
 

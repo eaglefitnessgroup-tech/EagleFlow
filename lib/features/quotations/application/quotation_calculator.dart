@@ -24,19 +24,36 @@ class QuotationCalculator {
     );
   }
 
-  static double calculateVAT(double subtotal, QuotationCharges charges) {
-    final adjustedSubtotal =
-        subtotal +
+  static double calculateVAT(
+    List<QuotationLineItem> items,
+    QuotationCharges charges,
+  ) {
+    final taxableSubtotal = calculateSubtotal(
+      items.where((item) => item.isVatApplicable).toList(),
+    );
+    final exemptSubtotal = calculateSubtotal(
+      items.where((item) => !item.isVatApplicable).toList(),
+    );
+    final merchandiseSubtotal = taxableSubtotal + exemptSubtotal;
+    final taxableDiscountShare = merchandiseSubtotal > 0
+        ? charges.overallDiscount * (taxableSubtotal / merchandiseSubtotal)
+        : 0.0;
+    final adjustedTaxableSubtotal =
+        taxableSubtotal +
         charges.deliveryCharges +
         charges.installationCharges +
         charges.otherCharges -
-        charges.overallDiscount;
+        taxableDiscountShare;
 
-    final taxableAmount = math.max(adjustedSubtotal, 0.0);
+    final taxableAmount = math.max(adjustedTaxableSubtotal, 0.0);
     return taxableAmount * (charges.vatPercentage / 100.0);
   }
 
-  static double calculateGrandTotal(double subtotal, QuotationCharges charges) {
+  static double calculateGrandTotal(
+    List<QuotationLineItem> items,
+    QuotationCharges charges,
+  ) {
+    final subtotal = calculateSubtotal(items);
     final adjustedSubtotal =
         subtotal +
         charges.deliveryCharges +
@@ -44,7 +61,7 @@ class QuotationCalculator {
         charges.otherCharges -
         charges.overallDiscount;
 
-    final vat = calculateVAT(subtotal, charges);
+    final vat = calculateVAT(items, charges);
     return math.max(adjustedSubtotal + vat, 0.0);
   }
 }

@@ -90,10 +90,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       } else if (_sortBy == 'Highest Amount' || _sortBy == 'Lowest Amount') {
         double calculateTotal(Quotation q) =>
             QuotationCalculator.calculateGrandTotal(
-              QuotationCalculator.calculateVAT(
-                QuotationCalculator.calculateSubtotal(q.lineItems),
-                q.charges,
-              ),
+              q.lineItems,
               q.charges,
             );
 
