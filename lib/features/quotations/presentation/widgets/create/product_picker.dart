@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../../../app/theme/app_colors.dart';
 import '../../../../products/domain/product.dart';
+import '../../../../products/presentation/add_edit_product_screen.dart';
 import '../../../../products/presentation/widgets/product_image.dart';
 import '../../../../../../core/di/service_locator.dart';
 import '../../../../reservations/domain/reservation.dart';
@@ -165,6 +166,30 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     }
   }
 
+  Future<void> _addProduct() async {
+    final size = MediaQuery.sizeOf(context);
+    final createdProduct = await showDialog<Product>(
+      context: context,
+      builder: (context) => Dialog(
+        clipBehavior: Clip.antiAlias,
+        insetPadding: const EdgeInsets.all(24),
+        child: SizedBox(
+          width: 600,
+          height: size.height < 840 ? size.height * 0.9 : 760,
+          child: const AddEditProductScreen(
+            allowAuthenticatedCreate: true,
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || createdProduct == null) return;
+
+    _searchController.text = createdProduct.name;
+    setState(() => _isLoading = true);
+    await _loadProducts();
+  }
+
   Future<bool?> _showReservationWarning(Reservation reservation, Product product) {
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm');
     return showDialog<bool>(
@@ -307,16 +332,22 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Select Products',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.charcoal,
+          const Expanded(
+            child: Text(
+              'Select Products',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.charcoal,
+              ),
             ),
           ),
+          TextButton(
+            onPressed: _addProduct,
+            child: const Text('+ Add Product'),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close, color: AppColors.mutedText),
@@ -476,7 +507,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${product.brand} â€¢ ${product.productCode}',
+                    '${product.brand} | ${product.productCode}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.mutedText,

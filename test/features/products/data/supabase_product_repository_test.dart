@@ -241,7 +241,7 @@ void main() {
       expect(localCheck, isNull);
     });
 
-    test('6. Sales read-only', () async {
+    test('6. Active salesperson can add but cannot update or delete', () async {
       // Simulate Salesperson login
       ServiceLocator().authController.setCurrentUserForTesting(
         AppUser(
@@ -257,13 +257,66 @@ void main() {
 
       repo.overrideIsConnected = true;
 
-      // Add should fail
+      final created = await repo.addProduct(
+        Product(
+          id: '',
+          productCode: 'SALES-PROD',
+          name: 'Sales Prod',
+          category: 'Cat',
+          brand: 'Brand',
+          sellingPrice: 10,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      expect(repo.serverProducts.any((p) => p['id'] == created.id), isTrue);
+
+      expect(
+        () => repo.updateProduct(created.copyWith(name: 'Updated')),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'msg',
+            contains('Unauthorized'),
+          ),
+        ),
+      );
+      expect(
+        () => repo.deleteProduct(created.id),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'msg',
+            contains('Unauthorized'),
+          ),
+        ),
+      );
+
+      final products = await repo.getAllProducts();
+      expect(products, isA<List<Product>>());
+    });
+
+    test('7. Inactive user cannot add a product', () async {
+      ServiceLocator().authController.setCurrentUserForTesting(
+        AppUser(
+          id: 'SALES-INACTIVE',
+          name: 'Inactive Sales',
+          username: 'inactive',
+          passwordHash: '',
+          role: UserRole.sales,
+          isActive: false,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
       expect(
         () => repo.addProduct(
           Product(
             id: '',
-            productCode: 'SALES-PROD',
-            name: 'Sales Prod',
+            productCode: 'INACTIVE-PROD',
+            name: 'Inactive Product',
             category: 'Cat',
             brand: 'Brand',
             sellingPrice: 10,
@@ -275,14 +328,10 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'msg',
-            contains('Unauthorized'),
+            contains('active authenticated users'),
           ),
         ),
       );
-
-      // Read should succeed
-      final products = await repo.getAllProducts();
-      expect(products, isA<List<Product>>());
     });
 
 

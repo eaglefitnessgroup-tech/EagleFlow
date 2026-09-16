@@ -38,6 +38,15 @@ class SupabaseProductRepository implements ProductRepository {
     }
   }
 
+  void _checkCanCreateProduct() {
+    final user = ServiceLocator().authController.currentUser;
+    if (user == null || !user.isActive) {
+      throw Exception(
+        'Unauthorized: Only active authenticated users can create products.',
+      );
+    }
+  }
+
   @override
   Future<void> init() async {
     await localCache.init();
@@ -182,7 +191,7 @@ class SupabaseProductRepository implements ProductRepository {
 
   @override
   Future<Product> addProduct(Product product) async {
-    _checkAdmin();
+    _checkCanCreateProduct();
 
     final newId = _uuid.v4();
     final now = DateTime.now();
@@ -191,6 +200,10 @@ class SupabaseProductRepository implements ProductRepository {
       createdAt: now,
       updatedAt: now,
     );
+
+    if (updatedProduct.imageBytes != null) {
+      updatedProduct = updatedProduct.copyWith(imageId: _uuid.v4());
+    }
 
     if (!(await localCache.isProductCodeUnique(updatedProduct.productCode))) {
       throw Exception('Product code must be unique');
@@ -203,20 +216,19 @@ class SupabaseProductRepository implements ProductRepository {
     final db = await _db;
     await db.transaction((txn) async {
       if (updatedProduct.imageBytes != null) {
-        final newImageId = _uuid.v4();
         await _imagesStore
-            .record(newImageId)
+            .record(updatedProduct.imageId!)
             .put(txn, Blob(updatedProduct.imageBytes!));
-        await _imagesMetadataStore.record(newImageId).put(txn, {
+        await _imagesMetadataStore.record(updatedProduct.imageId!).put(txn, {
           'ownerType': 'product',
           'ownerId': newId,
         });
-        updatedProduct = updatedProduct.copyWith(imageId: newImageId);
 
         // Best-effort image upload to storage
         try {
           if (isConnectedToServer) {
-            final uploadPath = newImageId.contains('/') ? newImageId : '$newImageId/main.jpg';
+            final imageId = updatedProduct.imageId!;
+            final uploadPath = imageId.contains('/') ? imageId : '$imageId/main.jpg';
             await supabase.client!.storage
                 .from('product-images')
                 .uploadBinary(uploadPath, updatedProduct.imageBytes!);
@@ -225,8 +237,6 @@ class SupabaseProductRepository implements ProductRepository {
           debugPrint('Storage Upload Error: Failed to upload product image. Product data was saved, but the image may be missing on the server. Details: $e');
         }
 
-        // Best-effort image_id update on server
-        await updateProductOnServer(newId, {'image_id': newImageId});
       }
 
       await _productsStore.record(newId).put(txn, updatedProduct.toJson());

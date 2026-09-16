@@ -9,8 +9,13 @@ import 'widgets/image_adjust_dialog.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   final Product? product; // null if adding
+  final bool allowAuthenticatedCreate;
 
-  const AddEditProductScreen({super.key, this.product});
+  const AddEditProductScreen({
+    super.key,
+    this.product,
+    this.allowAuthenticatedCreate = false,
+  });
 
   @override
   State<AddEditProductScreen> createState() => _AddEditProductScreenState();
@@ -197,15 +202,17 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final controller = ServiceLocator().productMasterController;
 
     bool success;
+    Product? savedProduct;
     if (widget.product == null) {
       final newProduct = await controller.addProduct(updatedProduct);
       success = newProduct != null;
+      savedProduct = newProduct;
     } else {
       success = await controller.updateProduct(updatedProduct);
     }
 
     if (success) {
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, savedProduct);
     } else {
       if (mounted) {
         setState(() {
@@ -273,8 +280,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   @override
   Widget build(BuildContext context) {
     final title = widget.product == null ? 'Add Product' : 'Edit Product';
-    return AdminGuard(
-      child: Scaffold(
+    final scaffold = Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
           title: Text(
@@ -556,7 +562,14 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             ],
           ),
         ),
-      ),
+      );
+
+    if (widget.allowAuthenticatedCreate && widget.product == null) {
+      return scaffold;
+    }
+
+    return AdminGuard(
+      child: scaffold,
     );
   }
 

@@ -308,6 +308,78 @@ void main() {
       expect(returnedProducts, isNull);
     });
 
+    testWidgets(
+      'salesperson can create a global product and select it immediately',
+      (tester) async {
+        final auth = FakeAuthRepository();
+        ServiceLocator().authController.setCurrentUserForTesting(auth.testSales);
+        List<Product>? returnedProducts;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () async {
+                    returnedProducts = await ProductPicker.show(context);
+                  },
+                  child: const Text('Open'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('+ Add Product'));
+        await tester.pumpAndSettle();
+
+        final codeField = find.widgetWithText(
+          TextFormField,
+          'Product Code / SKU *',
+        );
+        final nameField = find.widgetWithText(
+          TextFormField,
+          'Product Name *',
+        );
+        final brandField = find.widgetWithText(TextFormField, 'Brand');
+        final priceField = find.widgetWithText(
+          TextFormField,
+          'Selling Price *',
+        );
+
+        await tester.enterText(codeField, 'PICK-001');
+        await tester.enterText(nameField, 'Picker Created Product');
+        await tester.ensureVisible(brandField);
+        await tester.pumpAndSettle();
+        await tester.enterText(brandField, 'PickerBrand');
+        await tester.ensureVisible(priceField);
+        await tester.pumpAndSettle();
+        await tester.enterText(priceField, '125');
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Picker Created Product'), findsWidgets);
+        expect(find.text('PickerBrand | PICK-001'), findsOneWidget);
+        expect(
+          ServiceLocator().productMasterController.products.any(
+            (product) => product.productCode == 'PICK-001',
+          ),
+          isTrue,
+        );
+
+        await tester.tap(find.text('Picker Created Product').last);
+        await tester.pump();
+        await tester.tap(find.text('Add Selected'));
+        await tester.pumpAndSettle();
+
+        expect(returnedProducts, hasLength(1));
+        expect(returnedProducts!.single.productCode, 'PICK-001');
+        expect(returnedProducts!.single.isVatApplicable, isTrue);
+      },
+    );
+
     test('ProductMasterController loads new product from repository', () async {
       final controller = ServiceLocator().productMasterController;
       
