@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/eagle_bottom_nav.dart';
 import '../../../core/di/service_locator.dart';
 import '../../quotations/domain/quotation.dart';
 import '../../quotations/domain/quotation_status.dart';
@@ -121,13 +122,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar: isMobile ? const EagleBottomNav(currentIndex: 0) : null,
       body: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSidebar(context),
+            if (!isMobile) _buildSidebar(context),
             Expanded(
               child: _isLoading
                   ? const Center(
@@ -274,33 +278,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildMainContent() {
-    return Center(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _buildTopBar(),
-                  const SizedBox(height: 24),
-                  _buildHeader(),
-                  const SizedBox(height: 24),
-                  _buildOverviewSection(),
-                  const SizedBox(height: 24),
-                  _buildPrimaryActionCard(context),
-                  const SizedBox(height: 24),
-                  _buildQuickActionsGrid(context),
-                  const SizedBox(height: 24),
-                  _buildRecentQuotationsSection(context),
-                  const SizedBox(height: 32),
-                ]),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final paddingH = isMobile ? 16.0 : 32.0;
+        final paddingV = isMobile ? 16.0 : 24.0;
+
+        return Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: paddingH, vertical: paddingV),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _buildTopBar(),
+                      const SizedBox(height: 24),
+                      _buildHeader(),
+                      const SizedBox(height: 24),
+                      _buildOverviewSection(),
+                      const SizedBox(height: 24),
+                      _buildPrimaryActionCard(context),
+                      const SizedBox(height: 24),
+                      _buildQuickActionsGrid(context),
+                      const SizedBox(height: 24),
+                      _buildRecentQuotationsSection(context),
+                      const SizedBox(height: 32),
+                    ]),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -313,13 +325,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 400),
-              alignment: Alignment.centerLeft,
-              child: _buildSearchField(),
-            ),
+            child: _buildSearchField(),
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 16),
           InkWell(
             onTap: () {
               Navigator.of(context).pushNamed(AppRoutes.profile);
@@ -373,7 +381,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSearchField() {
     return Container(
-      width: 400,
+      constraints: const BoxConstraints(maxWidth: 400),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
@@ -392,14 +400,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildOverviewSection() {
-    return Row(
-      children: [
-        Expanded(child: _buildStatCard('Total Products', _totalProducts.toString(), Icons.inventory_2_outlined)),
-        const SizedBox(width: 24),
-        Expanded(child: _buildStatCard('Today\'s Quotations', _todaysQuotations.toString(), Icons.today_outlined)),
-        const SizedBox(width: 24),
-        Expanded(child: _buildStatCard('Pending Quotations', _pendingQuotations.toString(), Icons.pending_actions_outlined)),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: _buildStatCard('Total Products', _totalProducts.toString(), Icons.inventory_2_outlined)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildStatCard('Today\'s Quotations', _todaysQuotations.toString(), Icons.today_outlined)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildStatCard('Pending Quotations', _pendingQuotations.toString(), Icons.pending_actions_outlined),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: _buildStatCard('Total Products', _totalProducts.toString(), Icons.inventory_2_outlined)),
+            const SizedBox(width: 24),
+            Expanded(child: _buildStatCard('Today\'s Quotations', _todaysQuotations.toString(), Icons.today_outlined)),
+            const SizedBox(width: 24),
+            Expanded(child: _buildStatCard('Pending Quotations', _pendingQuotations.toString(), Icons.pending_actions_outlined)),
+          ],
+        );
+      },
     );
   }
 
@@ -446,91 +474,146 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildPrimaryActionCard(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).pushNamed(AppRoutes.createQuotation);
-        },
-        borderRadius: BorderRadius.circular(12),
-        hoverColor: AppColors.primaryBlue.withValues(alpha: 0.9),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 480;
+
+        final buttonPill = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: AppColors.primaryBlue,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryBlue.withValues(alpha: 0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Row(
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.request_quote_outlined,
-                  color: Colors.white,
-                  size: 24,
+              Text(
+                'Create Now',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'New Quotation',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Prepare and share a professional quotation.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    Text(
-                      'Create Now',
-                      style: TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, color: AppColors.primaryBlue, size: 16),
-                  ],
-                ),
-              )
+              SizedBox(width: 8),
+              Icon(Icons.arrow_forward, color: AppColors.primaryBlue, size: 16),
             ],
           ),
-        ),
-      ),
+        );
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).pushNamed(AppRoutes.createQuotation);
+            },
+            borderRadius: BorderRadius.circular(12),
+            hoverColor: AppColors.primaryBlue.withValues(alpha: 0.9),
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryBlue.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: isNarrow
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.request_quote_outlined,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            const Expanded(
+                              child: Text(
+                                'New Quotation',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Prepare and share a professional quotation.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: buttonPill,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.request_quote_outlined,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'New Quotation',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Prepare and share a professional quotation.',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        buttonPill,
+                      ],
+                    ),
+            ),
+          ),
+        );
+      },
     );
   }
   
@@ -559,26 +642,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.charcoal,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+
+        Widget content;
+        if (isMobile) {
+          final rows = <Widget>[];
+          for (int i = 0; i < children.length; i += 2) {
+            final item1 = children[i];
+            final item2 = (i + 1 < children.length) ? children[i + 1] : null;
+
+            rows.add(
+              Row(
+                children: [
+                  Expanded(child: item1),
+                  if (item2 != null) ...[
+                    const SizedBox(width: 12),
+                    Expanded(child: item2),
+                  ],
+                ],
               ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: children.map((child) => Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: child == children.last ? 0 : 16.0),
-              child: child,
+            );
+            if (i + 2 < children.length) {
+              rows.add(const SizedBox(height: 12));
+            }
+          }
+          content = Column(children: rows);
+        } else {
+          content = Row(
+            children: children.map((child) => Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: child == children.last ? 0 : 16.0),
+                child: child,
+              ),
+            )).toList(),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quick Actions',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.charcoal,
+                  ),
             ),
-          )).toList(),
-        ),
-      ],
+            const SizedBox(height: 12),
+            content,
+          ],
+        );
+      },
     );
   }
 
@@ -714,6 +830,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final formattedAmount = 'AED ${formatter.format(grandTotal)}';
     final formattedDate = DateFormat('dd MMM yyyy').format(quote.createdDate);
 
+    final statusWidget = Container(
+      width: 90,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: statusBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        statusLabel,
+        style: TextStyle(
+          color: statusText,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -729,77 +863,124 @@ class _DashboardScreenState extends State<DashboardScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 600) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        quote.customerInfo.name,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  quote.customerInfo.name,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.charcoal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  quote.quotationNumber.isNotEmpty ? quote.quotationNumber : 'DRAFT',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.mutedText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          statusWidget,
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            formattedDate,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.mutedText,
+                            ),
+                          ),
+                          Text(
+                            formattedAmount,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.charcoal,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            quote.customerInfo.name,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.charcoal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            quote.quotationNumber.isNotEmpty ? quote.quotationNumber : 'DRAFT',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.mutedText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        formattedDate,
                         style: const TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.charcoal,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        quote.quotationNumber.isNotEmpty ? quote.quotationNumber : 'DRAFT',
-                        style: const TextStyle(
-                          fontSize: 12,
                           color: AppColors.mutedText,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    formattedDate,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.mutedText,
                     ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    formattedAmount,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.charcoal,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                const SizedBox(width: 24),
-                SizedBox(
-                  width: 90,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: statusBg,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      statusLabel,
-                      style: TextStyle(
-                        color: statusText,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        formattedAmount,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.charcoal,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.right,
                       ),
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(width: 24),
+                    statusWidget,
+                  ],
+                );
+              },
             ),
           ),
         ),

@@ -27,7 +27,13 @@ class QuotationFilterBar extends StatelessWidget {
             children: [
               _buildSearchField(),
               const SizedBox(height: 12),
-              _buildSortDropdown(),
+              Row(
+                children: [
+                  Expanded(child: _buildSortDropdown()),
+                  const SizedBox(width: 12),
+                  _buildDateFilterBtn(),
+                ],
+              ),
             ],
           );
         }

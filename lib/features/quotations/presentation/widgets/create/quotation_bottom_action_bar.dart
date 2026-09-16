@@ -22,9 +22,9 @@ class QuotationBottomActionBar extends StatelessWidget {
         final isMobile = constraints.maxWidth < 600;
 
         return Container(
-          padding: const EdgeInsets.only(
-            left: 20,
-            right: 20,
+          padding: EdgeInsets.only(
+            left: isMobile ? 16 : 20,
+            right: isMobile ? 16 : 20,
             top: 16,
             bottom: 16,
           ),

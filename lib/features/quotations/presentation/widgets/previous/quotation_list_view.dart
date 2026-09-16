@@ -127,6 +127,8 @@ class QuotationListView extends StatelessWidget {
   Widget _buildMobileCard(BuildContext context, Quotation quotation) {
     final formatter = NumberFormat('#,##0.00');
     final dateFmt = DateFormat('MMM dd, yyyy');
+    final salesperson = salespersonNames[quotation.salespersonId] ??
+        (quotation.salespersonId.isNotEmpty ? quotation.salespersonId : '');
 
     return Container(
       decoration: BoxDecoration(
@@ -138,26 +140,38 @@ class QuotationListView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              quotation.quotationNumber,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.charcoal,
-              ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    quotation.quotationNumber,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildMobileRow('Customer', quotation.customerInfo.name),
-                const SizedBox(height: 12),
+                if (salesperson.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _buildMobileRow('Salesperson', salesperson),
+                ],
+                const SizedBox(height: 10),
                 _buildMobileRow('Date', dateFmt.format(quotation.createdDate)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 _buildMobileRow(
                   'Amount',
                   'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(quotation.lineItems, quotation.charges))}',
@@ -259,12 +273,18 @@ class QuotationListView extends StatelessWidget {
           label,
           style: const TextStyle(color: AppColors.mutedText, fontSize: 14),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            color: isBold ? AppColors.charcoal : AppColors.mutedText,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            fontSize: 14,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: isBold ? AppColors.charcoal : AppColors.mutedText,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: 14,
+            ),
           ),
         ),
       ],

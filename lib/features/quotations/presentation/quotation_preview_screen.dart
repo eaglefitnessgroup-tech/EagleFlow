@@ -240,16 +240,28 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         shadowColor: Colors.black.withValues(alpha: 0.1),
         iconTheme: const IconThemeData(color: AppColors.charcoal, size: 20),
         actions: [
-          TextButton.icon(
-            onPressed: _onEdit,
-            icon: const Icon(Icons.edit, size: 16),
-            label: const Text('Edit'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.charcoal,
-              textStyle: const TextStyle(fontWeight: FontWeight.w500),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmall = MediaQuery.of(context).size.width < 400;
+              if (isSmall) {
+                return IconButton(
+                  onPressed: _onEdit,
+                  icon: const Icon(Icons.edit, size: 18),
+                  tooltip: 'Edit',
+                  color: AppColors.charcoal,
+                );
+              }
+              return TextButton.icon(
+                onPressed: _onEdit,
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('Edit'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.charcoal,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              );
+            },
           ),
-          const SizedBox(width: 8),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'pdf' || value == 'print' || value == 'share') {
@@ -282,7 +294,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
               ),
             ],
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
@@ -347,49 +359,52 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
                     },
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: const Border(
-                      top: BorderSide(color: AppColors.border),
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        onPressed: _currentPageIndex > 0 ? _prevPage : null,
-                        icon: const Icon(Icons.chevron_left, size: 24),
-                        color: AppColors.charcoal,
-                        disabledColor: AppColors.mutedText.withValues(
-                          alpha: 0.3,
-                        ),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: AppColors.border),
                       ),
-                      const SizedBox(width: 16),
-                      Text(
-                        'Page ${_currentPageIndex + 1} of ${_pages.length}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: _currentPageIndex > 0 ? _prevPage : null,
+                          icon: const Icon(Icons.chevron_left, size: 24),
                           color: AppColors.charcoal,
+                          disabledColor: AppColors.mutedText.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      IconButton(
-                        onPressed: _currentPageIndex < _pages.length - 1
-                            ? _nextPage
-                            : null,
-                        icon: const Icon(Icons.chevron_right, size: 24),
-                        color: AppColors.charcoal,
-                        disabledColor: AppColors.mutedText.withValues(
-                          alpha: 0.3,
+                        const SizedBox(width: 16),
+                        Text(
+                          'Page ${_currentPageIndex + 1} of ${_pages.length}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            color: AppColors.charcoal,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 16),
+                        IconButton(
+                          onPressed: _currentPageIndex < _pages.length - 1
+                              ? _nextPage
+                              : null,
+                          icon: const Icon(Icons.chevron_right, size: 24),
+                          color: AppColors.charcoal,
+                          disabledColor: AppColors.mutedText.withValues(
+                            alpha: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

@@ -168,13 +168,14 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
 
   Future<void> _addProduct() async {
     final size = MediaQuery.sizeOf(context);
+    final bool isMobile = size.width < 600;
     final createdProduct = await showDialog<Product>(
       context: context,
       builder: (context) => Dialog(
         clipBehavior: Clip.antiAlias,
-        insetPadding: const EdgeInsets.all(24),
+        insetPadding: EdgeInsets.all(isMobile ? 12 : 24),
         child: SizedBox(
-          width: 600,
+          width: isMobile ? double.infinity : 600,
           height: size.height < 840 ? size.height * 0.9 : 760,
           child: const AddEditProductScreen(
             allowAuthenticatedCreate: true,
@@ -324,8 +325,9 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   }
 
   Widget _buildHeader() {
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -336,6 +338,8 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
           const Expanded(
             child: Text(
               'Select Products',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -345,9 +349,12 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
           ),
           TextButton(
             onPressed: _addProduct,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 12),
+            ),
             child: const Text('+ Add Product'),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close, color: AppColors.mutedText),
@@ -360,9 +367,13 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   }
 
   Widget _buildSearchBar() {
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 20,
+        vertical: 12,
+      ),
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
@@ -421,8 +432,9 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
       );
     }
 
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       itemCount: _filteredProducts.length,
       itemBuilder: (context, index) {
         final product = _filteredProducts[index];
@@ -508,6 +520,8 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                   const SizedBox(height: 4),
                   Text(
                     '${product.brand} | ${product.productCode}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.mutedText,
@@ -516,6 +530,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                   const SizedBox(height: 8),
                   Text(
                     'AED ${_formatCurrency(product.sellingPrice)}',
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 15,
@@ -537,9 +552,13 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     final String selectedText = count == 1
         ? '1 Product Selected'
         : '$count Products Selected';
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 20,
+        vertical: 16,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.border)),
@@ -547,24 +566,16 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                selectedText,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.charcoal,
-                ),
-              ),
-            ),
-            TextButton(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isNarrow = constraints.maxWidth < 400;
+
+            final cancelButton = TextButton(
               onPressed: () => Navigator.of(context).pop(),
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
+                  horizontal: 16,
+                  vertical: 14,
                 ),
                 foregroundColor: AppColors.charcoal,
               ),
@@ -572,9 +583,9 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                 'Cancel',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton(
+            );
+
+            final submitButton = ElevatedButton(
               onPressed: (_selectedIds.isEmpty || _isLoading || _isSubmitting)
                   ? null
                   : () {
@@ -590,8 +601,8 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                     },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
+                  horizontal: 20,
+                  vertical: 14,
                 ),
                 backgroundColor: AppColors.primaryBlue,
                 disabledBackgroundColor: AppColors.primaryBlue.withValues(
@@ -609,8 +620,53 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
                   color: Colors.white,
                 ),
               ),
-            ),
-          ],
+            );
+
+            if (isNarrow) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      selectedText,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.charcoal,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: cancelButton),
+                      const SizedBox(width: 8),
+                      Expanded(child: submitButton),
+                    ],
+                  ),
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    selectedText,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                ),
+                cancelButton,
+                const SizedBox(width: 12),
+                submitButton,
+              ],
+            );
+          },
         ),
       ),
     );

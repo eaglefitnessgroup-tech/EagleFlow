@@ -195,8 +195,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       isVatApplicable: _isVatApplicable,
       isActive: _isActive,
       imageBytes: _imageBytes,
-      // If we removed the image, we should probably clear the imageId, but copyWith doesn't allow setting null easily if it expects non-null.
-      // We will handle it in the repository.
     );
 
     final controller = ServiceLocator().productMasterController;
@@ -277,9 +275,30 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     }
   }
 
+  Widget _buildFormRow(Widget field1, Widget field2, bool isMobile) {
+    if (isMobile) {
+      return Column(
+        children: [
+          field1,
+          field2,
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: field1),
+        const SizedBox(width: 16),
+        Expanded(child: field2),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = widget.product == null ? 'Add Product' : 'Edit Product';
+    final bool isMobile = MediaQuery.sizeOf(context).width < 600;
+
     final scaffold = Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -371,7 +390,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                                   Image.memory(_imageBytes!, fit: BoxFit.cover),
                                   Positioned(
                                     top: 4,
-                                    right: 32, // Offset slightly so it's next to the close button
+                                    right: 32,
                                     child: GestureDetector(
                                       onTap: _adjustExistingImage,
                                       child: Container(
@@ -444,50 +463,36 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 required: true,
               ),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField('Category', _categoryController),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildTextField('Brand', _brandController)),
-                ],
+              _buildFormRow(
+                _buildTextField('Category', _categoryController),
+                _buildTextField('Brand', _brandController),
+                isMobile,
               ),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      'Selling Price *',
-                      _priceController,
-                      isNumber: true,
-                      required: true,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildTextField('Unit', _unitController)),
-                ],
+              _buildFormRow(
+                _buildTextField(
+                  'Selling Price *',
+                  _priceController,
+                  isNumber: true,
+                  required: true,
+                ),
+                _buildTextField('Unit', _unitController),
+                isMobile,
               ),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      'Opening Stock',
-                      _openingStockController,
-                      isNumber: true,
-                      readOnly: widget.product != null,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTextField(
-                      'Min Stock Level',
-                      _minStockController,
-                      isNumber: true,
-                    ),
-                  ),
-                ],
+              _buildFormRow(
+                _buildTextField(
+                  'Opening Stock',
+                  _openingStockController,
+                  isNumber: true,
+                  readOnly: widget.product != null,
+                ),
+                _buildTextField(
+                  'Min Stock Level',
+                  _minStockController,
+                  isNumber: true,
+                ),
+                isMobile,
               ),
 
               Shortcuts(

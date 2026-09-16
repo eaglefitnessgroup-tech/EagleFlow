@@ -29,7 +29,7 @@ class QuotationsSummaryRow extends StatelessWidget {
             SizedBox(width: isMobile ? 12 : 16),
             Expanded(
               child: _buildSummaryCard(
-                'Recent Quotations',
+                isMobile ? 'Recent' : 'Recent Quotations',
                 recentCount,
                 Icons.history,
                 AppColors.primaryBlue,
@@ -64,6 +64,8 @@ class QuotationsSummaryRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.mutedText,
@@ -76,6 +78,8 @@ class QuotationsSummaryRow extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             count.toString(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,

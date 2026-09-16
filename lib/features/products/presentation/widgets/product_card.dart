@@ -142,6 +142,8 @@ class _ProductCardState extends State<ProductCard> {
                     children: [
                       Text(
                         widget.product.brand,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -151,6 +153,8 @@ class _ProductCardState extends State<ProductCard> {
                       const SizedBox(height: 2),
                       Text(
                         widget.product.productCode,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.mutedText,
@@ -162,14 +166,19 @@ class _ProductCardState extends State<ProductCard> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'AED ${_formatPrice(widget.product.sellingPrice)}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryBlue,
+                      Flexible(
+                        child: Text(
+                          'AED ${_formatPrice(widget.product.sellingPrice)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryBlue,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       _buildStockIndicator(),
                     ],
                   ),
@@ -260,12 +269,16 @@ class _ProductCardState extends State<ProductCard> {
       label = 'Available • $_currentStock';
     }
 
-    return Text(
-      label,
-      style: TextStyle(
-        color: textColor,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
+    return Flexible(
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

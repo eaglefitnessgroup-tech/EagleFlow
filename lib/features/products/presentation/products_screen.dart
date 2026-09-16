@@ -215,71 +215,98 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Widget _buildListHeader(int count) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          '$count Products',
-          style: const TextStyle(
-            color: AppColors.charcoal,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        if (ServiceLocator().authController.isAdmin)
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (ctx) =>
-                          const AdminGuard(child: BulkImportScreen()),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.upload_file, size: 16),
-                label: const Text('Bulk Import'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primaryBlue,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
+    final countText = Text(
+      '$count Products',
+      style: const TextStyle(
+        color: AppColors.charcoal,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+      ),
+    );
+
+    if (!ServiceLocator().authController.isAdmin) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [countText],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 400;
+
+        final bulkImportBtn = TextButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (ctx) => const AdminGuard(child: BulkImportScreen()),
               ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (ctx) => const AddEditProductScreen(),
-                    ),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primaryBlue,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-                child: const Text('+ Add Product'),
+            );
+          },
+          icon: const Icon(Icons.upload_file, size: 16),
+          label: const Text('Bulk Import'),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primaryBlue,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        );
+
+        final addProductBtn = TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (ctx) => const AddEditProductScreen(),
+              ),
+            );
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primaryBlue,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+          child: const Text('+ Add Product'),
+        );
+
+        if (isNarrow) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              countText,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  bulkImportBtn,
+                  const SizedBox(width: 4),
+                  addProductBtn,
+                ],
               ),
             ],
-          ),
-      ],
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            countText,
+            Row(
+              children: [
+                bulkImportBtn,
+                const SizedBox(width: 8),
+                addProductBtn,
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 

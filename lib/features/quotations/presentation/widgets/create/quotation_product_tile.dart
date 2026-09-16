@@ -270,8 +270,8 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
-                      height: 32,
-                      width: 100,
+                      height: 44,
+                      width: 110,
                       child: TextField(
                         controller: _priceController,
                         focusNode: _priceFocus,
@@ -286,7 +286,7 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
                         decoration: const InputDecoration(
                           contentPadding: EdgeInsets.symmetric(
                             horizontal: 8,
-                            vertical: 0,
+                            vertical: 10,
                           ),
                           border: OutlineInputBorder(),
                         ),
@@ -340,14 +340,14 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
         ),
         const SizedBox(height: 6),
         SizedBox(
-          height: 40,
+          height: 44,
           child: TextField(
             controller: controller,
             focusNode: focusNode,
             keyboardType: keyboardType,
             style: const TextStyle(fontSize: 14, color: AppColors.charcoal),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: AppColors.border),

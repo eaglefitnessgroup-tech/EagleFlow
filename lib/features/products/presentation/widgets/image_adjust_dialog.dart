@@ -22,10 +22,15 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
   String? _error;
 
   late TransformationController _transformationController;
-  final double _viewportSize = 300.0;
   double _minScale = 1.0;
   double _maxScale = 3.0;
   double _currentScale = 1.0;
+
+  double get _viewportSize {
+    if (!mounted) return 300.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    return math.min(300.0, math.max(220.0, screenWidth - 64));
+  }
 
   @override
   void initState() {
@@ -77,18 +82,17 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
     final w = _decodedImage!.width.toDouble();
     final h = _decodedImage!.height.toDouble();
 
-    // The scale needed to exactly cover the viewport
-    final scaleX = _viewportSize / w;
-    final scaleY = _viewportSize / h;
+    final vSize = _viewportSize;
+    final scaleX = vSize / w;
+    final scaleY = vSize / h;
     _minScale = math.max(scaleX, scaleY);
     _maxScale = _minScale * 4.0; // Allow 4x zoom from min
 
-    // Calculate center translation
     final scaledW = w * _minScale;
     final scaledH = h * _minScale;
     
-    final dx = (_viewportSize - scaledW) / 2;
-    final dy = (_viewportSize - scaledH) / 2;
+    final dx = (vSize - scaledW) / 2;
+    final dy = (vSize - scaledH) / 2;
 
     _transformationController.value = Matrix4.identity()
       ..translate(dx, dy)
@@ -108,16 +112,15 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
       final matrix = _transformationController.value;
       final inverse = Matrix4.inverted(matrix);
 
-      // Map viewport coordinates to image pixel coordinates
+      final vSize = _viewportSize;
       final topLeft = MatrixUtils.transformPoint(inverse, const Offset(0, 0));
-      final bottomRight = MatrixUtils.transformPoint(inverse, Offset(_viewportSize, _viewportSize));
+      final bottomRight = MatrixUtils.transformPoint(inverse, Offset(vSize, vSize));
 
       int x = topLeft.dx.round();
       int y = topLeft.dy.round();
       int width = (bottomRight.dx - topLeft.dx).round();
       int height = (bottomRight.dy - topLeft.dy).round();
 
-      // Ensure square and within bounds
       if (width > height) {
         width = height;
       } else {
@@ -130,10 +133,8 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
       if (x + width > _decodedImage!.width) width = _decodedImage!.width - x;
       if (y + height > _decodedImage!.height) height = _decodedImage!.height - y;
       
-      // Keep it strictly square safely
       final size = math.min(width, height);
 
-      // Use compute to perform the heavy image cropping in a background isolate
       final croppedBytes = await compute(_cropImageTask, {
         'bytes': widget.imageBytes,
         'x': x,
@@ -163,15 +164,13 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
   void _onSliderChanged(double value) {
     if (_decodedImage == null) return;
     
-    // Calculate how much we need to scale relative to the current scale
     final currentScale = _transformationController.value.getMaxScaleOnAxis();
     final scaleFactor = value / currentScale;
 
-    // We want to scale around the center of the viewport
-    final center = const Offset(150.0, 150.0); // _viewportSize / 2
+    final vSize = _viewportSize;
+    final center = Offset(vSize / 2, vSize / 2);
     
     final matrix = _transformationController.value.clone();
-    // Translate to center, scale, translate back
     matrix.translate(center.dx, center.dy);
     matrix.scale(scaleFactor);
     matrix.translate(-center.dx, -center.dy);
@@ -181,11 +180,16 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final bool isMobile = size.width < 600;
+    final vSize = _viewportSize;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: EdgeInsets.all(isMobile ? 12 : 24),
       child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(24),
+        width: isMobile ? double.infinity : 400,
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -207,17 +211,17 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
             if (_error != null)
               Text(_error!, style: const TextStyle(color: Colors.red))
             else if (_decodedImage == null)
-              const SizedBox(
-                width: 300,
-                height: 300,
-                child: Center(child: CircularProgressIndicator()),
+              SizedBox(
+                width: vSize,
+                height: vSize,
+                child: const Center(child: CircularProgressIndicator()),
               )
             else
               Column(
                 children: [
                   Container(
-                    width: _viewportSize,
-                    height: _viewportSize,
+                    width: vSize,
+                    height: vSize,
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.border, width: 2),
                       color: Colors.grey.shade100,
@@ -227,8 +231,8 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
                       transformationController: _transformationController,
                       minScale: _minScale,
                       maxScale: _maxScale,
-                      constrained: false, // Important to allow child to be original size
-                      boundaryMargin: const EdgeInsets.all(double.infinity), // Let users pan freely, math handles bounds
+                      constrained: false,
+                      boundaryMargin: const EdgeInsets.all(double.infinity),
                       child: SizedBox(
                         width: _decodedImage!.width.toDouble(),
                         height: _decodedImage!.height.toDouble(),
@@ -273,7 +277,7 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
                       onPressed: _isProcessing || _decodedImage == null ? null : _resetTransform,
                       child: const Text('Reset'),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: _isProcessing || _decodedImage == null ? null : _applyCrop,
                       style: ElevatedButton.styleFrom(
@@ -302,20 +306,16 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
   }
 }
 
-// Background isolate task for cropping
 Future<Uint8List> _cropImageTask(Map<String, dynamic> args) async {
   final bytes = args['bytes'] as Uint8List;
   final x = args['x'] as int;
   final y = args['y'] as int;
   final size = args['size'] as int;
 
-  // Decode the image synchronously inside the isolate
   final originalImage = img.decodeImage(bytes);
   if (originalImage == null) throw Exception('Could not decode image in isolate');
 
-  // Perform crop
   final cropped = img.copyCrop(originalImage, x: x, y: y, width: size, height: size);
 
-  // Encode back to JPG (with sensible quality of 85)
   return Uint8List.fromList(img.encodeJpg(cropped, quality: 85));
 }

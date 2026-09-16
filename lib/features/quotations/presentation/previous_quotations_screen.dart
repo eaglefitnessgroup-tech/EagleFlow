@@ -1,6 +1,7 @@
 import '../../../../core/utils/app_snackbars.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/widgets/eagle_bottom_nav.dart';
 import '../domain/quotation.dart';
 import 'widgets/previous/quotations_summary_row.dart';
 import 'widgets/previous/quotation_filter_bar.dart';
@@ -233,9 +234,11 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
   Widget build(BuildContext context) {
     final total = _allQuotations.length;
     final recent = countRecentQuotations(_allQuotations);
+    final isMobile = MediaQuery.of(context).size.width < 800;
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar: isMobile ? const EagleBottomNav(currentIndex: 2) : null,
       body: CustomScrollView(
         slivers: [
           SliverPadding(

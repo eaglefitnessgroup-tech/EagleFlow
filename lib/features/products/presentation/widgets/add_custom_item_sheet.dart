@@ -51,6 +51,8 @@ class _AddCustomItemSheetState extends State<AddCustomItemSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.sizeOf(context).width < 600;
+
     return Container(
       padding: EdgeInsets.only(
         left: 20,
@@ -157,23 +159,35 @@ class _AddCustomItemSheetState extends State<AddCustomItemSheet> {
                   isRequired: true,
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _brandController,
-                        label: 'Brand',
+                if (isMobile) ...[
+                  _buildTextField(
+                    controller: _brandController,
+                    label: 'Brand',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _codeController,
+                    label: 'Product Code',
+                  ),
+                ] else ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _brandController,
+                          label: 'Brand',
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _codeController,
-                        label: 'Product Code',
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _codeController,
+                          label: 'Product Code',
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _categoryController,
@@ -186,53 +200,99 @@ class _AddCustomItemSheetState extends State<AddCustomItemSheet> {
                   maxLines: 3,
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: _buildTextField(
-                        controller: _priceController,
-                        label: 'Selling Price (AED)',
-                        isRequired: true,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
+                if (isMobile) ...[
+                  _buildTextField(
+                    controller: _priceController,
+                    label: 'Selling Price (AED)',
+                    isRequired: true,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Required';
+                      }
+                      final num = double.tryParse(value.trim());
+                      if (num == null || num <= 0) {
+                        return 'Valid positive number required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _qtyController,
+                          label: 'Quantity',
+                          isRequired: true,
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            final num = int.tryParse(value.trim());
+                            if (num == null || num <= 0) {
+                              return 'Valid positive integer required';
+                            }
+                            return null;
+                          },
                         ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Required';
-                          }
-                          final num = double.tryParse(value.trim());
-                          if (num == null || num <= 0) {
-                            return 'Valid positive number required';
-                          }
-                          return null;
-                        },
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 1,
-                      child: _buildTextField(
-                        controller: _qtyController,
-                        label: 'Quantity',
-                        isRequired: true,
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Required';
-                          }
-                          final num = int.tryParse(value.trim());
-                          if (num == null || num <= 0) {
-                            return 'Valid positive integer required';
-                          }
-                          return null;
-                        },
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildUnitDropdown()),
+                    ],
+                  ),
+                ] else ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: _buildTextField(
+                          controller: _priceController,
+                          label: 'Selling Price (AED)',
+                          isRequired: true,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            final num = double.tryParse(value.trim());
+                            if (num == null || num <= 0) {
+                              return 'Valid positive number required';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(flex: 1, child: _buildUnitDropdown()),
-                  ],
-                ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 1,
+                        child: _buildTextField(
+                          controller: _qtyController,
+                          label: 'Quantity',
+                          isRequired: true,
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            final num = int.tryParse(value.trim());
+                            if (num == null || num <= 0) {
+                              return 'Valid positive integer required';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(flex: 1, child: _buildUnitDropdown()),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _notesController,

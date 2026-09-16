@@ -131,6 +131,8 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -138,7 +140,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSidebar(context),
+            if (!isMobile) _buildSidebar(context),
             Expanded(
               child: Column(
                 children: [
@@ -335,110 +337,123 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     double grandTotal,
   ) {
     final quotation = _controller.quotation;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 16, 32, 120),
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 1400),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              QuotationPageHeader(quotationNumber: quotation.quotationNumber),
-              const SizedBox(height: 16),
-              // Compact Customer and Quotation Info
-              Row(
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 800;
+        final paddingH = isMobile ? 16.0 : 32.0;
+
+        final customerCard = CustomerInformationCard(
+          initialName: quotation.customerInfo.name,
+          initialCompany: quotation.customerInfo.company,
+          initialPhone: quotation.customerInfo.phone,
+          initialEmail: quotation.customerInfo.email,
+          initialProjectLocation: quotation.customerInfo.projectLocation,
+          onNameChanged: _controller.updateCustomerName,
+          onCompanyChanged: (val) => _controller.updateCustomerDetails(company: val),
+          onPhoneChanged: (val) => _controller.updateCustomerDetails(phone: val),
+          onEmailChanged: (val) => _controller.updateCustomerDetails(email: val),
+          onProjectLocationChanged: (val) => _controller.updateCustomerDetails(projectLocation: val),
+        );
+
+        final quotationInfoCard = QuotationInformationCard(
+          quotationNumber: quotation.quotationNumber,
+          salespersonId: quotation.salespersonId,
+          salespersonName: SalespersonNameResolver.resolve(
+            salespersonId: quotation.salespersonId,
+            currentUser: ServiceLocator().authController.currentUser,
+          ),
+          date: quotation.createdDate,
+          validUntil: quotation.validUntil,
+          expectedDelivery: quotation.expectedDelivery,
+        );
+
+        final notesCard = QuotationNotesCard(
+          initialCustomerNotes: quotation.customerNotes,
+          initialInternalNotes: quotation.internalNotes,
+          onCustomerNotesChanged: (val) => _controller.updateNotes(customerNotes: val),
+          onInternalNotesChanged: (val) => _controller.updateNotes(internalNotes: val),
+        );
+
+        final summaryCol = Column(
+          children: [
+            AdditionalChargesCard(
+              initialDelivery: quotation.charges.deliveryCharges,
+              initialInstallation: quotation.charges.installationCharges,
+              initialOther: quotation.charges.otherCharges,
+              initialDiscount: quotation.charges.overallDiscount,
+              initialVat: quotation.charges.vatPercentage,
+              onUpdateCharges: _controller.updateCharges,
+            ),
+            const SizedBox(height: 24),
+            QuotationSummaryCard(
+              totalQuantity: quotation.lineItems.fold(
+                0,
+                (sum, i) => sum + i.quantity,
+              ),
+              subtotal: subtotal,
+              overallDiscount: quotation.charges.overallDiscount,
+              vat: vat,
+              vatPercent: quotation.charges.vatPercentage,
+              grandTotal: grandTotal,
+            ),
+          ],
+        );
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(paddingH, 16, paddingH, 120),
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1400),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 4,
-                    child: CustomerInformationCard(
-                      initialName: quotation.customerInfo.name,
-                      initialCompany: quotation.customerInfo.company,
-                      initialPhone: quotation.customerInfo.phone,
-                      initialEmail: quotation.customerInfo.email,
-                      initialProjectLocation: quotation.customerInfo.projectLocation,
-                      onNameChanged: _controller.updateCustomerName,
-                      onCompanyChanged: (val) => _controller.updateCustomerDetails(company: val),
-                      onPhoneChanged: (val) => _controller.updateCustomerDetails(phone: val),
-                      onEmailChanged: (val) => _controller.updateCustomerDetails(email: val),
-                      onProjectLocationChanged: (val) => _controller.updateCustomerDetails(projectLocation: val),
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    flex: 5,
-                    child: QuotationInformationCard(
-                      quotationNumber: quotation.quotationNumber,
-                      salespersonId: quotation.salespersonId,
-                      salespersonName: SalespersonNameResolver.resolve(
-                        salespersonId: quotation.salespersonId,
-                        currentUser: ServiceLocator().authController.currentUser,
-                      ),
-                      date: quotation.createdDate,
-                      validUntil: quotation.validUntil,
-                      expectedDelivery: quotation.expectedDelivery,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SelectedProductsSection(
-                items: quotation.lineItems,
-                onQuantityChanged: _handleQuantityChanged,
-                onUnitPriceChanged: _controller.updateUnitPrice,
-                onDiscountChanged: _controller.updateLineDiscount,
-                onRemove: _controller.removeItem,
-                onProductsAdded: _handleProductsAdded,
-                onCustomItemAdded: _controller.addCustomItem,
-                onCustomItemUpdated: _controller.updateCustomItem,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: QuotationNotesCard(
-                      initialCustomerNotes: quotation.customerNotes,
-                      initialInternalNotes: quotation.internalNotes,
-                      onCustomerNotesChanged: (val) => _controller.updateNotes(customerNotes: val),
-                      onInternalNotesChanged: (val) => _controller.updateNotes(internalNotes: val),
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    flex: 1,
-                    child: Column(
+                  QuotationPageHeader(quotationNumber: quotation.quotationNumber),
+                  const SizedBox(height: 16),
+                  if (isMobile) ...[
+                    customerCard,
+                    const SizedBox(height: 16),
+                    quotationInfoCard,
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        AdditionalChargesCard(
-                          initialDelivery: quotation.charges.deliveryCharges,
-                          initialInstallation: quotation.charges.installationCharges,
-                          initialOther: quotation.charges.otherCharges,
-                          initialDiscount: quotation.charges.overallDiscount,
-                          initialVat: quotation.charges.vatPercentage,
-                          onUpdateCharges: _controller.updateCharges,
-                        ),
-                        const SizedBox(height: 24),
-                        QuotationSummaryCard(
-                          totalQuantity: quotation.lineItems.fold(
-                            0,
-                            (sum, i) => sum + i.quantity,
-                          ),
-                          subtotal: subtotal,
-                          overallDiscount: quotation.charges.overallDiscount,
-                          vat: vat,
-                          vatPercent: quotation.charges.vatPercentage,
-                          grandTotal: grandTotal,
-                        ),
+                        Expanded(flex: 4, child: customerCard),
+                        const SizedBox(width: 24),
+                        Expanded(flex: 5, child: quotationInfoCard),
                       ],
                     ),
+                  const SizedBox(height: 16),
+                  SelectedProductsSection(
+                    items: quotation.lineItems,
+                    onQuantityChanged: _handleQuantityChanged,
+                    onUnitPriceChanged: _controller.updateUnitPrice,
+                    onDiscountChanged: _controller.updateLineDiscount,
+                    onRemove: _controller.removeItem,
+                    onProductsAdded: _handleProductsAdded,
+                    onCustomItemAdded: _controller.addCustomItem,
+                    onCustomItemUpdated: _controller.updateCustomItem,
                   ),
+                  const SizedBox(height: 24),
+                  if (isMobile) ...[
+                    notesCard,
+                    const SizedBox(height: 24),
+                    summaryCol,
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 1, child: notesCard),
+                        const SizedBox(width: 24),
+                        Expanded(flex: 1, child: summaryCol),
+                      ],
+                    ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
