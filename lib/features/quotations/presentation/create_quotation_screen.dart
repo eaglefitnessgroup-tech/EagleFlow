@@ -263,6 +263,13 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
             route: AppRoutes.previousQuotations,
             isSelected: true,
           ),
+          _buildSidebarItem(
+            context,
+            icon: Icons.calculate_outlined,
+            label: 'Area Estimator',
+            route: AppRoutes.areaEstimator,
+            isSelected: false,
+          ),
           if (ServiceLocator().authController.canManageStock)
             _buildSidebarItem(
               context,

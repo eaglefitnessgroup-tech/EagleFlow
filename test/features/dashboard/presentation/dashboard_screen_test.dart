@@ -33,6 +33,8 @@ void main() {
             const Scaffold(body: Text('Products Screen')),
         AppRoutes.previousQuotations: (context) =>
             const Scaffold(body: Text('Quotations Screen')),
+        AppRoutes.areaEstimator: (context) =>
+            const Scaffold(body: Text('Area Estimator Screen')),
         AppRoutes.stockManagement: (context) =>
             const Scaffold(body: Text('Stock Screen')),
         AppRoutes.profile: (context) =>
@@ -101,6 +103,33 @@ void main() {
     expect(find.textContaining('Previous Quotations'), findsWidgets);
     expect(find.text('Low Stock'), findsNothing);
   });
+
+  testWidgets(
+    'Area Estimator is available to a salesperson and opens its route',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.runAsync(() async {
+        await ServiceLocator().authController.login(
+          email: 'ajmal@eagleflow.com',
+          password: 'ajmal123',
+          rememberMe: true,
+        );
+      });
+
+      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Area Estimator'), findsOneWidget);
+
+      await tester.tap(find.text('Area Estimator'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Area Estimator Screen'), findsOneWidget);
+    },
+  );
 
   testWidgets('Null-user fallback does not crash and shows User', (
     WidgetTester tester,

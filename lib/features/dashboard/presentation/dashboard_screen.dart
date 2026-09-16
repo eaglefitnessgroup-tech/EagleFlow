@@ -210,6 +210,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             route: AppRoutes.previousQuotations,
             isSelected: false,
           ),
+          _buildSidebarItem(
+            context,
+            icon: Icons.calculate_outlined,
+            label: 'Area Estimator',
+            route: AppRoutes.areaEstimator,
+            isSelected: false,
+          ),
           if (ServiceLocator().authController.canManageStock)
             _buildSidebarItem(
               context,
