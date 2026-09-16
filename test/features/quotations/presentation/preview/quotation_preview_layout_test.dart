@@ -155,7 +155,7 @@ void main() {
     });
 
     testWidgets(
-      '5 products: Page 1 contains 5 products, totals move to Page 2',
+      '5 products fit on Page 1 along with totals block when space allows',
       (WidgetTester tester) async {
         final List<QuotationLineItem> items = List.generate(
           5,
@@ -174,16 +174,14 @@ void main() {
         final productPages = pages
             .whereType<QuotationProductsPageModel>()
             .toList();
-        expect(productPages.length, 2);
+        expect(productPages.length, 1);
         expect(productPages[0].items.length, 5);
-        expect(productPages[0].hasTotals, isFalse);
-        expect(productPages[1].items.length, 0);
-        expect(productPages[1].hasTotals, isTrue);
+        expect(productPages[0].hasTotals, isTrue);
       },
     );
 
     testWidgets(
-      '6 products: Page 1 contains 5 products, Page 2 contains product 6 + totals',
+      '6 products fit on Page 1 along with totals block when space allows',
       (WidgetTester tester) async {
         final List<QuotationLineItem> items = List.generate(
           6,
@@ -202,16 +200,14 @@ void main() {
         final productPages = pages
             .whereType<QuotationProductsPageModel>()
             .toList();
-        expect(productPages.length, 2);
-        expect(productPages[0].items.length, 5);
-        expect(productPages[0].hasTotals, isFalse);
-        expect(productPages[1].items.length, 1);
-        expect(productPages[1].hasTotals, isTrue);
+        expect(productPages.length, 1);
+        expect(productPages[0].items.length, 6);
+        expect(productPages[0].hasTotals, isTrue);
       },
     );
 
     testWidgets(
-      '9 products: Page 1 contains 5 products, Page 2 contains 4 products + totals',
+      '9 products: Page 1 contains 8 products, Page 2 contains 1 product + totals',
       (WidgetTester tester) async {
         final List<QuotationLineItem> items = List.generate(
           9,
@@ -231,9 +227,9 @@ void main() {
             .whereType<QuotationProductsPageModel>()
             .toList();
         expect(productPages.length, 2);
-        expect(productPages[0].items.length, 5);
+        expect(productPages[0].items.length, 8);
         expect(productPages[0].hasTotals, isFalse);
-        expect(productPages[1].items.length, 4);
+        expect(productPages[1].items.length, 1);
         expect(productPages[1].hasTotals, isTrue);
       },
     );

@@ -105,12 +105,7 @@ class QuotationPaginator {
 
       final double remainingHeight = availablePageHeight - currentHeight;
 
-      bool forceNewPage = false;
-      if (isFirstPage && currentChunk.length >= 5) {
-        forceNewPage = true;
-      }
-
-      if (rowHeight <= remainingHeight + 0.1 && !forceNewPage) {
+      if (rowHeight <= remainingHeight + 0.1) {
         currentChunk.add(item);
         currentChunkHeights.add(rowHeight);
         currentHeight += rowHeight;
@@ -119,6 +114,8 @@ class QuotationPaginator {
           QuotationProductsPageModel(
             items: List.from(currentChunk),
             hasCover: isFirstPage,
+            hasTotals: false,
+            isLastPage: false,
           ),
         );
         isFirstPage = false;
@@ -128,122 +125,36 @@ class QuotationPaginator {
       }
     }
 
-    // Add the final chunk
-    productPages.add(
-      QuotationProductsPageModel(
-        items: List.from(currentChunk),
-        hasCover: isFirstPage,
-      ),
-    );
-
-    final int totalProducts = quotation.lineItems.length;
-
-    if (totalProducts <= 4) {
-      // Case A: 1 to 4 products. Place totals immediately after the final product.
-      final lastPage = productPages.removeLast();
+    // Attach totals block to the last product page if it fits; otherwise move totals block to the next page
+    if (currentHeight + totalsHeight <= availablePageHeight) {
       productPages.add(
         QuotationProductsPageModel(
-          items: lastPage.items,
-          hasCover: lastPage.hasCover,
+          items: List.from(currentChunk),
+          hasCover: isFirstPage,
           hasTotals: true,
           isLastPage: true,
         ),
       );
-      pages.addAll(productPages);
     } else {
-      // Case B: More than 4 products
-      if (productPages.length == 1) {
-        // All products (e.g. 5) fit on Page 1. Do not reserve totals space on Page 1.
-        final lastPage = productPages.removeLast();
-        productPages.add(
-          QuotationProductsPageModel(
-            items: lastPage.items,
-            hasCover: lastPage.hasCover,
-            hasTotals: false,
-            isLastPage: false,
-          ),
-        );
-        productPages.add(
-          const QuotationProductsPageModel(
-            items: [],
-            hasCover: false,
-            hasTotals: true,
-            isLastPage: true,
-          ),
-        );
-        pages.addAll(productPages);
-      } else {
-        // Multiple pages. Continue using the existing totals-balancing algorithm on the final product page.
-        if (currentHeight + totalsHeight <= availablePageHeight) {
-          final lastPage = productPages.removeLast();
-          productPages.add(
-            QuotationProductsPageModel(
-              items: lastPage.items,
-              hasCover: lastPage.hasCover,
-              hasTotals: true,
-              isLastPage: true,
-            ),
-          );
-          pages.addAll(productPages);
-        } else {
-          final lastPage = productPages.removeLast();
-          List<QuotationLineItem> newPageItems = [];
-          double newPageRowsHeight = 0;
-          bool resolved = false;
-
-          while (lastPage.items.isNotEmpty) {
-            final itemToMove = lastPage.items.removeLast();
-            final itemHeight = currentChunkHeights.removeLast();
-
-            newPageItems.insert(0, itemToMove);
-            newPageRowsHeight += itemHeight;
-
-            final double projectedNewPageHeight =
-                headerHeight + newPageRowsHeight + totalsHeight;
-
-            if (projectedNewPageHeight <= availablePageHeight) {
-              resolved = true;
-              break;
-            }
-          }
-
-          if (resolved) {
-            if (lastPage.items.isNotEmpty) {
-              productPages.add(lastPage);
-            }
-            productPages.add(
-              QuotationProductsPageModel(
-                items: newPageItems,
-                hasCover: false,
-                hasTotals: true,
-                isLastPage: true,
-              ),
-            );
-            pages.addAll(productPages);
-          } else {
-            lastPage.items.addAll(newPageItems);
-            productPages.add(
-              QuotationProductsPageModel(
-                items: lastPage.items,
-                hasCover: lastPage.hasCover,
-                hasTotals: false,
-                isLastPage: true,
-              ),
-            );
-            pages.addAll(productPages);
-
-            pages.add(
-              const QuotationProductsPageModel(
-                items: [],
-                hasCover: false,
-                hasTotals: true,
-                isLastPage: true,
-              ),
-            );
-          }
-        }
-      }
+      productPages.add(
+        QuotationProductsPageModel(
+          items: List.from(currentChunk),
+          hasCover: isFirstPage,
+          hasTotals: false,
+          isLastPage: false,
+        ),
+      );
+      productPages.add(
+        const QuotationProductsPageModel(
+          items: [],
+          hasCover: false,
+          hasTotals: true,
+          isLastPage: true,
+        ),
+      );
     }
+
+    pages.addAll(productPages);
 
     pages.add(const QuotationInfoPageModel());
     return pages;

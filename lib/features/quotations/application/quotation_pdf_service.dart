@@ -14,6 +14,7 @@ import '../presentation/preview/quotation_layout_spec.dart';
 import 'quotation_calculator.dart';
 import '../../../../core/di/service_locator.dart';
 import 'salesperson_name_resolver.dart';
+import '../presentation/preview/components/quotation_numeric_fit_helper.dart';
 
 class QuotationPdfService {
   late pw.Font _fontRegular;
@@ -394,16 +395,37 @@ class QuotationPdfService {
             ),
           ),
 
-          _buildCell(item.quantity.toString(), QuotationLayoutSpec.columnFlex['qty']!, center: true),
-          _buildCell(QuotationDocumentFormatters.formatCurrency(item.unitPrice), QuotationLayoutSpec.columnFlex['unitPrice']!, right: true),
-          _buildCell(
+          QuotationNumericFitHelper.buildPdfCell(
+            item.quantity.toString(),
+            QuotationLayoutSpec.columnFlex['qty']!,
+            _fontRegular,
+            _fontSemiBold,
+            center: true,
+          ),
+          QuotationNumericFitHelper.buildPdfCell(
+            QuotationDocumentFormatters.formatCurrency(item.unitPrice),
+            QuotationLayoutSpec.columnFlex['unitPrice']!,
+            _fontRegular,
+            _fontSemiBold,
+            right: true,
+          ),
+          QuotationNumericFitHelper.buildPdfCell(
             item.discount > 0
                 ? '${item.discount.truncateToDouble() == item.discount ? item.discount.toInt() : item.discount}%'
                 : '-',
             QuotationLayoutSpec.columnFlex['discount']!,
+            _fontRegular,
+            _fontSemiBold,
             right: true,
           ),
-          _buildCell(QuotationDocumentFormatters.formatCurrency(lineTotal), QuotationLayoutSpec.columnFlex['amount']!, right: true, bold: true),
+          QuotationNumericFitHelper.buildPdfCell(
+            QuotationDocumentFormatters.formatCurrency(lineTotal),
+            QuotationLayoutSpec.columnFlex['amount']!,
+            _fontRegular,
+            _fontSemiBold,
+            right: true,
+            bold: true,
+          ),
         ],
       ),
     );

@@ -8,6 +8,8 @@ import '../quotation_document_theme.dart';
 import '../quotation_layout_spec.dart';
 import '../quotation_document_formatters.dart';
 
+import 'quotation_numeric_fit_helper.dart';
+
 class QuotationProductRow extends StatelessWidget {
   final int index;
   final QuotationLineItem item;
@@ -86,22 +88,22 @@ class QuotationProductRow extends StatelessWidget {
             ),
           ),
 
-          _buildCell(
+          QuotationNumericFitHelper.buildPreviewCell(
             item.quantity.toString(),
             QuotationLayoutSpec.columnFlex['qty']!,
             center: true,
           ),
-          _buildCell(
+          QuotationNumericFitHelper.buildPreviewCell(
             QuotationDocumentFormatters.formatCurrency(item.unitPrice),
             QuotationLayoutSpec.columnFlex['unitPrice']!,
             right: true,
           ),
-          _buildCell(
+          QuotationNumericFitHelper.buildPreviewCell(
             item.discount > 0 ? '${item.discount}%' : '—',
             QuotationLayoutSpec.columnFlex['discount']!,
             right: true,
           ),
-          _buildCell(
+          QuotationNumericFitHelper.buildPreviewCell(
             QuotationDocumentFormatters.formatCurrency(lineTotal),
             QuotationLayoutSpec.columnFlex['amount']!,
             right: true,

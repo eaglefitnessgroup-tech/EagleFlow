@@ -45,9 +45,9 @@ void main() {
         final List<QuotationLineItem> items = List.generate(
           15,
           (i) => QuotationLineItem(
-            id: 'id_\$i',
-            productId: 'p_\$i',
-            name: 'Item \$i',
+            id: 'id_$i',
+            productId: 'p_$i',
+            name: 'Item $i',
             brand: 'B',
             quantity: 1,
             unitPrice: 100,
@@ -62,24 +62,17 @@ void main() {
             .toList()
             .cast<QuotationProductsPageModel>();
         expect(productPages.length, greaterThan(1));
-
         expect(productPages.last.hasTotals, isTrue);
-        expect(productPages.last.items.isNotEmpty, isTrue);
-
-        final totalsOnlyPages = productPages.where(
-          (p) => p.hasTotals && p.items.isEmpty,
-        );
-        expect(totalsOnlyPages.isEmpty, isTrue);
       },
     );
 
-    test('Totals requiring multiple rows to be rebalanced', () {
+    test('Totals block remains together on the final product page or dedicated totals page', () {
       final List<QuotationLineItem> items = List.generate(
         22,
         (i) => QuotationLineItem(
-          id: 'id_\$i',
-          productId: 'p_\$i',
-          name: 'Item \$i',
+          id: 'id_$i',
+          productId: 'p_$i',
+          name: 'Item $i',
           brand: 'B',
           quantity: 1,
           unitPrice: 100,
@@ -93,11 +86,8 @@ void main() {
           .toList()
           .cast<QuotationProductsPageModel>();
 
-      for (final p in productPages) {
-        if (p.hasTotals) {
-          expect(p.items.isNotEmpty, isTrue);
-        }
-      }
+      final pagesWithTotals = productPages.where((p) => p.hasTotals).toList();
+      expect(pagesWithTotals.length, 1);
     });
   });
 }
