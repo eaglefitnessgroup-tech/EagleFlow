@@ -2,13 +2,22 @@ import '../../../../core/utils/app_snackbars.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../domain/quotation.dart';
-import '../domain/quotation_status.dart';
 import 'widgets/previous/quotations_summary_row.dart';
 import 'widgets/previous/quotation_filter_bar.dart';
 import 'widgets/previous/quotation_list_view.dart';
 import '../application/quotation_calculator.dart';
 import '../application/salesperson_name_resolver.dart';
 import '../../../../core/di/service_locator.dart';
+
+int countRecentQuotations(List<Quotation> quotations, {DateTime? now}) {
+  final referenceDate = now ?? DateTime.now();
+  final cutoffDate = referenceDate.subtract(const Duration(days: 30));
+
+  return quotations.where((quotation) {
+    return !quotation.createdDate.isBefore(cutoffDate) &&
+        !quotation.createdDate.isAfter(referenceDate);
+  }).length;
+}
 
 class PreviousQuotationsScreen extends StatefulWidget {
   const PreviousQuotationsScreen({super.key});
@@ -23,7 +32,6 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
   List<Quotation> _filteredQuotations = [];
 
   String _searchQuery = '';
-  QuotationStatus? _selectedStatus;
   String _sortBy = 'Newest';
 
   bool _isLoading = true;
@@ -89,10 +97,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
             ) ||
             q.salespersonId.toLowerCase().contains(_searchQuery.toLowerCase());
 
-        final matchesStatus =
-            _selectedStatus == null || q.status == _selectedStatus;
-
-        return matchesSearch && matchesStatus;
+        return matchesSearch;
       }).toList();
 
       if (_sortBy == 'Newest') {
@@ -227,15 +232,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
   @override
   Widget build(BuildContext context) {
     final total = _allQuotations.length;
-    final drafts = _allQuotations
-        .where((q) => q.status == QuotationStatus.draft)
-        .length;
-    final sent = _allQuotations
-        .where((q) => q.status == QuotationStatus.sent)
-        .length;
-    final accepted = _allQuotations
-        .where((q) => q.status == QuotationStatus.approved)
-        .length;
+    final recent = countRecentQuotations(_allQuotations);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -249,9 +246,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                 const SizedBox(height: 24),
                 QuotationsSummaryRow(
                   totalCount: total,
-                  draftCount: drafts,
-                  sentCount: sent,
-                  acceptedCount: accepted,
+                  recentCount: recent,
                 ),
                 const SizedBox(height: 24),
                 if (_isLoading)
@@ -295,14 +290,9 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                     children: [
                       QuotationFilterBar(
                         searchQuery: _searchQuery,
-                        selectedStatus: _selectedStatus,
                         sortBy: _sortBy,
                         onSearchChanged: (val) {
                           _searchQuery = val;
-                          _applyFilters();
-                        },
-                        onStatusChanged: (val) {
-                          _selectedStatus = val;
                           _applyFilters();
                         },
                         onSortChanged: (val) {

@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../../../../../../app/theme/app_colors.dart';
 import '../../../domain/quotation.dart';
 import '../../../application/quotation_calculator.dart';
-import 'quotation_status_badge.dart';
 
 class QuotationListView extends StatelessWidget {
   final List<Quotation> quotations;
@@ -140,19 +139,13 @@ class QuotationListView extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  quotation.quotationNumber,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.charcoal,
-                  ),
-                ),
-                QuotationStatusBadge(status: quotation.status),
-              ],
+            child: Text(
+              quotation.quotationNumber,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.charcoal,
+              ),
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
@@ -281,6 +274,12 @@ class QuotationListView extends StatelessWidget {
   Widget _buildDesktopTable(BuildContext context) {
     final formatter = NumberFormat('#,##0.00');
     final dateFmt = DateFormat('MMM dd, yyyy');
+    final compactActionStyle = TextButton.styleFrom(
+      minimumSize: Size.zero,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -291,6 +290,7 @@ class QuotationListView extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: DataTable(
+          showCheckboxColumn: false,
           headingRowColor: WidgetStateProperty.all(AppColors.background),
           dataRowMinHeight: 56,
           dataRowMaxHeight: 56,
@@ -302,11 +302,11 @@ class QuotationListView extends StatelessWidget {
             DataColumn(label: Text('Customer')),
             DataColumn(label: Text('Salesperson')),
             DataColumn(label: Text('Amount'), numeric: true),
-            DataColumn(label: Text('Status')),
-            DataColumn(label: Text('')),
+            DataColumn(label: Text('Actions')),
           ],
           rows: quotations.map((q) {
             return DataRow(
+              onSelectChanged: (_) => onView(q),
               cells: [
                 DataCell(
                   Text(
@@ -327,96 +327,89 @@ class QuotationListView extends StatelessWidget {
                     'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(q.lineItems, q.charges))}',
                   ),
                 ),
-                DataCell(QuotationStatusBadge(status: q.status)),
                 DataCell(
                   Align(
                     alignment: Alignment.centerRight,
-                    child: PopupMenuButton<String>(
-                      icon: const Icon(
-                        Icons.more_vert,
-                        color: AppColors.mutedText,
-                      ),
-                      onSelected: (val) {
-                        switch (val) {
-                          case 'view':
-                            onView(q);
-                            break;
-                          case 'edit':
-                            onEdit(q);
-                            break;
-                          case 'share':
-                            onShare(q);
-                            break;
-                          case 'duplicate':
-                            onDuplicate(q);
-                            break;
-                          case 'delete':
-                            _confirmDelete(context, q, false);
-                            break;
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'view',
-                          child: Row(
-                            children: [
-                              Icon(Icons.visibility_outlined, size: 18),
-                              SizedBox(width: 8),
-                              Text('View'),
-                            ],
-                          ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton.icon(
+                          style: compactActionStyle,
+                          onPressed: () => onView(q),
+                          icon: const Icon(Icons.visibility_outlined, size: 16),
+                          label: const Text('View'),
                         ),
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit_outlined, size: 18),
-                              SizedBox(width: 8),
-                              Text('Edit'),
-                            ],
-                          ),
+                        const SizedBox(width: 4),
+                        TextButton.icon(
+                          style: compactActionStyle,
+                          onPressed: () => onEdit(q),
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: const Text('Edit'),
                         ),
-                        const PopupMenuItem(
-                          value: 'share',
-                          child: Row(
-                            children: [
-                              Icon(Icons.share_outlined, size: 18),
-                              SizedBox(width: 8),
-                              Text('Share PDF'),
-                            ],
+                        PopupMenuButton<String>(
+                          tooltip: 'More actions',
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: AppColors.mutedText,
                           ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'duplicate',
-                          child: Row(
-                            children: [
-                              Icon(Icons.copy_outlined, size: 18),
-                              SizedBox(width: 8),
-                              Text('Duplicate'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.delete_outline,
-                                size: 18,
-                                color: Colors.red,
+                          onSelected: (val) {
+                            switch (val) {
+                              case 'share':
+                                onShare(q);
+                                break;
+                              case 'duplicate':
+                                onDuplicate(q);
+                                break;
+                              case 'delete':
+                                _confirmDelete(context, q, false);
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'share',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.share_outlined, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Share PDF'),
+                                ],
                               ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Delete',
-                                style: TextStyle(color: Colors.red),
+                            ),
+                            const PopupMenuItem(
+                              value: 'duplicate',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.copy_outlined, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Duplicate'),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: Colors.red,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Delete',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
+                  onTap: () {},
                 ),
               ],
             );

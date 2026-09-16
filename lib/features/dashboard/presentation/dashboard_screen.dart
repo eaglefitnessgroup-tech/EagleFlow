@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
@@ -162,7 +163,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.rocket_launch, color: AppColors.primaryBlue, size: 24),
+                  child: SvgPicture.asset(
+                    'assets/logos/eagleflow_logo.svg',
+                    width: 30,
+                    height: 30,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(

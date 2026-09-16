@@ -3,16 +3,12 @@ import '../../../../../../app/theme/app_colors.dart';
 
 class QuotationsSummaryRow extends StatelessWidget {
   final int totalCount;
-  final int draftCount;
-  final int sentCount;
-  final int acceptedCount;
+  final int recentCount;
 
   const QuotationsSummaryRow({
     super.key,
     required this.totalCount,
-    required this.draftCount,
-    required this.sentCount,
-    required this.acceptedCount,
+    required this.recentCount,
   });
 
   @override
@@ -20,91 +16,23 @@ class QuotationsSummaryRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
-        if (isMobile) {
-          return Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      'Total',
-                      totalCount,
-                      Icons.description_outlined,
-                      AppColors.charcoal,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      'Draft',
-                      draftCount,
-                      Icons.edit_note,
-                      AppColors.statusDraftText,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      'Sent',
-                      sentCount,
-                      Icons.send_outlined,
-                      AppColors.statusSentText,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      'Accepted',
-                      acceptedCount,
-                      Icons.check_circle_outline,
-                      AppColors.statusApprovedText,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        }
-
         return Row(
           children: [
             Expanded(
               child: _buildSummaryCard(
-                'Total Quotations',
+                isMobile ? 'Total' : 'Total Quotations',
                 totalCount,
                 Icons.description_outlined,
                 AppColors.charcoal,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: isMobile ? 12 : 16),
             Expanded(
               child: _buildSummaryCard(
-                'Draft',
-                draftCount,
-                Icons.edit_note,
-                AppColors.statusDraftText,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildSummaryCard(
-                'Sent',
-                sentCount,
-                Icons.send_outlined,
-                AppColors.statusSentText,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildSummaryCard(
-                'Accepted',
-                acceptedCount,
-                Icons.check_circle_outline,
-                AppColors.statusApprovedText,
+                'Recent Quotations',
+                recentCount,
+                Icons.history,
+                AppColors.primaryBlue,
               ),
             ),
           ],
