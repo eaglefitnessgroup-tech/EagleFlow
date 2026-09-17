@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../application/quotation_controller.dart';
@@ -10,13 +12,37 @@ import 'preview/pages/quotation_products_page.dart';
 import 'preview/pages/quotation_info_page.dart';
 
 import 'package:printing/printing.dart';
+import '../application/quotation_excel_service.dart';
 import '../application/quotation_pdf_service.dart';
 import '../application/salesperson_name_resolver.dart';
+import '../../../core/utils/file_download_util.dart';
 import '../../../core/utils/pdf_saver.dart';
+import '../../../core/utils/pdf_share_helper.dart';
 import '../../../../core/di/service_locator.dart';
 
+typedef QuotationExcelGenerator =
+    List<int> Function(Quotation quotation, {String? salespersonName});
+typedef QuotationFileDownloader =
+    Future<void> Function({required List<int> bytes, required String filename});
+typedef QuotationPdfGenerator = Future<Uint8List> Function(Quotation quotation);
+typedef QuotationPdfSaver =
+    Future<String?> Function(Uint8List bytes, String filename);
+
 class QuotationPreviewScreen extends StatefulWidget {
-  const QuotationPreviewScreen({super.key});
+  const QuotationPreviewScreen({
+    super.key,
+    this.excelGenerator,
+    this.fileDownloader,
+    this.pdfGenerator,
+    this.pdfSaver,
+    this.pdfShareHelper,
+  });
+
+  final QuotationExcelGenerator? excelGenerator;
+  final QuotationFileDownloader? fileDownloader;
+  final QuotationPdfGenerator? pdfGenerator;
+  final QuotationPdfSaver? pdfSaver;
+  final PdfShareHelper? pdfShareHelper;
 
   @override
   State<QuotationPreviewScreen> createState() => _QuotationPreviewScreenState();
@@ -48,7 +74,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       _isError = true;
       _errorMsg = 'Invalid quotation data provided.';
     }
-    
+
     _resolveSalespersonName();
   }
 
@@ -118,6 +144,35 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
     Navigator.pop(context);
   }
 
+  Future<void> _handleExcelExport() async {
+    if (_controller == null) return;
+
+    try {
+      final quotation = _controller!.quotation;
+      final generator = widget.excelGenerator;
+      final workbookBytes = generator == null
+          ? QuotationExcelService().generateWorkbook(
+              quotation,
+              salespersonName: _resolvedSalespersonName,
+            )
+          : generator(quotation, salespersonName: _resolvedSalespersonName);
+      final sanitizedNumber = quotation.quotationNumber.replaceAll(
+        RegExp(r'[\\/:*?"<>|]'),
+        '_',
+      );
+      final filename = '$sanitizedNumber.xlsx';
+      final downloader = widget.fileDownloader ?? FileDownloadUtil.save;
+
+      await downloader(bytes: workbookBytes, filename: filename);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error generating Excel: $e')));
+      }
+    }
+  }
+
   Future<void> _handlePdfAction(String action) async {
     if (_controller == null) return;
 
@@ -126,14 +181,19 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
     });
 
     try {
-      final service = QuotationPdfService();
-      final pdfBytes = await service.generatePdf(_controller!.quotation);
-      final sanitizedNumber = _controller!.quotation.quotationNumber
-          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final generator = widget.pdfGenerator;
+      final pdfBytes = generator == null
+          ? await QuotationPdfService().generatePdf(_controller!.quotation)
+          : await generator(_controller!.quotation);
+      final sanitizedNumber = _controller!.quotation.quotationNumber.replaceAll(
+        RegExp(r'[\\/:*?"<>|]'),
+        '_',
+      );
       final filename = '$sanitizedNumber.pdf';
+      final pdfSaver = widget.pdfSaver ?? savePdf;
 
       if (action == 'pdf') {
-        final outputPath = await savePdf(pdfBytes, filename);
+        final outputPath = await pdfSaver(pdfBytes, filename);
         if (outputPath != null && mounted) {
           ScaffoldMessenger.of(
             context,
@@ -145,7 +205,24 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
           name: filename,
         );
       } else if (action == 'share') {
-        await Printing.sharePdf(bytes: pdfBytes, filename: filename);
+        try {
+          await (widget.pdfShareHelper ?? PdfShareHelper()).sharePdf(
+            bytes: pdfBytes,
+            filename: filename,
+          );
+        } catch (_) {
+          await pdfSaver(pdfBytes, filename);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  "File sharing isn't supported in this browser. "
+                  'The PDF was downloaded instead.',
+                ),
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -264,7 +341,11 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'pdf' || value == 'print' || value == 'share') {
+              if (value == 'excel') {
+                _handleExcelExport();
+              } else if (value == 'pdf' ||
+                  value == 'print' ||
+                  value == 'share') {
                 _handlePdfAction(value);
               }
             },
@@ -277,11 +358,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
               ),
               const PopupMenuItem(
                 value: 'excel',
-                enabled: false,
-                child: Text(
-                  'Export to Excel (Coming Soon)',
-                  style: TextStyle(fontSize: 14),
-                ),
+                child: Text('Export to Excel', style: TextStyle(fontSize: 14)),
               ),
               const PopupMenuDivider(),
               const PopupMenuItem(
@@ -368,9 +445,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
                     ),
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      border: Border(
-                        top: BorderSide(color: AppColors.border),
-                      ),
+                      border: Border(top: BorderSide(color: AppColors.border)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
