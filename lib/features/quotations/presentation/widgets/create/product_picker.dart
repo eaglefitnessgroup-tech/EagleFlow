@@ -50,9 +50,12 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   final TextEditingController _searchController = TextEditingController();
   final Set<String> _selectedIds = {};
 
+  List<Product> _allActiveProducts = [];
+  List<_ProductPickerCategory> _categories = [];
   List<Product> _filteredProducts = [];
   List<Reservation> _activeReservations = [];
   Map<String, int> _currentStockMap = {};
+  String? _selectedCategoryKey;
   bool _isLoading = true;
   bool _isSubmitting = false;
 
@@ -90,39 +93,83 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
 
     if (mounted) {
       setState(() {
+        _allActiveProducts = allActiveProducts;
+        _categories = _deriveCategories(allActiveProducts);
+        if (_selectedCategoryKey != null &&
+            !_categories.any(
+              (category) => category.key == _selectedCategoryKey,
+            )) {
+          _selectedCategoryKey = null;
+        }
         _activeReservations = reservations;
         _currentStockMap = stockMap;
         _isLoading = false;
-        _onSearchChanged();
+        _filteredProducts = _applyFilters();
       });
     }
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text.trim().toLowerCase();
+    setState(() {
+      _filteredProducts = _applyFilters();
+    });
+  }
 
-    // Only get active products
-    final allActiveProducts = ServiceLocator().productMasterController.products
-        .where((p) => p.isActive)
-        .toList();
-
-    if (query.isEmpty) {
-      setState(() {
-        _filteredProducts = _sortProducts(allActiveProducts);
-      });
-      return;
+  List<_ProductPickerCategory> _deriveCategories(List<Product> products) {
+    final displayNamesByKey = <String, String>{};
+    for (final product in products) {
+      final displayName = product.category.trim();
+      if (displayName.isEmpty) continue;
+      final key = displayName.toLowerCase();
+      displayNamesByKey.putIfAbsent(key, () => displayName);
     }
 
-    final filtered = allActiveProducts.where((p) {
-      final nameMatches = p.name.toLowerCase().contains(query);
-      final codeMatches = p.productCode.toLowerCase().contains(query);
-      final brandMatches = p.brand.toLowerCase().contains(query);
-      final categoryMatches = p.category.toLowerCase().contains(query);
-      return nameMatches || codeMatches || brandMatches || categoryMatches;
+    final categories = displayNamesByKey.entries
+        .map(
+          (entry) => _ProductPickerCategory(
+            key: entry.key,
+            displayName: entry.value,
+          ),
+        )
+        .toList();
+    categories.sort((a, b) {
+      final comparison = a.displayName.toLowerCase().compareTo(
+        b.displayName.toLowerCase(),
+      );
+      return comparison != 0
+          ? comparison
+          : a.displayName.compareTo(b.displayName);
+    });
+    return categories;
+  }
+
+  List<Product> _applyFilters() {
+    var filtered = _allActiveProducts.where((product) {
+      if (_selectedCategoryKey == null) return true;
+      return product.category.trim().toLowerCase() == _selectedCategoryKey;
     }).toList();
 
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      filtered = filtered.where((product) {
+        final nameMatches = product.name.toLowerCase().contains(query);
+        final codeMatches = product.productCode.toLowerCase().contains(query);
+        final brandMatches = product.brand.toLowerCase().contains(query);
+        final categoryMatches = product.category.toLowerCase().contains(query);
+        return nameMatches ||
+            codeMatches ||
+            brandMatches ||
+            categoryMatches;
+      }).toList();
+    }
+
+    return _sortProducts(filtered);
+  }
+
+  void _selectCategory(String? categoryKey) {
     setState(() {
-      _filteredProducts = _sortProducts(filtered);
+      _selectedCategoryKey = categoryKey;
+      _filteredProducts = _applyFilters();
     });
   }
 
@@ -303,6 +350,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
         children: [
           _buildHeader(),
           _buildSearchBar(),
+          _buildCategoryFilter(),
           Expanded(child: _buildList()),
           _buildBottomActionBar(),
         ],
@@ -396,6 +444,140 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
           fillColor: AppColors.background,
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilter() {
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    final visibleCategoryCount = isMobile ? 2 : 4;
+    final visibleCategories = _categories
+        .take(visibleCategoryCount)
+        .toList();
+    final overflowCategories = _categories
+        .skip(visibleCategoryCount)
+        .toList();
+    final overflowIsSelected = overflowCategories.any(
+      (category) => category.key == _selectedCategoryKey,
+    );
+
+    return Container(
+      color: Colors.white,
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 20,
+        0,
+        isMobile ? 16 : 20,
+        12,
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _buildCategoryChip(
+              key: const Key('product-picker-category-all'),
+              label: 'All',
+              selected: _selectedCategoryKey == null,
+              onSelected: () => _selectCategory(null),
+            ),
+            for (final category in visibleCategories) ...[
+              const SizedBox(width: 8),
+              _buildCategoryChip(
+                key: ValueKey('product-picker-category-${category.key}'),
+                label: category.displayName,
+                selected: _selectedCategoryKey == category.key,
+                onSelected: () => _selectCategory(category.key),
+              ),
+            ],
+            if (overflowCategories.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              PopupMenuButton<String>(
+                key: const Key('product-picker-category-more'),
+                tooltip: 'More categories',
+                onSelected: _selectCategory,
+                itemBuilder: (context) => overflowCategories
+                    .map(
+                      (category) => CheckedPopupMenuItem<String>(
+                        value: category.key,
+                        checked: category.key == _selectedCategoryKey,
+                        child: Text(category.displayName),
+                      ),
+                    )
+                    .toList(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: overflowIsSelected
+                        ? AppColors.primarySoft
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: overflowIsSelected
+                          ? AppColors.primaryBlue
+                          : AppColors.border,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'More',
+                        style: TextStyle(
+                          color: overflowIsSelected
+                              ? AppColors.primaryBlue
+                              : AppColors.charcoal,
+                          fontWeight: overflowIsSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        size: 18,
+                        color: overflowIsSelected
+                            ? AppColors.primaryBlue
+                            : AppColors.mutedText,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip({
+    required Key key,
+    required String label,
+    required bool selected,
+    required VoidCallback onSelected,
+  }) {
+    return ChoiceChip(
+      key: key,
+      label: Text(label),
+      selected: selected,
+      onSelected: (value) {
+        if (value || selected) onSelected();
+      },
+      showCheckmark: false,
+      selectedColor: AppColors.primarySoft,
+      backgroundColor: AppColors.surface,
+      side: BorderSide(
+        color: selected ? AppColors.primaryBlue : AppColors.border,
+      ),
+      labelStyle: TextStyle(
+        color: selected ? AppColors.primaryBlue : AppColors.charcoal,
+        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
       ),
     );
   }
@@ -671,4 +853,14 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
       ),
     );
   }
+}
+
+class _ProductPickerCategory {
+  const _ProductPickerCategory({
+    required this.key,
+    required this.displayName,
+  });
+
+  final String key;
+  final String displayName;
 }
