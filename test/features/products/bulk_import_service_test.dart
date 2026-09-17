@@ -317,9 +317,16 @@ void main() {
     const csv =
         '${validHeaders}BATCH1,Item1,,,10,,,,,,,,\nBATCH2,Item2,,,20,,,,,,,,';
     final preview = await service.previewImport(csv);
-    final result = await service.commitImport(preview);
+    final progress = <(int, int)>[];
+    final result = await service.commitImport(
+      preview,
+      onProgress: (processedRows, totalRows) {
+        progress.add((processedRows, totalRows));
+      },
+    );
 
     expect(result.success, true);
+    expect(progress, [(0, 2), (1, 2), (2, 2)]);
     final products = await repository.getAllProducts();
     expect(products.length, 2);
   });

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +7,7 @@ import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:eagleflow/features/products/presentation/products_screen.dart';
 import 'package:eagleflow/features/products/presentation/bulk_import_screen.dart';
+import 'package:eagleflow/features/products/domain/bulk_import_models.dart';
 import 'package:eagleflow/app/routes/app_routes.dart';
 import 'package:eagleflow/core/guards/admin_guard.dart';
 import 'package:eagleflow/core/supabase/supabase_service.dart';
@@ -98,8 +100,15 @@ void main() {
   }
 
   /// Shorthand: [BulkImportScreen] with [_capturingSaver] injected.
-  BulkImportScreen screen({FileSaver? fileSaver}) =>
-      BulkImportScreen(fileSaver: fileSaver ?? _capturingSaver);
+  BulkImportScreen screen({
+    FileSaver? fileSaver,
+    BulkImportCommitter? commitImport,
+    bool? isOnlineOverride,
+  }) => BulkImportScreen(
+    fileSaver: fileSaver ?? _capturingSaver,
+    commitImport: commitImport,
+    isOnlineOverride: isOnlineOverride,
+  );
 
   Future<void> loginAdmin(WidgetTester tester) async {
     await tester.runAsync(() async {
@@ -276,6 +285,69 @@ void main() {
   });
 
   // ── file name display ────────────────────────────────────────────────────────
+
+  testWidgets('shows actual processed rows and completes at 100%', (
+    tester,
+  ) async {
+    final csv = StringBuffer(
+      'Product Code,Name,Category,Brand,Selling Price,Opening Stock,Min Stock Level,Unit,VAT Applicable,Active,Description,Model Number,Notes\n',
+    );
+    for (var i = 1; i <= 140; i++) {
+      csv.writeln('PROG$i,Item $i,,,10,,,,,,,,');
+    }
+    _mockExcelFile(csv.toString(), filename: 'products.csv');
+    final validJpg = mockFolderFilesForTesting!['TEST1.jpg']!;
+    mockFolderFilesForTesting = {
+      for (var i = 1; i <= 140; i++) 'PROG$i.jpg': validJpg,
+    };
+
+    final finishImport = Completer<void>();
+    Future<BulkImportResult> commitImport(
+      BulkImportPreview preview, {
+      void Function(int processedRows, int totalRows)? onProgress,
+    }) async {
+      onProgress?.call(87, preview.validCount);
+      await finishImport.future;
+      onProgress?.call(preview.validCount, preview.validCount);
+      return BulkImportResult(
+        success: true,
+        message: 'Successfully imported ${preview.validCount} products.',
+        importedCount: preview.validCount,
+      );
+    }
+
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await loginAdmin(tester);
+    await tester.pumpWidget(
+      buildApp(
+        screen(
+          commitImport: commitImport,
+          isOnlineOverride: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('pick_excel_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick_folder_btn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm_import_btn')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('bulk_import_progress_bar')), findsOneWidget);
+    expect(find.text('87 / 140'), findsOneWidget);
+    expect(find.text('62%'), findsOneWidget);
+
+    finishImport.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('140 / 140'), findsOneWidget);
+    expect(find.text('100%'), findsOneWidget);
+    expect(find.text('Import Complete'), findsOneWidget);
+    expect(find.byType(BulkImportScreen), findsOneWidget);
+  });
 
   testWidgets('Picked filename is shown after selection', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));

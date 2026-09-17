@@ -34,6 +34,9 @@ const _kProductImagesBucket = 'product-images';
 /// Maximum number of product codes to send in a single remote duplicate check.
 const _kDuplicateCheckBatchSize = 200;
 
+typedef BulkImportProgressCallback =
+    void Function(int processedRows, int totalRows);
+
 class BulkImportService {
   final ProductRepository repository;
   final SupabaseService supabase;
@@ -485,6 +488,7 @@ class BulkImportService {
   Future<BulkImportResult> commitImport(
     BulkImportPreview preview, {
     String? testRole,
+    BulkImportProgressCallback? onProgress,
   }) async {
     if (!preview.canImport) {
       return const BulkImportResult(
@@ -569,11 +573,25 @@ class BulkImportService {
       }
     }
 
+    final totalRows = preview.validCount;
+    onProgress?.call(0, totalRows);
+
     final finalRows = <BulkImportRow>[];
-    for (var row in preview.rows) {
+    for (var i = 0; i < preview.rows.length; i++) {
+      final row = preview.rows[i];
       final p = row.product!;
       final id = _uuid.v4();
       finalRows.add(row.copyWith(product: p.copyWith(id: id)));
+
+      if (!hasRemoteClient) {
+        final processedRows = i + 1;
+        if (processedRows < totalRows) {
+          onProgress?.call(processedRows, totalRows);
+          if (onProgress != null) {
+            await Future<void>.delayed(Duration.zero);
+          }
+        }
+      }
     }
 
     // 3. Import (All or nothing)
@@ -596,6 +614,14 @@ class BulkImportService {
             finalRows[i] = row.copyWith(
               product: p.copyWith(imageId: path, imageBytes: processedBytes),
             );
+          }
+
+          final processedRows = i + 1;
+          if (processedRows < totalRows) {
+            onProgress?.call(processedRows, totalRows);
+            if (onProgress != null) {
+              await Future<void>.delayed(Duration.zero);
+            }
           }
         }
 
@@ -639,6 +665,7 @@ class BulkImportService {
       }
 
       _lastImportSignature = signature;
+      onProgress?.call(totalRows, totalRows);
       return BulkImportResult(
         success: true,
         message: 'Successfully imported ${preview.validCount} products.',

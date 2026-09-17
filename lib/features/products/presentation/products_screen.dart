@@ -192,7 +192,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Widget _buildHeader() {
-    return Column(
+    final isMobile = MediaQuery.sizeOf(context).width < 800;
+    final showBack = isMobile && Navigator.canPop(context);
+    final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -210,6 +212,24 @@ class _ProductsScreenState extends State<ProductsScreen> {
             height: 1.4,
           ),
         ),
+      ],
+    );
+
+    if (!showBack) return title;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: IconButton(
+            key: const Key('products-back-button'),
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back, color: AppColors.charcoal),
+            tooltip: 'Back',
+          ),
+        ),
+        Expanded(child: title),
       ],
     );
   }

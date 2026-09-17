@@ -3,8 +3,15 @@ import '../../../../../../app/theme/app_colors.dart';
 
 class QuotationPageHeader extends StatelessWidget {
   final String quotationNumber;
+  final bool showBack;
+  final VoidCallback? onBack;
 
-  const QuotationPageHeader({super.key, required this.quotationNumber});
+  const QuotationPageHeader({
+    super.key,
+    required this.quotationNumber,
+    this.showBack = false,
+    this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +32,16 @@ class QuotationPageHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        if (showBack)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              key: const Key('create-quotation-back-button'),
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back, color: AppColors.charcoal),
+              tooltip: 'Back',
+            ),
+          ),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

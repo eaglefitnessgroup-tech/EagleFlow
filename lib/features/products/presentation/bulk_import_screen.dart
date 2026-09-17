@@ -4,6 +4,7 @@ import 'folder_picker/folder_picker.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/utils/file_download_util.dart';
+import '../application/bulk_import_service.dart';
 import '../domain/bulk_import_models.dart';
 import 'widgets/import_preview_table.dart';
 
@@ -12,11 +13,24 @@ import 'widgets/import_preview_table.dart';
 typedef FileSaver =
     Future<void> Function({required List<int> bytes, required String filename});
 
+typedef BulkImportCommitter =
+    Future<BulkImportResult> Function(
+      BulkImportPreview preview, {
+      BulkImportProgressCallback? onProgress,
+    });
+
 class BulkImportScreen extends StatefulWidget {
-  const BulkImportScreen({super.key, this.fileSaver});
+  const BulkImportScreen({
+    super.key,
+    this.fileSaver,
+    this.commitImport,
+    this.isOnlineOverride,
+  });
 
   /// Override to inject a mock file-saver in tests.
   final FileSaver? fileSaver;
+  final BulkImportCommitter? commitImport;
+  final bool? isOnlineOverride;
 
   @override
   State<BulkImportScreen> createState() => _BulkImportScreenState();
@@ -43,13 +57,16 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
   // ─────────────────────────────────────────────────────────────────────────
   String _userMessage = '';
   bool _submitting = false; // double-submit guard
+  int _processedRows = 0;
+  int _progressTotalRows = 0;
 
   /// Resolved file-saver: widget override (tests) or real implementation.
   late final FileSaver _fileSaver = widget.fileSaver ?? FileDownloadUtil.save;
 
   // ── helpers ────────────────────────────────────────────────────────────────
 
-  bool get _isOnline => ServiceLocator().supabaseService.isConnected;
+  bool get _isOnline =>
+      widget.isOnlineOverride ?? ServiceLocator().supabaseService.isConnected;
 
   bool get _canImport =>
       _phase == _ImportPhase.readyValid && !_submitting && _isOnline;
@@ -222,11 +239,17 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
     setState(() {
       _submitting = true;
       _phase = _ImportPhase.importing;
+      _processedRows = 0;
+      _progressTotalRows = _preview!.validCount;
     });
 
     try {
       final service = ServiceLocator().bulkImportService;
-      final result = await service.commitImport(_preview!);
+      final commitImport = widget.commitImport ?? service.commitImport;
+      final result = await commitImport(
+        _preview!,
+        onProgress: _updateImportProgress,
+      );
 
       if (!mounted) return;
       if (result.success) {
@@ -234,6 +257,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
           _phase = _ImportPhase.success;
           _userMessage = result.message;
           _submitting = false;
+          _processedRows = _progressTotalRows;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -242,7 +266,6 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
           ),
         );
         ServiceLocator().productMasterController.loadProducts();
-        Navigator.pop(context);
       } else {
         setState(() {
           _phase = _ImportPhase.failure;
@@ -264,6 +287,14 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
         _submitting = false;
       });
     }
+  }
+
+  void _updateImportProgress(int processedRows, int totalRows) {
+    if (!mounted) return;
+    setState(() {
+      _progressTotalRows = totalRows;
+      _processedRows = processedRows.clamp(0, totalRows);
+    });
   }
 
   void _copyErrors() {
@@ -554,6 +585,15 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                 ),
                 const SizedBox(height: 20),
 
+                if (_phase == _ImportPhase.importing ||
+                    _phase == _ImportPhase.success) ...[
+                  _ImportProgress(
+                    processedRows: _processedRows,
+                    totalRows: _progressTotalRows,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
                 // ── import button ────────────────────────────────────────────
                 ElevatedButton(
                   key: const Key('confirm_import_btn'),
@@ -580,9 +620,11 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                             Text('Importing…'),
                           ],
                         )
-                      : const Text(
-                          'Confirm Import',
-                          style: TextStyle(
+                      : Text(
+                          _phase == _ImportPhase.success
+                              ? 'Import Complete'
+                              : 'Confirm Import',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -598,6 +640,51 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
 }
 
 // ── summary bar ─────────────────────────────────────────────────────────────
+
+class _ImportProgress extends StatelessWidget {
+  const _ImportProgress({
+    required this.processedRows,
+    required this.totalRows,
+  });
+
+  final int processedRows;
+  final int totalRows;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = totalRows == 0 ? 0.0 : processedRows / totalRows;
+    final percentage = (progress * 100).floor();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LinearProgressIndicator(
+          key: const Key('bulk_import_progress_bar'),
+          value: progress,
+          minHeight: 8,
+          borderRadius: BorderRadius.circular(4),
+          backgroundColor: AppColors.border,
+          color: AppColors.primaryBlue,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '$processedRows / $totalRows',
+              key: const Key('bulk_import_progress_count'),
+            ),
+            Text(
+              '$percentage%',
+              key: const Key('bulk_import_progress_percentage'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
 
 class _SummaryBar extends StatelessWidget {
   final BulkImportPreview preview;

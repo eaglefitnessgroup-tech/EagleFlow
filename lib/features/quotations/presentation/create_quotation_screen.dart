@@ -415,7 +415,11 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  QuotationPageHeader(quotationNumber: quotation.quotationNumber),
+                  QuotationPageHeader(
+                    quotationNumber: quotation.quotationNumber,
+                    showBack: isMobile && Navigator.canPop(context),
+                    onBack: () => Navigator.pop(context),
+                  ),
                   const SizedBox(height: 16),
                   if (isMobile) ...[
                     customerCard,
