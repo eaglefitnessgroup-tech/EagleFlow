@@ -21,7 +21,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   int _totalProducts = 0;
   int _todaysQuotations = 0;
-  int _pendingQuotations = 0;
+  int _totalQuotations = 0;
   List<Quotation> _allQuotations = [];
   List<Quotation> _recentQuotations = [];
   String _quotationSearchQuery = '';
@@ -42,16 +42,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final now = DateTime.now();
       int todayQuotationsCount = 0;
-      int pendingQuotationsCount = 0;
 
       for (final q in quotations) {
         if (q.createdDate.year == now.year &&
             q.createdDate.month == now.month &&
             q.createdDate.day == now.day) {
           todayQuotationsCount++;
-        }
-        if (q.status == QuotationStatus.draft) {
-          pendingQuotationsCount++;
         }
       }
 
@@ -64,7 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _totalProducts = products.length;
           _todaysQuotations = todayQuotationsCount;
-          _pendingQuotations = pendingQuotationsCount;
+          _totalQuotations = sortedQuotations.length;
           _allQuotations = sortedQuotations;
           _recentQuotations = recent;
           _isLoading = false;
@@ -563,7 +559,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              _buildStatCard('Pending Quotations', _pendingQuotations.toString(), Icons.pending_actions_outlined),
+              _buildStatCard('Total Quotations', _totalQuotations.toString(), Icons.request_quote_outlined),
             ],
           );
         }
@@ -574,7 +570,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 24),
             Expanded(child: _buildStatCard('Today\'s Quotations', _todaysQuotations.toString(), Icons.today_outlined)),
             const SizedBox(width: 24),
-            Expanded(child: _buildStatCard('Pending Quotations', _pendingQuotations.toString(), Icons.pending_actions_outlined)),
+            Expanded(child: _buildStatCard('Total Quotations', _totalQuotations.toString(), Icons.request_quote_outlined)),
           ],
         );
       },
@@ -782,7 +778,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _buildActionCard(
         title: 'Stock',
         icon: Icons.warehouse_outlined,
-        onTap: () => Navigator.of(context).pushNamed(AppRoutes.products),
+        onTap: () => showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Stock'),
+            content: const Text('Stock module coming soon.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        ),
       ),
       if (ServiceLocator().authController.canManageStock)
         _buildActionCard(
@@ -956,8 +964,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     switch (quote.status) {
       case QuotationStatus.draft:
-        statusBg = AppColors.statusPendingBg;
-        statusText = AppColors.statusPendingText;
+        statusLabel = 'Saved';
+        statusBg = AppColors.statusDraftBg;
+        statusText = AppColors.statusDraftText;
         break;
       case QuotationStatus.sent:
         statusBg = AppColors.statusSentBg;

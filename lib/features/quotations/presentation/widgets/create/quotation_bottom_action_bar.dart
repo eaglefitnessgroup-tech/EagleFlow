@@ -61,7 +61,7 @@ class QuotationBottomActionBar extends StatelessWidget {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text(
-                            'Save Draft',
+                            'Save',
                             style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                   ),

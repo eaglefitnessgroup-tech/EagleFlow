@@ -184,7 +184,7 @@ void main() {
       await tester.pumpAndSettle();
       
       // Simulate tapping the save button
-      await tester.tap(find.text('Save Draft').last);
+      await tester.tap(find.text('Save').last);
       await tester.pumpAndSettle();
       
       expect(find.text('Quotation saved successfully'), findsWidgets);

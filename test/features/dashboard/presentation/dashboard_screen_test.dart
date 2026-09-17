@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:eagleflow/app/theme/app_colors.dart';
 import 'package:eagleflow/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/core/database/database_service.dart';
@@ -9,6 +10,7 @@ import 'package:eagleflow/features/quotations/data/quotation_repository.dart';
 import 'package:eagleflow/features/quotations/domain/customer_info.dart';
 import 'package:eagleflow/features/quotations/domain/quotation.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_charges.dart';
+import 'package:eagleflow/features/quotations/domain/quotation_status.dart';
 import '../../../features/authentication/fake_auth_repository.dart';
 
 void main() {
@@ -144,6 +146,30 @@ void main() {
     },
   );
 
+  testWidgets('Stock quick action shows coming-soon dialog without navigating', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(buildTestableWidget());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Stock'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stock module coming soon.'), findsOneWidget);
+    expect(find.text('OK'), findsOneWidget);
+    expect(find.text('Products Screen'), findsNothing);
+
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stock module coming soon.'), findsNothing);
+    expect(find.byType(DashboardScreen), findsOneWidget);
+  });
+
   testWidgets('Null-user fallback does not crash and shows User', (
     WidgetTester tester,
   ) async {
@@ -192,7 +218,72 @@ void main() {
   testWidgets('Populated data correctly calculates stats', (
     WidgetTester tester,
   ) async {
-    // Empty test is fine, empty UI covers all stats reading logic
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    quotationRepository.quotations.addAll([
+      _quotation(
+        id: 'draft',
+        customerName: 'Draft Customer',
+        quotationNumber: 'QT-DRAFT',
+      ),
+      _quotation(
+        id: 'sent',
+        customerName: 'Sent Customer',
+        quotationNumber: 'QT-SENT',
+        status: QuotationStatus.sent,
+      ),
+      _quotation(
+        id: 'approved',
+        customerName: 'Approved Customer',
+        quotationNumber: 'QT-APPROVED',
+        status: QuotationStatus.approved,
+      ),
+    ]);
+
+    await tester.pumpWidget(buildTestableWidget());
+    await tester.pumpAndSettle();
+
+    final totalCard = find.ancestor(
+      of: find.text('Total Quotations'),
+      matching: find.byType(Container),
+    ).first;
+    expect(find.descendant(of: totalCard, matching: find.text('3')), findsOneWidget);
+    expect(find.text('Pending Quotations'), findsNothing);
+  });
+
+  testWidgets('recent draft quotation uses a neutral Saved badge', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final quotation = _quotation(
+      id: 'saved-badge',
+      customerName: 'Saved Customer',
+      quotationNumber: 'QT-SAVED-1',
+    );
+    quotationRepository.quotations.add(quotation);
+
+    await tester.pumpWidget(buildTestableWidget());
+    await tester.pumpAndSettle();
+
+    expect(quotation.status, QuotationStatus.draft);
+    expect(find.text('Saved'), findsOneWidget);
+    expect(find.text('Draft'), findsNothing);
+
+    final badge = tester.widget<Container>(
+      find.ancestor(
+        of: find.text('Saved'),
+        matching: find.byType(Container),
+      ).first,
+    );
+    final decoration = badge.decoration! as BoxDecoration;
+    expect(decoration.color, AppColors.statusDraftBg);
+    final label = tester.widget<Text>(find.text('Saved'));
+    expect(label.style?.color, AppColors.statusDraftText);
   });
 
   testWidgets(
@@ -322,6 +413,7 @@ Quotation _quotation({
   required String id,
   required String customerName,
   required String quotationNumber,
+  QuotationStatus status = QuotationStatus.draft,
 }) {
   final now = DateTime(2026, 9, 16);
   return Quotation(
@@ -333,6 +425,7 @@ Quotation _quotation({
     modifiedDate: now,
     validUntil: now.add(const Duration(days: 14)),
     expectedDelivery: now.add(const Duration(days: 3)),
+    status: status,
     charges: const QuotationCharges(deliveryCharges: 100),
   );
 }
