@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
 import '../../../../core/utils/app_snackbars.dart';
+import '../../../../core/utils/file_download_util.dart';
+import '../../../../core/utils/pdf_share_helper.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/widgets/eagle_bottom_nav.dart';
@@ -7,8 +11,14 @@ import 'widgets/previous/quotations_summary_row.dart';
 import 'widgets/previous/quotation_filter_bar.dart';
 import 'widgets/previous/quotation_list_view.dart';
 import '../application/quotation_calculator.dart';
+import '../application/quotation_pdf_service.dart';
 import '../application/salesperson_name_resolver.dart';
 import '../../../../core/di/service_locator.dart';
+
+typedef PreviousQuotationPdfGenerator =
+    Future<Uint8List> Function(Quotation quotation);
+typedef PreviousQuotationPdfDownloader =
+    Future<void> Function({required List<int> bytes, required String filename});
 
 int countRecentQuotations(List<Quotation> quotations, {DateTime? now}) {
   final referenceDate = now ?? DateTime.now();
@@ -21,7 +31,16 @@ int countRecentQuotations(List<Quotation> quotations, {DateTime? now}) {
 }
 
 class PreviousQuotationsScreen extends StatefulWidget {
-  const PreviousQuotationsScreen({super.key});
+  const PreviousQuotationsScreen({
+    super.key,
+    this.pdfGenerator,
+    this.pdfShareHelper,
+    this.pdfDownloader,
+  });
+
+  final PreviousQuotationPdfGenerator? pdfGenerator;
+  final PdfShareHelper? pdfShareHelper;
+  final PreviousQuotationPdfDownloader? pdfDownloader;
 
   @override
   State<PreviousQuotationsScreen> createState() =>
@@ -220,14 +239,57 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
     }
   }
 
-  void _showMockActionToast(String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$action will be available after quotation persistence is connected.',
-        ),
-      ),
-    );
+  Future<void> _handleShare(Quotation quotation) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final fullQuotation = await ServiceLocator().quotationRepository
+          .getQuotationWithImages(quotation);
+      if (!mounted) return;
+
+      final generator = widget.pdfGenerator;
+      final pdfBytes = generator == null
+          ? await QuotationPdfService().generatePdf(fullQuotation)
+          : await generator(fullQuotation);
+      final sanitizedNumber = fullQuotation.quotationNumber.replaceAll(
+        RegExp(r'[\\/:*?"<>|]'),
+        '_',
+      );
+      final filename = '$sanitizedNumber.pdf';
+
+      try {
+        await (widget.pdfShareHelper ?? PdfShareHelper()).sharePdf(
+          bytes: pdfBytes,
+          filename: filename,
+        );
+      } catch (_) {
+        await (widget.pdfDownloader ?? FileDownloadUtil.save)(
+          bytes: pdfBytes,
+          filename: filename,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "File sharing isn't supported in this browser. "
+                'The PDF was downloaded instead.',
+              ),
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        AppSnackBars.showError(
+          context,
+          'Failed to share quotation PDF. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -311,7 +373,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                         onView: _handleView,
                         onEdit: _handleEdit,
                         onDuplicate: _handleDuplicate,
-                        onShare: (q) => _showMockActionToast('PDF sharing'),
+                        onShare: _handleShare,
                         onDelete: _handleDelete,
                         onCreate: () async {
                           await Navigator.pushNamed(
