@@ -5,6 +5,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../application/quotation_controller.dart';
 import '../domain/quotation.dart';
 import '../domain/quotation_defaults.dart';
+import 'preview/quotation_layout_spec.dart';
 import 'preview/models/quotation_preview_page.dart';
 import 'preview/utils/quotation_paginator.dart';
 import 'preview/components/quotation_a4_page.dart';
@@ -49,11 +50,17 @@ class QuotationPreviewScreen extends StatefulWidget {
 }
 
 class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
+  static const int _minZoomPercent = 60;
+  static const int _maxZoomPercent = 160;
+  static const int _zoomStepPercent = 10;
+
   int _currentPageIndex = 0;
+  int _zoomPercent = 100;
   QuotationController? _controller;
   List<QuotationPreviewPage> _pages = [];
   bool _isError = false;
   String _errorMsg = '';
+  bool _isSaving = false;
   bool _isGeneratingPdf = false;
   String? _resolvedSalespersonName;
   int _salespersonResolutionRequest = 0;
@@ -140,8 +147,83 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
     }
   }
 
+  void _zoomIn() {
+    if (_zoomPercent >= _maxZoomPercent) return;
+    setState(() {
+      _zoomPercent = (_zoomPercent + _zoomStepPercent).clamp(
+        _minZoomPercent,
+        _maxZoomPercent,
+      );
+    });
+  }
+
+  void _zoomOut() {
+    if (_zoomPercent <= _minZoomPercent) return;
+    setState(() {
+      _zoomPercent = (_zoomPercent - _zoomStepPercent).clamp(
+        _minZoomPercent,
+        _maxZoomPercent,
+      );
+    });
+  }
+
+  void _resetZoom() {
+    if (_zoomPercent == 100) return;
+    setState(() => _zoomPercent = 100);
+  }
+
   void _onEdit() {
-    Navigator.pop(context);
+    if (_controller == null) return;
+
+    Navigator.pushReplacementNamed(
+      context,
+      '/create-quotation',
+      arguments: _controller!.quotation,
+    );
+  }
+
+  Future<void> _handleSave() async {
+    if (_isSaving || _controller == null) return;
+
+    final user = ServiceLocator().authController.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in again to save the quotation.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final savedQuotation = await _controller!.save(
+        ServiceLocator().quotationRepository,
+      );
+      if (mounted) {
+        setState(() {
+          _pages = QuotationPaginator.paginate(savedQuotation);
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Quotation saved')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   Future<void> _handleExcelExport() async {
@@ -173,8 +255,11 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
     }
   }
 
-  Future<void> _handlePdfAction(String action) async {
-    if (_controller == null) return;
+  Future<void> _handlePdfAction(
+    String action, {
+    bool showSaveConfirmation = true,
+  }) async {
+    if (_controller == null || _isGeneratingPdf) return;
 
     setState(() {
       _isGeneratingPdf = true;
@@ -194,7 +279,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
 
       if (action == 'pdf') {
         final outputPath = await pdfSaver(pdfBytes, filename);
-        if (outputPath != null && mounted) {
+        if (showSaveConfirmation && outputPath != null && mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Saved to $outputPath')));
@@ -262,6 +347,50 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
     return const SizedBox.shrink();
   }
 
+  Widget _buildZoomControls() {
+    return SizedBox(
+      height: 36,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            key: const Key('preview-zoom-out'),
+            onPressed: _zoomPercent > _minZoomPercent ? _zoomOut : null,
+            icon: const Icon(Icons.remove, size: 18),
+            tooltip: 'Zoom out',
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          ),
+          TextButton(
+            key: const Key('preview-zoom-reset'),
+            onPressed: _zoomPercent == 100 ? null : _resetZoom,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(48, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              visualDensity: VisualDensity.compact,
+              foregroundColor: AppColors.charcoal,
+              disabledForegroundColor: AppColors.charcoal,
+            ),
+            child: Text(
+              '$_zoomPercent%',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+          IconButton(
+            key: const Key('preview-zoom-in'),
+            onPressed: _zoomPercent < _maxZoomPercent ? _zoomIn : null,
+            icon: const Icon(Icons.add, size: 18),
+            tooltip: 'Zoom in',
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isError || _controller == null) {
@@ -296,6 +425,8 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       );
     }
 
+    final isNarrow = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -316,7 +447,36 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         elevation: 1,
         shadowColor: Colors.black.withValues(alpha: 0.1),
         iconTheme: const IconThemeData(color: AppColors.charcoal, size: 20),
+        bottom: isNarrow
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(40),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: _buildZoomControls(),
+                ),
+              )
+            : null,
         actions: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmall = MediaQuery.of(context).size.width < 400;
+              if (isSmall) {
+                return TextButton(
+                  onPressed: _isSaving ? null : _handleSave,
+                  child: const Text('Save'),
+                );
+              }
+              return TextButton.icon(
+                onPressed: _isSaving ? null : _handleSave,
+                icon: const Icon(Icons.save_outlined, size: 16),
+                label: const Text('Save'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.charcoal,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              );
+            },
+          ),
           LayoutBuilder(
             builder: (context, constraints) {
               final isSmall = MediaQuery.of(context).size.width < 400;
@@ -338,6 +498,15 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
                 ),
               );
             },
+          ),
+          if (!isNarrow) _buildZoomControls(),
+          IconButton(
+            onPressed: _isGeneratingPdf
+                ? null
+                : () => _handlePdfAction('pdf', showSaveConfirmation: false),
+            icon: const Icon(Icons.download_outlined, size: 18),
+            tooltip: 'Download PDF',
+            color: AppColors.charcoal,
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
@@ -383,56 +552,61 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final isMobile = constraints.maxWidth < 600;
+                      final availablePageWidth = isMobile
+                          ? constraints.maxWidth * 0.95
+                          : 820.0;
+                      final basePageWidth =
+                          availablePageWidth <
+                              QuotationLayoutSpec.a4LogicalWidth
+                          ? availablePageWidth
+                          : QuotationLayoutSpec.a4LogicalWidth;
+                      final zoomScale = _zoomPercent / 100;
+                      final scaledPageWidth = basePageWidth * zoomScale;
+                      final scaledPageHeight =
+                          basePageWidth /
+                          QuotationLayoutSpec.a4LogicalWidth *
+                          QuotationLayoutSpec.a4LogicalHeight *
+                          zoomScale;
+                      final verticalPadding = isMobile ? 24.0 : 32.0;
+                      final contentWidth = scaledPageWidth + 32;
+                      final scrollContentWidth =
+                          contentWidth > constraints.maxWidth
+                          ? contentWidth
+                          : constraints.maxWidth;
 
-                      Widget pageContainer;
-                      if (isMobile) {
-                        final pageWidth = constraints.maxWidth * 0.95;
-                        pageContainer = Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: Center(
-                            child: SizedBox(
-                              width: pageWidth,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.topCenter,
-                                child: QuotationA4Page(
-                                  child: Stack(
-                                    children: [
-                                      _buildPageContent(
-                                        _pages[_currentPageIndex],
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: scrollContentWidth,
+                          child: SingleChildScrollView(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: verticalPadding,
+                                horizontal: 16,
+                              ),
+                              child: Center(
+                                child: SizedBox(
+                                  width: scaledPageWidth,
+                                  height: scaledPageHeight,
+                                  child: FittedBox(
+                                    fit: BoxFit.contain,
+                                    alignment: Alignment.topCenter,
+                                    child: QuotationA4Page(
+                                      child: Stack(
+                                        children: [
+                                          _buildPageContent(
+                                            _pages[_currentPageIndex],
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        );
-                      } else {
-                        pageContainer = Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 32),
-                          child: Center(
-                            child: Container(
-                              constraints: const BoxConstraints(maxWidth: 820),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.topCenter,
-                                child: QuotationA4Page(
-                                  child: Stack(
-                                    children: [
-                                      _buildPageContent(
-                                        _pages[_currentPageIndex],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
-                      return SingleChildScrollView(child: pageContainer);
+                        ),
+                      );
                     },
                   ),
                 ),

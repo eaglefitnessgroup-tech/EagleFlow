@@ -105,8 +105,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
 
     try {
       final repo = ServiceLocator().quotationRepository;
-      final savedQuotation = await repo.saveQuotation(_controller.quotation);
-      _controller.loadQuotation(savedQuotation);
+      await _controller.save(repo);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../domain/quotation.dart';
 import '../domain/quotation_line_item.dart';
 import '../domain/quotation_charges.dart';
+import '../data/quotation_repository.dart';
 import '../../products/domain/product.dart';
 
 class QuotationController extends ChangeNotifier {
@@ -15,6 +16,12 @@ class QuotationController extends ChangeNotifier {
   void loadQuotation(Quotation newQuotation) {
     _quotation = newQuotation;
     notifyListeners();
+  }
+
+  Future<Quotation> save(QuotationRepository repository) async {
+    final savedQuotation = await repository.saveQuotation(_quotation);
+    loadQuotation(savedQuotation);
+    return savedQuotation;
   }
 
   void updateCustomerName(String name) {
