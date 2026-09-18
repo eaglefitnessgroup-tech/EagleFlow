@@ -12,6 +12,7 @@ import '../presentation/preview/quotation_document_formatters.dart';
 import '../presentation/preview/utils/quotation_paginator.dart';
 import '../presentation/preview/quotation_layout_spec.dart';
 import 'quotation_calculator.dart';
+import 'quotation_amount_in_words_formatter.dart';
 import '../../../../core/di/service_locator.dart';
 import 'salesperson_name_resolver.dart';
 import '../presentation/preview/components/quotation_numeric_fit_helper.dart';
@@ -235,7 +236,16 @@ class QuotationPdfService {
                     child: pw.Text('QUOTATION TO', style: _smallBoldStyle()),
                   ),
                   pw.SizedBox(height: 4),
-                  pw.Container(width: 130, height: 1.5, color: _navy),
+                  pw.Container(
+                    width: 130,
+                    height: 1.5,
+                    alignment: pw.Alignment.center,
+                    child: pw.Container(
+                      width: 130,
+                      height: 1,
+                      color: _textMuted,
+                    ),
+                  ),
                   pw.SizedBox(height: 8),
                   _buildCustomerRow(
                     'CUSTOMER',
@@ -349,7 +359,7 @@ class QuotationPdfService {
         decoration: pw.BoxDecoration(
           border: pw.Border(
             top: pw.BorderSide(color: _navy, width: 1.5),
-            bottom: pw.BorderSide(color: _border, width: 1.5),
+            bottom: pw.BorderSide(color: _textMuted, width: 1),
           ),
         ),
         padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 2),
@@ -598,7 +608,7 @@ class QuotationPdfService {
 
     return pw.Container(
       width: double.infinity,
-      padding: const pw.EdgeInsets.only(top: 16, bottom: 8, left: 16, right: 0),
+      padding: const pw.EdgeInsets.only(top: 12, bottom: 4, left: 16, right: 0),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.end,
         children: [
@@ -623,7 +633,7 @@ class QuotationPdfService {
             ),
           _buildTotalRow('VAT (${quotation.charges.vatPercentage}%)', vat),
 
-          pw.SizedBox(height: 4),
+          pw.SizedBox(height: 2),
           pw.Divider(color: _border, thickness: 1, height: 1),
           pw.SizedBox(height: 4),
 
@@ -661,6 +671,37 @@ class QuotationPdfService {
                       maxLines: 1,
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Container(
+            width: double.infinity,
+            height: QuotationLayoutSpec.amountInWordsHeight,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'AMOUNT IN WORDS',
+                  style: pw.TextStyle(
+                    font: _fontBold,
+                    fontSize: 7.5,
+                    color: _textMuted,
+                    letterSpacing: 0.4,
+                    height: 1.1,
+                  ),
+                ),
+                pw.SizedBox(height: 1),
+                pw.Text(
+                  QuotationAmountInWordsFormatter.format(grandTotal),
+                  style: pw.TextStyle(
+                    font: _fontMedium,
+                    fontSize: 8,
+                    color: _textMain,
+                    height: 1.05,
+                  ),
+                  maxLines: 2,
                 ),
               ],
             ),
@@ -711,7 +752,12 @@ class QuotationPdfService {
           style: _smallBoldStyle(fontSize: 10.5).copyWith(letterSpacing: 0.6),
         ),
         pw.SizedBox(height: 2),
-        pw.Container(width: 55, height: 1.5, color: _navy),
+        pw.Container(
+          width: 55,
+          height: 1.5,
+          alignment: pw.Alignment.center,
+          child: pw.Container(width: 55, height: 1, color: _textMuted),
+        ),
         pw.SizedBox(height: 8),
 
         pw.Table(
@@ -725,25 +771,25 @@ class QuotationPdfService {
           children: [
             _buildBankTableRow(
               'BANK NAME',
-              'Mashreq Bank',
-              'FAB / First Abu Dhabi Bank',
+              'MASHREQ BANK',
+              'FAB [FIRST ABU DHABI BANK]',
             ),
             _buildBankTableRow(
               'ACCOUNT NAME',
               CompanyProfile.defaultProfile.legalName,
-              CompanyProfile.defaultProfile.legalName,
+              'MAX EAGLE FITNESS SPORT EQUIPMENT TRADING L L C',
             ),
             _buildBankTableRow(
               'ACCOUNT NUMBER',
-              '014529018440',
-              '1103948839201',
+              '019100814712',
+              '1001326712876001',
             ),
             _buildBankTableRow(
               'IBAN NUMBER',
-              'AE82 0330 0014 5290 1844 0',
-              'AE12 0240 0011 0394 8839 201',
+              'AE270330000019100814712',
+              'AE590351001326712876001',
             ),
-            _buildBankTableRow('SWIFT CODE', 'MASHAEAD', 'NBADAEAD'),
+            _buildBankTableRow('SWIFT CODE', 'BOMLAEAD', 'NBADAEAA'),
             _buildBankTableRow('CURRENCY', 'AED', 'AED'),
           ],
         ),

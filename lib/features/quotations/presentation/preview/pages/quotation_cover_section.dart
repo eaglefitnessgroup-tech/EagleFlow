@@ -64,7 +64,12 @@ class QuotationCoverSection extends StatelessWidget {
                   Container(
                     width: 130,
                     height: 1.5,
-                    color: QuotationDocumentTheme.navy,
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 130,
+                      height: 1,
+                      color: QuotationDocumentTheme.textMuted,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   _buildCustomerRow(

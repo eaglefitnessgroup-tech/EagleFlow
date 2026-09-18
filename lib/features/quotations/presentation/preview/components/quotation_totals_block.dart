@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../domain/quotation.dart';
 import '../../../application/quotation_calculator.dart';
+import '../../../application/quotation_amount_in_words_formatter.dart';
 import '../quotation_document_theme.dart';
 import '../quotation_document_formatters.dart';
+import '../quotation_layout_spec.dart';
 
 class QuotationTotalsBlock extends StatelessWidget {
   final Quotation quotation;
@@ -23,7 +25,7 @@ class QuotationTotalsBlock extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: 16, bottom: 8, left: 16, right: 0),
+      padding: const EdgeInsets.only(top: 12, bottom: 4, left: 16, right: 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -44,7 +46,7 @@ class QuotationTotalsBlock extends StatelessWidget {
               isDiscount: true,
             ),
           _buildRow('VAT (${quotation.charges.vatPercentage}%)', vat),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           const Divider(
             color: QuotationDocumentTheme.border,
             thickness: 1,
@@ -79,6 +81,36 @@ class QuotationTotalsBlock extends StatelessWidget {
                       maxLines: 1,
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: double.infinity,
+            height: QuotationLayoutSpec.amountInWordsHeight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AMOUNT IN WORDS',
+                  style: QuotationDocumentTheme.smallBold.copyWith(
+                    color: QuotationDocumentTheme.textMuted,
+                    fontSize: 7.5,
+                    letterSpacing: 0.4,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  QuotationAmountInWordsFormatter.format(grandTotal),
+                  style: QuotationDocumentTheme.small.copyWith(
+                    color: QuotationDocumentTheme.textMain,
+                    fontSize: 8,
+                    height: 1.05,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.clip,
                 ),
               ],
             ),

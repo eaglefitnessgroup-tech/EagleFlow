@@ -37,7 +37,12 @@ class QuotationInfoPage extends StatelessWidget {
               Container(
                 width: 55,
                 height: 1.5,
-                color: QuotationDocumentTheme.navy,
+                alignment: Alignment.center,
+                child: Container(
+                  width: 55,
+                  height: 1,
+                  color: QuotationDocumentTheme.textMuted,
+                ),
               ),
               const SizedBox(height: 8),
 
@@ -55,25 +60,25 @@ class QuotationInfoPage extends StatelessWidget {
                 children: [
                   _buildTableRow(
                     'BANK NAME',
-                    'Mashreq Bank',
-                    'FAB / First Abu Dhabi Bank',
+                    'MASHREQ BANK',
+                    'FAB [FIRST ABU DHABI BANK]',
                   ),
                   _buildTableRow(
                     'ACCOUNT NAME',
                     CompanyProfile.defaultProfile.legalName,
-                    CompanyProfile.defaultProfile.legalName,
+                    'MAX EAGLE FITNESS SPORT EQUIPMENT TRADING L L C',
                   ),
                   _buildTableRow(
                     'ACCOUNT NUMBER',
-                    '014529018440',
-                    '1103948839201',
+                    '019100814712',
+                    '1001326712876001',
                   ),
                   _buildTableRow(
                     'IBAN NUMBER',
-                    'AE82 0330 0014 5290 1844 0',
-                    'AE12 0240 0011 0394 8839 201',
+                    'AE270330000019100814712',
+                    'AE590351001326712876001',
                   ),
-                  _buildTableRow('SWIFT CODE', 'MASHAEAD', 'NBADAEAD'),
+                  _buildTableRow('SWIFT CODE', 'BOMLAEAD', 'NBADAEAA'),
                   _buildTableRow('CURRENCY', 'AED', 'AED'),
                 ],
               ),

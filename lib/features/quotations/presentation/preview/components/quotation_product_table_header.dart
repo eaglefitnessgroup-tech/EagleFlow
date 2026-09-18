@@ -11,7 +11,10 @@ class QuotationProductTableHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         border: Border(
           top: BorderSide(color: QuotationDocumentTheme.navy, width: 1.5),
-          bottom: BorderSide(color: QuotationDocumentTheme.border, width: 1.5),
+          bottom: BorderSide(
+            color: QuotationDocumentTheme.textMuted,
+            width: 1,
+          ),
         ),
       ),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),

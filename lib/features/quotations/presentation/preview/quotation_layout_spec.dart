@@ -22,6 +22,7 @@ class QuotationLayoutSpec {
   static const double tableBorderWidth = 1.0;
   static const double tableRowHeight = 44; // reduced for maximum density
   static const double tableHeaderHeight = 42;
+  static const double amountInWordsHeight = 26;
 
   // Image constraints
   static const double productImageSize = 32; // optimized compact size

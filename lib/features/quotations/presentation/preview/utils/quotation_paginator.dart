@@ -52,8 +52,13 @@ class QuotationPaginator {
     if (quotation.charges.installationCharges > 0) chargeRows++;
     if (quotation.charges.otherCharges > 0) chargeRows++;
     if (quotation.charges.overallDiscount > 0) chargeRows++;
-    // Explicit totals height: 24 padding + rows(20) + 40 bottom block (4+1+4+31)
-    final double totalsHeight = 24.0 + (chargeRows * 20.0) + 40.0;
+    // Explicit totals height: padding + rows + Grand Total + Amount in Words.
+    final double totalsHeight =
+        16.0 +
+        (chargeRows * 20.0) +
+        40.0 +
+        2.0 +
+        QuotationLayoutSpec.amountInWordsHeight;
 
     List<QuotationProductsPageModel> productPages = [];
     List<QuotationLineItem> currentChunk = [];
@@ -84,7 +89,11 @@ class QuotationPaginator {
       if (item.description != null && item.description!.isNotEmpty) {
         final TextPainter descPainter = TextPainter(
           text: TextSpan(
-            text: QuotationDocumentFormatters.formatSpecification(item.description) ?? '',
+            text:
+                QuotationDocumentFormatters.formatSpecification(
+                  item.description,
+                ) ??
+                '',
             style: QuotationDocumentTheme.small.copyWith(
               fontSize: 8.0,
               color: QuotationDocumentTheme.textMain,
