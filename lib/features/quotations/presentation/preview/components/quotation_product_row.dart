@@ -58,7 +58,10 @@ class QuotationProductRow extends StatelessWidget {
                 children: [
                   Text(
                     item.name,
-                    style: QuotationDocumentTheme.bodyBold,
+                    style: QuotationDocumentTheme.bodyBold.copyWith(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -96,17 +99,17 @@ class QuotationProductRow extends StatelessWidget {
           QuotationNumericFitHelper.buildPreviewCell(
             QuotationDocumentFormatters.formatCurrency(item.unitPrice),
             QuotationLayoutSpec.columnFlex['unitPrice']!,
-            right: true,
+            center: true,
           ),
           QuotationNumericFitHelper.buildPreviewCell(
             item.discount > 0 ? '${item.discount}%' : '—',
             QuotationLayoutSpec.columnFlex['discount']!,
-            right: true,
+            center: true,
           ),
           QuotationNumericFitHelper.buildPreviewCell(
             QuotationDocumentFormatters.formatCurrency(lineTotal),
             QuotationLayoutSpec.columnFlex['amount']!,
-            right: true,
+            center: true,
             bold: true,
           ),
         ],

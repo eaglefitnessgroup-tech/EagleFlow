@@ -18,16 +18,21 @@ class QuotationProductTableHeader extends StatelessWidget {
       child: Row(
         children: [
           _buildCell(
-            'No.',
+            'S No.',
             QuotationLayoutSpec.columnFlex['sno']!,
             center: true,
+            scaleDown: false,
           ),
           _buildCell(
             'Photo',
             QuotationLayoutSpec.columnFlex['photo']!,
             center: true,
           ),
-          _buildCell('Product', QuotationLayoutSpec.columnFlex['product']!),
+          _buildCell(
+            'Product',
+            QuotationLayoutSpec.columnFlex['product']!,
+            horizontalPadding: 12,
+          ),
           _buildCell(
             'Qty',
             QuotationLayoutSpec.columnFlex['qty']!,
@@ -36,17 +41,17 @@ class QuotationProductTableHeader extends StatelessWidget {
           _buildCell(
             'Price',
             QuotationLayoutSpec.columnFlex['unitPrice']!,
-            right: true,
+            center: true,
           ),
           _buildCell(
             'Disc.',
             QuotationLayoutSpec.columnFlex['discount']!,
-            right: true,
+            center: true,
           ),
           _buildCell(
             'Amount',
             QuotationLayoutSpec.columnFlex['amount']!,
-            right: true,
+            center: true,
           ),
         ],
       ),
@@ -58,20 +63,27 @@ class QuotationProductTableHeader extends StatelessWidget {
     int flex, {
     bool center = false,
     bool right = false,
+    bool scaleDown = true,
+    double horizontalPadding = 4,
   }) {
+    final alignment = center
+        ? Alignment.center
+        : right
+        ? Alignment.centerRight
+        : Alignment.centerLeft;
+    final label = Text(text, style: QuotationDocumentTheme.smallBold);
+
     return Expanded(
       flex: flex,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: center
-              ? Alignment.center
-              : right
-              ? Alignment.centerRight
-              : Alignment.centerLeft,
-          child: Text(text, style: QuotationDocumentTheme.smallBold),
-        ),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+        child: scaleDown
+            ? FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: alignment,
+                child: label,
+              )
+            : Align(alignment: alignment, child: label),
       ),
     );
   }

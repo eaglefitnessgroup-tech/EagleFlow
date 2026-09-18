@@ -73,6 +73,7 @@ class QuotationTotalsBlock extends StatelessWidget {
                       QuotationDocumentFormatters.formatCurrency(grandTotal),
                       style: QuotationDocumentTheme.h2.copyWith(
                         color: QuotationDocumentTheme.navy,
+                        fontSize: 16,
                       ),
                       textAlign: TextAlign.right,
                       maxLines: 1,

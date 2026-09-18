@@ -194,7 +194,7 @@ class QuotationInfoPage extends StatelessWidget {
 
   Widget _buildTermsSection(String title, String content) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 9.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -203,8 +203,9 @@ class QuotationInfoPage extends StatelessWidget {
           Text(
             content,
             style: QuotationDocumentTheme.small.copyWith(
-              fontSize: 9.6,
-              height: 1.3,
+              fontSize: 10.1,
+              color: QuotationDocumentTheme.textMain,
+              height: 1.30,
             ),
           ),
         ],

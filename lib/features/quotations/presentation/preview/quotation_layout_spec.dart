@@ -28,9 +28,9 @@ class QuotationLayoutSpec {
 
   // Column Proportional Widths
   static const Map<String, int> columnFlex = {
-    'sno': 4,
-    'photo': 8,
-    'product': 52,
+    'sno': 6,
+    'photo': 9,
+    'product': 49,
     'qty': 6,
     'unitPrice': 10,
     'discount': 8,
