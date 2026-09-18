@@ -28,6 +28,8 @@ typedef QuotationFileDownloader =
 typedef QuotationPdfGenerator = Future<Uint8List> Function(Quotation quotation);
 typedef QuotationPdfSaver =
     Future<String?> Function(Uint8List bytes, String filename);
+typedef QuotationPdfPrinter =
+    Future<void> Function(Uint8List bytes, String filename);
 
 class QuotationPreviewScreen extends StatefulWidget {
   const QuotationPreviewScreen({
@@ -36,6 +38,7 @@ class QuotationPreviewScreen extends StatefulWidget {
     this.fileDownloader,
     this.pdfGenerator,
     this.pdfSaver,
+    this.pdfPrinter,
     this.pdfShareHelper,
   });
 
@@ -43,6 +46,7 @@ class QuotationPreviewScreen extends StatefulWidget {
   final QuotationFileDownloader? fileDownloader;
   final QuotationPdfGenerator? pdfGenerator;
   final QuotationPdfSaver? pdfSaver;
+  final QuotationPdfPrinter? pdfPrinter;
   final PdfShareHelper? pdfShareHelper;
 
   @override
@@ -236,6 +240,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
 
   Future<void> _handleExcelExport() async {
     if (_controller == null) return;
+    if (!_hasQuotationNumber()) return;
 
     try {
       final quotation = _controller!.quotation;
@@ -268,6 +273,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
     bool showSaveConfirmation = true,
   }) async {
     if (_controller == null || _isGeneratingPdf) return;
+    if (!_hasQuotationNumber()) return;
 
     setState(() {
       _isGeneratingPdf = true;
@@ -293,10 +299,15 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
           ).showSnackBar(SnackBar(content: Text('Saved to $outputPath')));
         }
       } else if (action == 'print') {
-        await Printing.layoutPdf(
-          onLayout: (_) async => pdfBytes,
-          name: filename,
-        );
+        final printer = widget.pdfPrinter;
+        if (printer == null) {
+          await Printing.layoutPdf(
+            onLayout: (_) async => pdfBytes,
+            name: filename,
+          );
+        } else {
+          await printer(pdfBytes, filename);
+        }
       } else if (action == 'share') {
         try {
           await (widget.pdfShareHelper ?? PdfShareHelper()).sharePdf(
@@ -330,6 +341,19 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         });
       }
     }
+  }
+
+  bool _hasQuotationNumber() {
+    if (_controller!.quotation.quotationNumber.trim().isNotEmpty) return true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Please save the quotation first to generate a quotation number.',
+        ),
+      ),
+    );
+    return false;
   }
 
   Widget _buildPageContent(QuotationPreviewPage pageModel) {
