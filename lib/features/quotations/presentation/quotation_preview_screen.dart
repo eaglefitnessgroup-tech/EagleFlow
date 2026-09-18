@@ -57,6 +57,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
   int _currentPageIndex = 0;
   int _zoomPercent = 100;
   QuotationController? _controller;
+  bool _returnsToOriginatingEditor = false;
   List<QuotationPreviewPage> _pages = [];
   bool _isError = false;
   String _errorMsg = '';
@@ -72,10 +73,12 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
 
     if (args is QuotationController) {
       _controller = args;
+      _returnsToOriginatingEditor = true;
       _pages = QuotationPaginator.paginate(_controller!.quotation);
     } else if (args is Quotation) {
       _controller = QuotationController(QuotationDefaults.createEmptyDraft());
       _controller!.loadQuotation(args);
+      _returnsToOriginatingEditor = false;
       _pages = QuotationPaginator.paginate(_controller!.quotation);
     } else {
       _isError = true;
@@ -174,6 +177,11 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
 
   void _onEdit() {
     if (_controller == null) return;
+
+    if (_returnsToOriginatingEditor) {
+      Navigator.pop(context, _controller!.quotation);
+      return;
+    }
 
     Navigator.pushReplacementNamed(
       context,

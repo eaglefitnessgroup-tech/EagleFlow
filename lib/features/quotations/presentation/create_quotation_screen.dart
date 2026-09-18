@@ -180,12 +180,15 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                         canPreview: canPreview,
                         isSaving: _isSaving,
                         onSaveDraft: _handleSave,
-                        onPreview: () {
-                          Navigator.pushNamed(
+                        onPreview: () async {
+                          final updatedQuotation = await Navigator.pushNamed(
                             context,
                             '/quotation-preview',
                             arguments: _controller,
                           );
+                          if (mounted && updatedQuotation is Quotation) {
+                            _controller.loadQuotation(updatedQuotation);
+                          }
                         },
                       );
                     },
