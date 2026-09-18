@@ -38,7 +38,9 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     super.didChangeDependencies();
     if (!_isInit) {
       final args = ModalRoute.of(context)?.settings.arguments;
-      if (args is Quotation) {
+      if (args is QuotationController) {
+        _controller = args;
+      } else if (args is Quotation) {
         _controller = QuotationController(args);
       } else {
         // Inject current user into the new draft so salesperson fields are

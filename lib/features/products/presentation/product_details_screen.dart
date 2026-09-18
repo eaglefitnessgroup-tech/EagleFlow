@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../quotations/application/quotation_controller.dart';
+import '../../quotations/domain/quotation_defaults.dart';
 import '../domain/product.dart';
 import 'widgets/details/product_image_panel.dart';
 import 'widgets/details/product_info_section.dart';
@@ -64,6 +66,23 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         });
       }
     }
+  }
+
+  Future<void> _handleAddToQuotation() async {
+    final product = _product;
+    if (product == null) return;
+
+    final draft = QuotationDefaults.createEmptyDraft(
+      salespersonId: ServiceLocator().authController.currentUser?.id ?? '',
+    );
+    final controller = QuotationController(draft)
+      ..addProduct(product, quantity: _quantity);
+
+    await Navigator.pushNamed(
+      context,
+      '/create-quotation',
+      arguments: controller,
+    );
   }
 
   @override
@@ -149,6 +168,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       bottomNavigationBar: ProductDetailsBottomBar(
         product: product,
         quantity: _quantity,
+        onAddToQuotation: _handleAddToQuotation,
       ),
     );
   }

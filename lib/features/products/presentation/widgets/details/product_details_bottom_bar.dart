@@ -5,11 +5,13 @@ import '../../../../../app/theme/app_colors.dart';
 class ProductDetailsBottomBar extends StatelessWidget {
   final Product product;
   final int quantity;
+  final VoidCallback onAddToQuotation;
 
   const ProductDetailsBottomBar({
     super.key,
     required this.product,
     required this.quantity,
+    required this.onAddToQuotation,
   });
 
   String _formatPrice(double price) {
@@ -21,70 +23,9 @@ class ProductDetailsBottomBar extends StatelessWidget {
     return priceStr.replaceAllMapped(reg, (Match m) => '${m[1]},');
   }
 
-  void _showOutOfStockDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(
-          'Product is out of stock',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: const Text(
-          'This item can still be included in the quotation.',
-          style: TextStyle(color: AppColors.charcoal),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: AppColors.mutedText,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _showSuccessSnackbar(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Add Anyway',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessSnackbar(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$quantity x ${product.name} will be added to the quotation',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final double totalPrice = product.sellingPrice * quantity;
-    final bool isOutOfStock = product.openingStock <= 0;
 
     return Container(
       padding: EdgeInsets.only(
@@ -134,13 +75,7 @@ class ProductDetailsBottomBar extends StatelessWidget {
             ),
             Expanded(
               child: ElevatedButton(
-                onPressed: () {
-                  if (isOutOfStock) {
-                    _showOutOfStockDialog(context);
-                  } else {
-                    _showSuccessSnackbar(context);
-                  }
-                },
+                onPressed: onAddToQuotation,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: AppColors.primaryBlue,
