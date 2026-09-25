@@ -10,6 +10,7 @@ import 'widgets/product_filter_row.dart';
 import 'widgets/product_card.dart';
 import 'add_edit_product_screen.dart';
 import 'bulk_import_screen.dart';
+import 'bulk_update_products_screen.dart';
 import '../../../../core/guards/admin_guard.dart';
 
 class ProductsScreen extends StatefulWidget {
@@ -276,13 +277,33 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
         );
 
-        final addProductBtn = TextButton(
+        final bulkUpdateBtn = TextButton.icon(
+          key: const Key('bulk-update-products-button'),
           onPressed: () {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (ctx) => const AddEditProductScreen(),
+                builder: (ctx) => const BulkUpdateProductsScreen(),
               ),
+            );
+          },
+          icon: const Icon(Icons.edit_note_outlined, size: 16),
+          label: const Text('Bulk Update'),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primaryBlue,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        );
+
+        final addProductBtn = TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (ctx) => const AddEditProductScreen()),
             );
           },
           style: TextButton.styleFrom(
@@ -298,16 +319,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
         if (isNarrow) {
           return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               countText,
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  bulkImportBtn,
-                  const SizedBox(width: 4),
-                  addProductBtn,
-                ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [bulkImportBtn, bulkUpdateBtn, addProductBtn],
+                ),
               ),
             ],
           );
@@ -320,6 +342,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
             Row(
               children: [
                 bulkImportBtn,
+                const SizedBox(width: 8),
+                bulkUpdateBtn,
                 const SizedBox(width: 8),
                 addProductBtn,
               ],

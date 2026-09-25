@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/products/presentation/products_screen.dart';
 import 'package:eagleflow/features/products/presentation/product_details_screen.dart';
@@ -6,6 +6,7 @@ import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/features/products/presentation/widgets/product_card.dart';
 import '../../../features/authentication/fake_auth_repository.dart';
 
@@ -33,7 +34,9 @@ void main() {
     DatabaseService().setDatabaseForTesting(db);
 
     ServiceLocator().mockAuthRepository = FakeAuthRepository();
-    await ServiceLocator().init();
+    ServiceLocator().mockProductRepository = SembastProductRepository();
+    await ServiceLocator().productRepository.init();
+    await ServiceLocator().productMasterController.loadProducts();
     await ServiceLocator().authController.logout();
 
     await ServiceLocator().productMasterController.addProduct(dummyProduct);
@@ -53,9 +56,12 @@ void main() {
   }
 
   group('Products Screen Permissions', () {
-    testWidgets('Admin sees Add Product', (WidgetTester tester) async {
+    testWidgets('Admin sees Add Product and Bulk Update', (
+      WidgetTester tester,
+    ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
+        await ServiceLocator().authController.login(
+          email: 'anshad@eagleflow.com',
           password: 'anshad123',
           rememberMe: true,
         );
@@ -65,13 +71,39 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('+ Add Product'), findsOneWidget);
+      expect(
+        find.byKey(const Key('bulk-update-products-button')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Admin can open Bulk Update Products', (
+      WidgetTester tester,
+    ) async {
+      await tester.runAsync(() async {
+        await ServiceLocator().authController.login(
+          email: 'anshad@eagleflow.com',
+          password: 'anshad123',
+          rememberMe: true,
+        );
+      });
+
+      await tester.pumpWidget(buildProductsScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('bulk-update-products-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bulk Update Products'), findsOneWidget);
+      expect(find.text('Download Current Products'), findsOneWidget);
+      expect(find.text('Select Excel File'), findsOneWidget);
     });
 
     testWidgets('Salesperson does not see Add Product', (
       WidgetTester tester,
     ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(email: 'ajmal@eagleflow.com',
+        await ServiceLocator().authController.login(
+          email: 'ajmal@eagleflow.com',
           password: 'ajmal123',
           rememberMe: true,
         );
@@ -81,6 +113,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('+ Add Product'), findsNothing);
+      expect(
+        find.byKey(const Key('bulk-update-products-button')),
+        findsNothing,
+      );
     });
 
     testWidgets('Null user treated as non-admin (hides Add Product)', (
@@ -92,6 +128,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('+ Add Product'), findsNothing);
+      expect(
+        find.byKey(const Key('bulk-update-products-button')),
+        findsNothing,
+      );
     });
   });
 
@@ -100,7 +140,8 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
+        await ServiceLocator().authController.login(
+          email: 'anshad@eagleflow.com',
           password: 'anshad123',
           rememberMe: true,
         );
@@ -129,7 +170,8 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.runAsync(() async {
-        await ServiceLocator().authController.login(email: 'ajmal@eagleflow.com',
+        await ServiceLocator().authController.login(
+          email: 'ajmal@eagleflow.com',
           password: 'ajmal123',
           rememberMe: true,
         );

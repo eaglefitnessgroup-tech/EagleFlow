@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import 'package:eagleflow/features/products/application/bulk_import_service.dart';
 import 'package:eagleflow/features/products/domain/bulk_import_models.dart';
+import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/products/domain/product_repository.dart';
 import 'package:eagleflow/core/supabase/supabase_service.dart';
@@ -80,6 +81,30 @@ class MockProductRepository implements ProductRepository {
       return product;
     }
     throw Exception('Not found');
+  }
+
+  @override
+  Future<Product> updateProductFields(
+    String productId,
+    ProductUpdatePatch patch,
+  ) async {
+    final product = _db[productId];
+    if (product == null) throw Exception('Not found');
+    if (patch.isEmpty) return product;
+
+    final updated = product.copyWith(
+      name: patch.productName,
+      category: patch.category,
+      brand: patch.brand,
+      sellingPrice: patch.sellingPrice,
+      unit: patch.unit,
+      minStockLevel: patch.minStockLevel,
+      description: patch.description,
+      isVatApplicable: patch.vatApplicable,
+      isActive: patch.isActive,
+    );
+    _db[productId] = updated;
+    return updated;
   }
 
   @override

@@ -6,12 +6,15 @@ import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/features/authentication/domain/app_user.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/features/products/data/supabase_product_repository.dart';
+import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
 
 // Fake Supabase Product Repository that intercepts network calls for testing
 class FakeSupabaseProductRepository extends SupabaseProductRepository {
   List<Map<String, dynamic>> serverProducts = [];
   bool overrideIsConnected = true;
+  String? lastPartialUpdateId;
+  Map<String, dynamic>? lastPartialUpdatePayload;
 
   FakeSupabaseProductRepository({
     required super.localCache,
@@ -43,6 +46,21 @@ class FakeSupabaseProductRepository extends SupabaseProductRepository {
     if (index != -1) {
       serverProducts[index] = {...serverProducts[index], ...data};
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>?> updateProductFieldsOnServer(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    if (!overrideIsConnected) throw Exception('Offline');
+    lastPartialUpdateId = id;
+    lastPartialUpdatePayload = Map<String, dynamic>.from(data);
+    final index = serverProducts.indexWhere((product) => product['id'] == id);
+    if (index == -1) return null;
+
+    serverProducts[index] = {...serverProducts[index], ...data};
+    return Map<String, dynamic>.from(serverProducts[index]);
   }
 }
 
@@ -334,6 +352,77 @@ void main() {
       );
     });
 
+    test('partial update sends only allowlisted non-null fields', () async {
+      final product = await repo.addProduct(
+        Product(
+          id: '',
+          productCode: 'PATCH-1',
+          name: 'Original',
+          category: 'Original category',
+          brand: 'Original brand',
+          sellingPrice: 25,
+          isVatApplicable: true,
+          isActive: true,
+          minStockLevel: 8,
+          openingStock: 19,
+          imageId: 'existing-image',
+          createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
+          updatedAt: DateTime.parse('2026-01-01T00:00:00Z'),
+        ),
+      );
 
+      final updated = await repo.updateProductFields(
+        product.id,
+        const ProductUpdatePatch(
+          productName: 'Updated',
+          sellingPrice: 0,
+          minStockLevel: 0,
+          vatApplicable: false,
+          isActive: false,
+        ),
+      );
+
+      expect(repo.lastPartialUpdateId, product.id);
+      expect(repo.lastPartialUpdatePayload!.keys.toSet(), {
+        'name',
+        'selling_price',
+        'min_stock_level',
+        'is_vat_applicable',
+        'is_active',
+        'updated_at',
+      });
+      expect(repo.lastPartialUpdatePayload!['selling_price'], 0);
+      expect(repo.lastPartialUpdatePayload!['min_stock_level'], 0);
+      expect(repo.lastPartialUpdatePayload!['is_vat_applicable'], isFalse);
+      expect(repo.lastPartialUpdatePayload!['is_active'], isFalse);
+      expect(updated.productCode, 'PATCH-1');
+      expect(updated.openingStock, 19);
+      expect(updated.imageId, 'existing-image');
+    });
+
+    test('empty partial update does not issue a server write', () async {
+      final product = await repo.addProduct(
+        Product(
+          id: '',
+          productCode: 'PATCH-NOOP',
+          name: 'Original',
+          category: 'Category',
+          brand: 'Brand',
+          sellingPrice: 25,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      final result = await repo.updateProductFields(
+        product.id,
+        const ProductUpdatePatch(),
+      );
+
+      expect(result.id, product.id);
+      expect(result.updatedAt, product.updatedAt);
+      expect(repo.lastPartialUpdateId, isNull);
+      expect(repo.lastPartialUpdatePayload, isNull);
+    });
   });
 }

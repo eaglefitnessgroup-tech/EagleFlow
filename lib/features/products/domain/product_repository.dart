@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'bulk_update_models.dart';
 import '../domain/product.dart';
 
 abstract class ProductRepository {
@@ -22,6 +23,12 @@ abstract class ProductRepository {
 
   /// Update an existing product
   Future<Product> updateProduct(Product product);
+
+  /// Update only the allowlisted, non-null fields in [patch].
+  Future<Product> updateProductFields(
+    String productId,
+    ProductUpdatePatch patch,
+  );
 
   /// Soft deactivate or fully activate a product
   Future<void> toggleProductStatus(String id, bool isActive);

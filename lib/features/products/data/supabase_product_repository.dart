@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../../../core/di/service_locator.dart';
+import '../domain/bulk_update_models.dart';
 import '../domain/product.dart';
 import '../domain/product_repository.dart';
 import 'sembast_product_repository.dart';
@@ -307,6 +308,35 @@ class SupabaseProductRepository implements ProductRepository {
   }
 
   @override
+  Future<Product> updateProductFields(
+    String productId,
+    ProductUpdatePatch patch,
+  ) async {
+    _checkAdmin();
+
+    final existingProduct = await localCache.getProductById(productId);
+    if (existingProduct == null) {
+      throw StateError('Product not found: $productId');
+    }
+    if (patch.isEmpty) return existingProduct;
+
+    if (!isConnectedToServer) {
+      throw Exception('Offline: Cannot update product.');
+    }
+
+    final payload = _toSupabaseUpdatePatch(patch)
+      ..['updated_at'] = DateTime.now().toUtc().toIso8601String();
+    final updatedRow = await updateProductFieldsOnServer(productId, payload);
+    if (updatedRow == null) {
+      throw StateError('Product not found: $productId');
+    }
+
+    final updatedProduct = _fromSupabase(updatedRow);
+    await localCache.updateProductFields(productId, patch);
+    return updatedProduct;
+  }
+
+  @override
   Future<void> toggleProductStatus(String id, bool isActive) async {
     _checkAdmin();
 
@@ -383,6 +413,20 @@ class SupabaseProductRepository implements ProductRepository {
     };
   }
 
+  Map<String, dynamic> _toSupabaseUpdatePatch(ProductUpdatePatch patch) {
+    return {
+      if (patch.productName != null) 'name': patch.productName,
+      if (patch.category != null) 'category': patch.category,
+      if (patch.brand != null) 'brand': patch.brand,
+      if (patch.sellingPrice != null) 'selling_price': patch.sellingPrice,
+      if (patch.unit != null) 'unit': patch.unit,
+      if (patch.minStockLevel != null) 'min_stock_level': patch.minStockLevel,
+      if (patch.description != null) 'description': patch.description,
+      if (patch.vatApplicable != null) 'is_vat_applicable': patch.vatApplicable,
+      if (patch.isActive != null) 'is_active': patch.isActive,
+    };
+  }
+
   Product _fromSupabase(Map<String, dynamic> row) {
     return Product(
       id: row['id'] as String,
@@ -430,5 +474,18 @@ class SupabaseProductRepository implements ProductRepository {
     Map<String, dynamic> data,
   ) async {
     await supabase.client!.from('products').update(data).eq('id', id);
+  }
+
+  @visibleForTesting
+  Future<Map<String, dynamic>?> updateProductFieldsOnServer(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    return await supabase.client!
+        .from('products')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/core/reports/reports_service.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
 import 'package:eagleflow/features/products/domain/product_repository.dart';
 import 'package:eagleflow/features/quotations/data/quotation_repository.dart';
 import 'package:eagleflow/features/quotations/domain/quotation.dart';
@@ -35,6 +36,12 @@ class MockProductRepository implements ProductRepository {
 
   @override
   Future<Product> updateProduct(Product product) async => product;
+
+  @override
+  Future<Product> updateProductFields(
+    String productId,
+    ProductUpdatePatch patch,
+  ) async => products.firstWhere((product) => product.id == productId);
 
   @override
   Future<void> deleteProduct(String id) async {}

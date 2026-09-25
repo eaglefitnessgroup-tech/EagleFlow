@@ -3,6 +3,7 @@ import 'package:sembast/sembast.dart';
 import 'package:sembast/blob.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_service.dart';
+import '../domain/bulk_update_models.dart';
 import '../domain/product.dart';
 import '../domain/product_repository.dart';
 import '../../quotations/domain/quotation.dart';
@@ -224,6 +225,40 @@ class SembastProductRepository implements ProductRepository {
     });
 
     return updatedProduct;
+  }
+
+  @override
+  Future<Product> updateProductFields(
+    String productId,
+    ProductUpdatePatch patch,
+  ) async {
+    final db = await _db;
+
+    return db.transaction((txn) async {
+      final record = await _productsStore.record(productId).get(txn);
+      if (record == null) {
+        throw StateError('Product not found: $productId');
+      }
+
+      final existingProduct = Product.fromJson(record);
+      if (patch.isEmpty) return existingProduct;
+
+      final updatedProduct = existingProduct.copyWith(
+        name: patch.productName,
+        category: patch.category,
+        brand: patch.brand,
+        sellingPrice: patch.sellingPrice,
+        unit: patch.unit,
+        minStockLevel: patch.minStockLevel,
+        description: patch.description,
+        isVatApplicable: patch.vatApplicable,
+        isActive: patch.isActive,
+        updatedAt: DateTime.now(),
+      );
+
+      await _productsStore.record(productId).put(txn, updatedProduct.toJson());
+      return updatedProduct;
+    });
   }
 
   @override
