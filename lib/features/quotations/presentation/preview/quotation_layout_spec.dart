@@ -25,7 +25,7 @@ class QuotationLayoutSpec {
   static const double amountInWordsHeight = 26;
 
   // Image constraints
-  static const double productImageSize = 32; // optimized compact size
+  static const double productImageSize = 52;
 
   // Column Proportional Widths
   static const Map<String, int> columnFlex = {

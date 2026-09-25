@@ -101,7 +101,6 @@ class QuotationPaginator {
             ),
           ),
           textDirection: TextDirection.ltr,
-          maxLines: 2,
         )..layout(maxWidth: productTextWidth);
         descHeight = 2.0 + descPainter.height;
       }

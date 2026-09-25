@@ -155,7 +155,7 @@ void main() {
     });
 
     testWidgets(
-      '5 products fit on Page 1 along with totals block when space allows',
+      '5 products paginate safely with a dedicated totals page',
       (WidgetTester tester) async {
         final List<QuotationLineItem> items = List.generate(
           5,
@@ -174,14 +174,16 @@ void main() {
         final productPages = pages
             .whereType<QuotationProductsPageModel>()
             .toList();
-        expect(productPages.length, 1);
-        expect(productPages[0].items.length, 5);
-        expect(productPages[0].hasTotals, isTrue);
+        expect(productPages.length, 2);
+        expect(productPages.first.items, hasLength(5));
+        expect(productPages.first.hasTotals, isFalse);
+        expect(productPages.last.items, isEmpty);
+        expect(productPages.last.hasTotals, isTrue);
       },
     );
 
     testWidgets(
-      '6 products fit on Page 1 along with totals block when space allows',
+      '6 products paginate safely with the larger product image',
       (WidgetTester tester) async {
         final List<QuotationLineItem> items = List.generate(
           6,
@@ -200,14 +202,16 @@ void main() {
         final productPages = pages
             .whereType<QuotationProductsPageModel>()
             .toList();
-        expect(productPages.length, 1);
-        expect(productPages[0].items.length, 6);
-        expect(productPages[0].hasTotals, isTrue);
+        expect(productPages.length, 2);
+        expect(productPages.first.items, hasLength(6));
+        expect(productPages.first.hasTotals, isFalse);
+        expect(productPages.last.items, isEmpty);
+        expect(productPages.last.hasTotals, isTrue);
       },
     );
 
     testWidgets(
-      '9 products: Page 1 contains 8 products, Page 2 contains 1 product + totals',
+      '9 products: Page 1 contains 6 products, Page 2 contains 3 + totals',
       (WidgetTester tester) async {
         final List<QuotationLineItem> items = List.generate(
           9,
@@ -227,9 +231,9 @@ void main() {
             .whereType<QuotationProductsPageModel>()
             .toList();
         expect(productPages.length, 2);
-        expect(productPages[0].items.length, 8);
+        expect(productPages[0].items.length, 6);
         expect(productPages[0].hasTotals, isFalse);
-        expect(productPages[1].items.length, 1);
+        expect(productPages[1].items.length, 3);
         expect(productPages[1].hasTotals, isTrue);
       },
     );
@@ -245,8 +249,7 @@ void main() {
           name:
               'Very long product name that will wrap to two lines easily because it is quite long',
           brand: 'Generic',
-          description:
-              'A similarly long description that will also naturally wrap to two lines',
+          description: 'Description line one\nDescription line two',
           quantity: 1,
           unitPrice: 100,
         ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -524,7 +525,9 @@ class QuotationPdfService {
                           color: _textMain,
                           height: 1.3,
                         ),
-                        maxLines: 2,
+                        softWrap: true,
+                        maxLines: null,
+                        overflow: pw.TextOverflow.visible,
                       ),
                     ),
                 ],
@@ -564,6 +567,11 @@ class QuotationPdfService {
         ],
       ),
     );
+  }
+
+  @visibleForTesting
+  pw.Widget buildProductRowForTesting(int index, QuotationLineItem item) {
+    return _buildProductRow(index, item);
   }
 
   pw.Widget _buildCell(

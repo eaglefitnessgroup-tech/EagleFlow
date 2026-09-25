@@ -104,6 +104,22 @@ void main() {
         expect(added.isCustom, false);
       });
 
+      test('addProduct preserves three description lines exactly', () {
+        const description =
+            'Product Dimension 1680×1710×1620mm\n'
+            'Pipe Thickness 3mm | Weight Stack: 100 kg\n'
+            'Net Weight 252 kg | 10 years frame warranty';
+        final product = p1.copyWith(description: description);
+
+        controller.addProduct(product);
+
+        expect(controller.quotation.lineItems.last.description, description);
+        expect(
+          controller.quotation.lineItems.last.description!.split('\n'),
+          hasLength(3),
+        );
+      });
+
       test('addProduct with zero or negative quantity normalizes to 1', () {
         controller.addProduct(p1, quantity: 0);
         expect(controller.quotation.lineItems.last.quantity, 1);

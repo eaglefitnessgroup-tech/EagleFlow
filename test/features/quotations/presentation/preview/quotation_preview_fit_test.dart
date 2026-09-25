@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/quotations/domain/quotation.dart';
@@ -7,10 +9,26 @@ import 'package:eagleflow/features/quotations/presentation/preview/utils/quotati
 import 'package:eagleflow/features/quotations/presentation/preview/models/quotation_preview_page.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/components/quotation_numeric_fit_helper.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/components/quotation_product_row.dart';
+import 'package:eagleflow/features/quotations/presentation/preview/quotation_layout_spec.dart';
+import 'package:eagleflow/features/products/presentation/widgets/product_image.dart';
 import 'package:eagleflow/features/quotations/application/quotation_pdf_service.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  Iterable<pw.Widget> pdfDescendants(pw.Widget widget) sync* {
+    yield widget;
+    if (widget is pw.Container && widget.child != null) {
+      yield* pdfDescendants(widget.child!);
+    } else if (widget is pw.SingleChildWidget && widget.child != null) {
+      yield* pdfDescendants(widget.child!);
+    } else if (widget is pw.MultiChildWidget) {
+      for (final child in widget.children) {
+        yield* pdfDescendants(child);
+      }
+    }
+  }
 
   QuotationLineItem createItem({
     required int idNum,
@@ -137,6 +155,164 @@ void main() {
 
       expect(find.text('100,000.00'), findsOneWidget);
       expect(find.text('200,000.00'), findsOneWidget);
+    });
+
+    testWidgets('Preview renders all three description lines without truncation', (
+      tester,
+    ) async {
+      const description =
+          'Product Dimension 1680×1710×1620mm\n'
+          'Pipe Thickness 3mm | Weight Stack: 100 kg\n'
+          'Net Weight 252 kg | 10 years frame warranty';
+      final item = createItem(idNum: 1, description: description);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: QuotationProductRow(index: 1, item: item)),
+        ),
+      );
+
+      final descriptionText = tester.widget<Text>(find.text(description));
+      expect(descriptionText.data, description);
+      expect(descriptionText.maxLines, isNull);
+      expect(descriptionText.overflow, TextOverflow.visible);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Preview does not truncate a longer multiline description', (
+      tester,
+    ) async {
+      const description = 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6';
+      final item = createItem(idNum: 1, description: description);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: QuotationProductRow(index: 1, item: item)),
+        ),
+      );
+
+      final descriptionText = tester.widget<Text>(find.text(description));
+      expect(descriptionText.maxLines, isNull);
+      expect(descriptionText.overflow, TextOverflow.visible);
+      expect(tester.getSize(find.text(description)).height, greaterThan(40));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Preview uses a centered 52px contained product image', (
+      tester,
+    ) async {
+      const description = 'Line 1\nLine 2\nLine 3';
+      final item = createItem(idNum: 1, description: description).copyWith(
+        imageBytes: base64Decode(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: QuotationProductRow(index: 1, item: item)),
+        ),
+      );
+
+      final productImage = tester.widget<ProductImage>(
+        find.byType(ProductImage),
+      );
+      expect(QuotationLayoutSpec.productImageSize, 52);
+      expect(productImage.width, 52);
+      expect(productImage.height, 52);
+      expect(productImage.fit, BoxFit.contain);
+      expect(
+        find.ancestor(
+          of: find.byType(ProductImage),
+          matching: find.byType(Center),
+        ),
+        findsWidgets,
+      );
+
+      final descriptionText = tester.widget<Text>(find.text(description));
+      expect(descriptionText.maxLines, isNull);
+      expect(descriptionText.overflow, TextOverflow.visible);
+      expect(tester.takeException(), isNull);
+    });
+
+    test('PDF product row renders all three description lines', () async {
+      const description =
+          'Product Dimension 1680×1710×1620mm\n'
+          'Pipe Thickness 3mm | Weight Stack: 100 kg\n'
+          'Net Weight 252 kg | 10 years frame warranty';
+      final item = createItem(idNum: 1, description: description);
+      final quotation = QuotationDefaults.createEmptyDraft().copyWith(
+        lineItems: [item],
+      );
+      final pdfService = QuotationPdfService();
+
+      final pdfBytes = await pdfService.generatePdf(quotation);
+      final row = pdfService.buildProductRowForTesting(1, item);
+      final descriptionText = pdfDescendants(row)
+          .whereType<pw.Text>()
+          .singleWhere(
+            (text) => (text.text as pw.TextSpan).text == description,
+          );
+
+      expect(pdfBytes, isNotEmpty);
+      expect((descriptionText.text as pw.TextSpan).text, description);
+      expect(descriptionText.maxLines, isNull);
+      expect(descriptionText.overflow, pw.TextOverflow.visible);
+    });
+
+    test('PDF uses the matching 52pt contained product image', () async {
+      const description = 'Line 1\nLine 2\nLine 3';
+      final item = createItem(idNum: 1, description: description).copyWith(
+        imageBytes: base64Decode(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        ),
+      );
+      final pdfService = QuotationPdfService();
+      await pdfService.generatePdf(
+        QuotationDefaults.createEmptyDraft().copyWith(lineItems: [item]),
+      );
+      final row = pdfService.buildProductRowForTesting(1, item);
+      final image = pdfDescendants(row).whereType<pw.Image>().single;
+      final descriptionText = pdfDescendants(row)
+          .whereType<pw.Text>()
+          .singleWhere(
+            (text) => (text.text as pw.TextSpan).text == description,
+          );
+
+      expect(image.width, 52);
+      expect(image.height, 52);
+      expect(image.fit, pw.BoxFit.contain);
+      expect(descriptionText.maxLines, isNull);
+      expect(descriptionText.overflow, pw.TextOverflow.visible);
+    });
+
+    test('Paginator accounts for expanded multiline product rows', () {
+      const shortDescription = 'Line 1\nLine 2';
+      const longDescription =
+          'Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8';
+      final shortQuotation = QuotationDefaults.createEmptyDraft().copyWith(
+        lineItems: List.generate(
+          20,
+          (i) => createItem(idNum: i + 1, description: shortDescription),
+        ),
+      );
+      final longQuotation = QuotationDefaults.createEmptyDraft().copyWith(
+        lineItems: List.generate(
+          20,
+          (i) => createItem(idNum: i + 1, description: longDescription),
+        ),
+      );
+
+      final shortPages = QuotationPaginator.paginate(shortQuotation)
+          .whereType<QuotationProductsPageModel>()
+          .toList();
+      final longPages = QuotationPaginator.paginate(longQuotation)
+          .whereType<QuotationProductsPageModel>()
+          .toList();
+
+      expect(longPages.length, greaterThan(shortPages.length));
+      expect(longPages.every((page) => page.items.isNotEmpty), isTrue);
+      expect(longPages.expand((page) => page.items), hasLength(20));
     });
 
     test('7. QuotationPdfService generates PDF successfully with numeric fit and dynamic pagination', () async {
