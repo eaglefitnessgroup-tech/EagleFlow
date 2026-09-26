@@ -111,6 +111,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
       listenable: controller,
       builder: (context, _) {
         final filteredProducts = _getFilteredProducts(controller);
+        final isLoading = controller.isLoading;
+        final loadError = controller.error;
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -161,14 +163,34 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             },
                           ),
                           const SizedBox(height: 24),
-                          _buildListHeader(filteredProducts.length),
-                          const SizedBox(height: 16),
+                          if (!isLoading && loadError == null) ...[
+                            _buildListHeader(filteredProducts.length),
+                            const SizedBox(height: 16),
+                          ],
                         ]),
                       ),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      sliver: filteredProducts.isEmpty
+                      sliver: isLoading
+                          ? const SliverToBoxAdapter(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 48),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.primaryBlue,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : loadError != null
+                          ? SliverToBoxAdapter(
+                              child: _buildLoadErrorState(
+                                loadError,
+                                controller.loadProducts,
+                              ),
+                            )
+                          : filteredProducts.isEmpty
                           ? SliverToBoxAdapter(child: _buildEmptyState())
                           : SliverList(
                               delegate: SliverChildBuilderDelegate((
@@ -427,6 +449,30 @@ class _ProductsScreenState extends State<ProductsScreen> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadErrorState(String message, Future<void> Function() retry) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            size: 48,
+            color: AppColors.statusRejectedText,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.statusRejectedText),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: retry, child: const Text('Retry')),
         ],
       ),
     );

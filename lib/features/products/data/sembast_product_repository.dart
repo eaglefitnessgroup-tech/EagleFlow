@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/database/database_service.dart';
 import '../domain/bulk_update_models.dart';
 import '../domain/product.dart';
+import '../domain/product_code.dart';
 import '../domain/product_repository.dart';
 import '../../quotations/domain/quotation.dart';
 
@@ -86,7 +87,7 @@ class SembastProductRepository implements ProductRepository {
   @override
   Future<bool> isProductCodeUnique(String code, {String? excludeId}) async {
     final db = await _db;
-    final normalized = code.trim().toUpperCase();
+    final normalized = normalizeProductCode(code);
     final finder = Finder(
       filter: Filter.equals('normalizedProductCode', normalized),
     );
@@ -329,7 +330,7 @@ class SembastProductRepository implements ProductRepository {
     String code, {
     String? excludeId,
   }) async {
-    final normalized = code.trim().toUpperCase();
+    final normalized = normalizeProductCode(code);
     final finder = Finder(
       filter: Filter.equals('normalizedProductCode', normalized),
     );

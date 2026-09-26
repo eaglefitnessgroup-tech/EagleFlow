@@ -4,12 +4,9 @@ import 'app/app.dart';
 
 import 'core/di/service_locator.dart';
 
-
 Future<void> main() async {
-  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
-  
-
-  ServiceLocator().init();
+  usePathUrlStrategy();
+  await ServiceLocator().init();
   runApp(const EagleFlowApp());
 }

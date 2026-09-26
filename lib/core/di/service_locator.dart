@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../sync/sync_coordinator.dart';
+import '../workspace/workspace_controller.dart';
 import '../../features/quotations/data/quotation_repository.dart';
 import '../../features/quotations/data/sembast_quotation_repository.dart';
 import '../../features/quotations/data/supabase_quotation_repository.dart';
@@ -46,7 +47,18 @@ class ServiceLocator {
         localCache: _sembastAuthRepository,
       );
 
-  late final AuthController authController = AuthController(authRepository);
+  late final AuthController authController = AuthController(
+    authRepository,
+    onAuthenticated: (user) async {
+      await workspaceController.initializeForUser(user.id);
+      try {
+        await syncCoordinator.start();
+      } catch (e) {
+        debugPrint('SyncCoordinator start failed. Error: $e');
+      }
+    },
+    onSignedOut: () async => workspaceController.reset(),
+  );
 
   late final SembastQuotationRepository _sembastQuotationRepository =
       SembastQuotationRepository();
@@ -55,7 +67,8 @@ class ServiceLocator {
   QuotationRepository? mockQuotationRepository;
 
   late final QuotationRepository quotationRepository =
-      mockQuotationRepository ?? SupabaseQuotationRepository(_sembastQuotationRepository, supabaseService);
+      mockQuotationRepository ??
+      SupabaseQuotationRepository(_sembastQuotationRepository, supabaseService);
 
   late final SembastProductRepository _sembastProductRepository =
       SembastProductRepository();
@@ -72,6 +85,12 @@ class ServiceLocator {
 
   late final ProductMasterController productMasterController =
       ProductMasterController(productRepository);
+
+  late final WorkspaceController workspaceController = WorkspaceController(
+    productRepository: productRepository,
+    productController: productMasterController,
+    quotationRepository: quotationRepository,
+  );
 
   late final SembastStockRepository _sembastStockRepository =
       SembastStockRepository();
@@ -113,7 +132,11 @@ class ServiceLocator {
         supabase: supabaseService,
       );
 
-  Future<void> init() async {
+  Future<void>? _initialization;
+
+  Future<void> init() => _initialization ??= _initialize();
+
+  Future<void> _initialize() async {
     // Phase 7: Initialize Supabase connection.
     // Runs before repository inits so that remote data can be synced on startup.
     // A Supabase failure never blocks startup (fallback to local Sembast).
@@ -123,34 +146,10 @@ class ServiceLocator {
       debugPrint('Supabase init failed. Continuing offline. Error: $e');
     }
 
-    try {
-      await authController.initialize();
-    } catch (e) {
-      // Safely ignore failures to prevent blocking app startup
-    }
+    await authController.initialize();
 
-    await productRepository.init();
-    await productMasterController.loadProducts();
-
-    if (stockRepository is SupabaseStockRepository) {
-      await (stockRepository as SupabaseStockRepository).init();
-    }
-
-    if (quotationRepository is SupabaseQuotationRepository) {
-      await (quotationRepository as SupabaseQuotationRepository).init();
-    }
-
-    try {
-      await reservationRepository.syncFromServer();
-    } catch (e) {
-      debugPrint('Reservation sync failed. Error: $e');
-    }
-
-    try {
-      // Initialize SyncCoordinator AFTER repositories and supabase
-      await syncCoordinator.start();
-    } catch (e) {
-      debugPrint('SyncCoordinator start failed. Error: $e');
+    if (!authController.isAuthenticated) {
+      await productRepository.init();
     }
   }
 }

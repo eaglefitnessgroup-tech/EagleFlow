@@ -4,6 +4,7 @@ import 'package:excel/excel.dart';
 import '../../../core/utils/file_download_util.dart';
 import '../domain/bulk_update_models.dart';
 import '../domain/product.dart';
+import '../domain/product_code.dart';
 import '../domain/product_condition.dart';
 
 typedef BulkProductWorkbookSaver =
@@ -321,7 +322,7 @@ class BulkProductUpdateService {
       if (codeCell.isFormula || codeCell.isNumeric || codeCell.isBlank) {
         continue;
       }
-      final normalizedCode = _normalizeProductCode(codeCell.text);
+      final normalizedCode = normalizeProductCode(codeCell.text);
       if (normalizedCode.isNotEmpty) {
         codeCounts.update(
           normalizedCode,
@@ -339,7 +340,7 @@ class BulkProductUpdateService {
     return nonEmptyRows.map((sourceRow) {
       final codeCell = sourceRow.cellAt(codeIndex);
       final originalCode = codeCell.text;
-      final normalizedCode = _normalizeProductCode(originalCode);
+      final normalizedCode = normalizeProductCode(originalCode);
       final errors = <String>[];
 
       if (codeCell.isFormula) {
@@ -486,9 +487,7 @@ class BulkProductUpdateService {
         !conditionCell.isBlank) {
       condition = ProductCondition.tryParse(conditionCell.text);
       if (condition == null) {
-        errors.add(
-          'Invalid Condition. Use New, Used, Refurbished, or Display.',
-        );
+        errors.add(ProductCondition.invalidValueMessage);
       }
     }
 
@@ -552,8 +551,7 @@ class BulkProductUpdateService {
     }
 
     ProductCondition? condition;
-    if (supplied.condition != null &&
-        supplied.condition != product.condition) {
+    if (supplied.condition != null && supplied.condition != product.condition) {
       condition = supplied.condition;
       changes.add(
         BulkProductUpdateChange(
@@ -751,8 +749,6 @@ class BulkProductUpdateService {
   }
 
   String _normalizeHeader(String value) => value.trim().toLowerCase();
-
-  String _normalizeProductCode(String value) => value.trim().toUpperCase();
 }
 
 class _RawCell {

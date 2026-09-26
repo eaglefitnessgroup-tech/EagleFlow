@@ -10,6 +10,7 @@ import '../../../core/supabase/supabase_service.dart';
 import '../../../core/di/service_locator.dart';
 import '../domain/bulk_update_models.dart';
 import '../domain/product.dart';
+import '../domain/product_code.dart';
 import '../domain/product_condition.dart';
 import '../domain/product_repository.dart';
 import 'sembast_product_repository.dart';
@@ -28,6 +29,8 @@ class SupabaseProductRepository implements ProductRepository {
 
   final Uuid _uuid = const Uuid();
   Future<void>? _activeSync;
+  String? _activeSyncOwner;
+  int _syncGeneration = 0;
 
   SupabaseProductRepository({required this.localCache, required this.supabase});
 
@@ -52,79 +55,98 @@ class SupabaseProductRepository implements ProductRepository {
   @override
   Future<void> init() async {
     await localCache.init();
-    if (isConnectedToServer) {
-      await _syncProductsDown();
-    }
   }
 
   Future<void> _syncProductsDown() async {
     if (!isConnectedToServer) return;
 
-    if (_activeSync != null) return _activeSync!;
+    final owner = _currentBusinessUserId;
+    if (owner != null && _activeSync != null && _activeSyncOwner == owner) {
+      return _activeSync!;
+    }
 
-    _activeSync = _performSyncDown().whenComplete(() {
-      _activeSync = null;
-    });
-
-    return _activeSync!;
+    final generation = ++_syncGeneration;
+    final sync = _runSync(owner, generation);
+    _activeSync = sync;
+    _activeSyncOwner = owner;
+    return sync;
   }
 
-  Future<void> _performSyncDown() async {
+  Future<void> _runSync(String? owner, int generation) async {
     try {
-      final serverProducts = await fetchProductsFromServer();
+      await _performSyncDown(owner, generation);
+    } finally {
+      if (generation == _syncGeneration) {
+        _activeSync = null;
+        _activeSyncOwner = null;
+      }
+    }
+  }
 
-      final db = await _db;
-      await db.transaction((txn) async {
-        for (var row in serverProducts) {
-          final isDeleted = row['deleted_at'] != null;
-          final serverProd = _fromSupabase(row);
+  Future<void> _performSyncDown(String? owner, int generation) async {
+    final serverProducts = await fetchProductsFromServer();
+    if (!_isCurrentSync(owner, generation)) return;
 
-          final localRecord = await _productsStore
-              .record(serverProd.id)
-              .get(txn);
+    final db = await _db;
+    await db.transaction((txn) async {
+      for (var row in serverProducts) {
+        if (!_isCurrentSync(owner, generation)) return;
+        final isDeleted = row['deleted_at'] != null;
+        final serverProd = _fromSupabase(row);
 
-          if (isDeleted) {
-            if (localRecord != null) {
-              await _productsStore.record(serverProd.id).delete(txn);
-            }
-            continue;
+        final localRecord = await _productsStore.record(serverProd.id).get(txn);
+
+        if (isDeleted) {
+          if (localRecord != null) {
+            await _productsStore.record(serverProd.id).delete(txn);
+          }
+          continue;
+        }
+
+        if (localRecord == null) {
+          // Delete any local product that might have the exact same product code
+          // to avoid uniqueness constraint violations.
+          final finder = Finder(
+            filter: Filter.equals(
+              'normalizedProductCode',
+              normalizeProductCode(serverProd.productCode),
+            ),
+          );
+          final conflicts = await _productsStore.find(txn, finder: finder);
+          for (var conflict in conflicts) {
+            await _productsStore.record(conflict.key).delete(txn);
           }
 
-          if (localRecord == null) {
-            // Delete any local product that might have the exact same product code
-            // to avoid uniqueness constraint violations.
-            final finder = Finder(
-              filter: Filter.equals(
-                'normalizedProductCode',
-                serverProd.productCode.trim().toUpperCase(),
-              ),
+          await _productsStore
+              .record(serverProd.id)
+              .put(txn, serverProd.toJson());
+        } else {
+          final localProd = Product.fromJson(localRecord);
+          if (serverProd.updatedAt.isAfter(localProd.updatedAt)) {
+            final merged = serverProd.copyWith(
+              imageId:
+                  serverProd.imageId ??
+                  localProd.imageId, // Prefer server, fallback to local
             );
-            final conflicts = await _productsStore.find(txn, finder: finder);
-            for (var conflict in conflicts) {
-              await _productsStore.record(conflict.key).delete(txn);
-            }
-
             await _productsStore
                 .record(serverProd.id)
-                .put(txn, serverProd.toJson());
-          } else {
-            final localProd = Product.fromJson(localRecord);
-            if (serverProd.updatedAt.isAfter(localProd.updatedAt)) {
-              final merged = serverProd.copyWith(
-                imageId:
-                    serverProd.imageId ??
-                    localProd.imageId, // Prefer server, fallback to local
-              );
-              await _productsStore
-                  .record(serverProd.id)
-                  .put(txn, merged.toJson());
-            }
+                .put(txn, merged.toJson());
           }
         }
-      });
-    } catch (e) {
-      // Background sync fail is silently ignored
-    }
+      }
+    });
+  }
+
+  String? get _currentBusinessUserId =>
+      ServiceLocator().authController.currentUser?.id;
+
+  bool _isCurrentSync(String? owner, int generation) =>
+      generation == _syncGeneration && _currentBusinessUserId == owner;
+
+  void invalidateSession() {
+    _syncGeneration++;
+    _activeSync = null;
+    _activeSyncOwner = null;
   }
 
   @override
@@ -142,13 +164,16 @@ class SupabaseProductRepository implements ProductRepository {
 
     final db = await _db;
     await db.transaction((txn) async {
-      if (eventType == PostgresChangeEvent.insert || eventType == PostgresChangeEvent.update) {
+      if (eventType == PostgresChangeEvent.insert ||
+          eventType == PostgresChangeEvent.update) {
         if (newRecord.isNotEmpty) {
           final serverProd = _fromSupabase(newRecord);
           if (newRecord['deleted_at'] != null) {
             await _productsStore.record(serverProd.id).delete(txn);
           } else {
-            await _productsStore.record(serverProd.id).put(txn, serverProd.toJson());
+            await _productsStore
+                .record(serverProd.id)
+                .put(txn, serverProd.toJson());
           }
         }
       } else if (eventType == PostgresChangeEvent.delete) {
@@ -230,15 +255,18 @@ class SupabaseProductRepository implements ProductRepository {
         try {
           if (isConnectedToServer) {
             final imageId = updatedProduct.imageId!;
-            final uploadPath = imageId.contains('/') ? imageId : '$imageId/main.jpg';
+            final uploadPath = imageId.contains('/')
+                ? imageId
+                : '$imageId/main.jpg';
             await supabase.client!.storage
                 .from('product-images')
                 .uploadBinary(uploadPath, updatedProduct.imageBytes!);
           }
         } catch (e) {
-          debugPrint('Storage Upload Error: Failed to upload product image. Product data was saved, but the image may be missing on the server. Details: $e');
+          debugPrint(
+            'Storage Upload Error: Failed to upload product image. Product data was saved, but the image may be missing on the server. Details: $e',
+          );
         }
-
       }
 
       await _productsStore.record(newId).put(txn, updatedProduct.toJson());
@@ -260,11 +288,9 @@ class SupabaseProductRepository implements ProductRepository {
       throw Exception('Product code must be unique');
     }
 
-    if (!isConnectedToServer) throw Exception('Offline: Cannot update product.');
-    await updateProductOnServer(
-      updatedProduct.id,
-      _toSupabase(updatedProduct),
-    );
+    if (!isConnectedToServer)
+      throw Exception('Offline: Cannot update product.');
+    await updateProductOnServer(updatedProduct.id, _toSupabase(updatedProduct));
 
     // 2. Save locally
     final finalProduct = await localCache.updateProduct(updatedProduct);
@@ -295,13 +321,15 @@ class SupabaseProductRepository implements ProductRepository {
             final removePath = updatedProduct.imageId!.contains('/')
                 ? updatedProduct.imageId!
                 : '${updatedProduct.imageId}/main.jpg';
-            await supabase.client!.storage
-                .from('product-images')
-                .remove([removePath]);
+            await supabase.client!.storage.from('product-images').remove([
+              removePath,
+            ]);
           }
         }
       } catch (e) {
-        debugPrint('Storage Upload Error: Failed to upload/cleanup product image during update. Product data was updated, but the image state on the server may be inconsistent. Details: $e');
+        debugPrint(
+          'Storage Upload Error: Failed to upload/cleanup product image during update. Product data was updated, but the image state on the server may be inconsistent. Details: $e',
+        );
       }
     }
 
@@ -341,7 +369,8 @@ class SupabaseProductRepository implements ProductRepository {
   Future<void> toggleProductStatus(String id, bool isActive) async {
     _checkAdmin();
 
-    if (!isConnectedToServer) throw Exception('Offline: Cannot toggle product status.');
+    if (!isConnectedToServer)
+      throw Exception('Offline: Cannot toggle product status.');
     await updateProductOnServer(id, {
       'is_active': isActive,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -361,7 +390,8 @@ class SupabaseProductRepository implements ProductRepository {
       );
     }
 
-    if (!isConnectedToServer) throw Exception('Offline: Cannot delete product.');
+    if (!isConnectedToServer)
+      throw Exception('Offline: Cannot delete product.');
 
     final product = await getProductById(id);
 
@@ -377,9 +407,9 @@ class SupabaseProductRepository implements ProductRepository {
         final removePath = product.imageId!.contains('/')
             ? product.imageId!
             : '${product.imageId}/main.jpg';
-        await supabase.client!.storage
-            .from('product-images')
-            .remove([removePath]);
+        await supabase.client!.storage.from('product-images').remove([
+          removePath,
+        ]);
       } catch (e) {
         // Ignore deletion errors
       }
@@ -395,7 +425,7 @@ class SupabaseProductRepository implements ProductRepository {
     return {
       'id': p.id,
       'product_code': p.productCode,
-      'normalized_product_code': p.productCode.trim().toUpperCase(),
+      'normalized_product_code': normalizeProductCode(p.productCode),
       'name': p.name,
       'category': p.category,
       'brand': p.brand,
@@ -420,8 +450,7 @@ class SupabaseProductRepository implements ProductRepository {
       if (patch.productName != null) 'name': patch.productName,
       if (patch.category != null) 'category': patch.category,
       if (patch.brand != null) 'brand': patch.brand,
-      if (patch.condition != null)
-        'condition': patch.condition!.persistedValue,
+      if (patch.condition != null) 'condition': patch.condition!.persistedValue,
       if (patch.sellingPrice != null) 'selling_price': patch.sellingPrice,
       if (patch.unit != null) 'unit': patch.unit,
       if (patch.minStockLevel != null) 'min_stock_level': patch.minStockLevel,

@@ -656,6 +656,16 @@ void main() {
     });
     
     testWidgets('ProductPicker displays correct stock after Stock Out', (tester) async {
+      final loggedIn = await tester.runAsync(
+        () => ServiceLocator().authController.login(
+          email: 'admin@eagleflow.com',
+          password: 'pass',
+          rememberMe: false,
+        ),
+      );
+      expect(loggedIn, isTrue);
+      expect(ServiceLocator().workspaceController.isReady, isTrue);
+
       // 1. Initial product has openingStock > 0
       final product = ServiceLocator().productMasterController.products.firstWhere((p) => p.name == sampleProducts.first.name);
       expect(product.openingStock > 0, isTrue);

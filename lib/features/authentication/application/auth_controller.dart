@@ -2,10 +2,18 @@ import 'package:flutter/foundation.dart';
 import '../domain/app_user.dart';
 import '../domain/auth_repository.dart';
 
-enum AuthBootstrapState { initializing, authenticated, unauthenticated }
+enum AuthBootstrapState {
+  initializing,
+  authenticatedDataLoading,
+  authenticated,
+  failed,
+  unauthenticated,
+}
 
 class AuthController extends ChangeNotifier {
   final AuthRepository _repository;
+  final Future<void> Function(AppUser user)? _onAuthenticated;
+  final Future<void> Function()? _onSignedOut;
 
   AppUser? _currentUser;
   AuthBootstrapState _bootstrapState = AuthBootstrapState.initializing;
@@ -13,7 +21,12 @@ class AuthController extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
-  AuthController(this._repository);
+  AuthController(
+    this._repository, {
+    Future<void> Function(AppUser user)? onAuthenticated,
+    Future<void> Function()? onSignedOut,
+  }) : _onAuthenticated = onAuthenticated,
+       _onSignedOut = onSignedOut;
 
   AppUser? get currentUser => _currentUser;
   AuthBootstrapState get bootstrapState => _bootstrapState;
@@ -48,14 +61,35 @@ class AuthController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    AppUser? restoredUser;
     try {
-      _currentUser = await _repository.getCurrentUser();
-    } catch (e) {
+      restoredUser = await _repository.getCurrentUser();
+    } catch (_) {
+      restoredUser = null;
+    }
+
+    try {
+      if (restoredUser == null) {
+        _currentUser = null;
+        await _onSignedOut?.call();
+        _bootstrapState = AuthBootstrapState.unauthenticated;
+      } else {
+        _currentUser = restoredUser;
+        _bootstrapState = AuthBootstrapState.authenticatedDataLoading;
+        notifyListeners();
+        try {
+          await _onAuthenticated?.call(restoredUser);
+          _bootstrapState = AuthBootstrapState.authenticated;
+        } catch (error) {
+          _errorMessage = 'Unable to load your workspace. Please try again.';
+          _bootstrapState = AuthBootstrapState.failed;
+        }
+      }
+    } catch (_) {
       _currentUser = null;
+      await _onSignedOut?.call();
+      _bootstrapState = AuthBootstrapState.unauthenticated;
     } finally {
-      _bootstrapState = _currentUser == null
-          ? AuthBootstrapState.unauthenticated
-          : AuthBootstrapState.authenticated;
       _initializationInProgress = false;
       notifyListeners();
     }
@@ -77,6 +111,10 @@ class AuthController extends ChangeNotifier {
 
       if (result.success && result.user != null) {
         _currentUser = result.user;
+        _bootstrapState = AuthBootstrapState.authenticatedDataLoading;
+        notifyListeners();
+
+        await _onAuthenticated?.call(result.user!);
         _bootstrapState = AuthBootstrapState.authenticated;
 
         return true;
@@ -85,6 +123,9 @@ class AuthController extends ChangeNotifier {
         return false;
       }
     } catch (e) {
+      if (_currentUser != null) {
+        _bootstrapState = AuthBootstrapState.failed;
+      }
       _errorMessage = 'Unable to complete authentication. Please try again.';
       return false;
     } finally {
@@ -100,6 +141,7 @@ class AuthController extends ChangeNotifier {
       // Ignored for logout
     } finally {
       _currentUser = null;
+      await _onSignedOut?.call();
       _bootstrapState = AuthBootstrapState.unauthenticated;
       _errorMessage = null;
       notifyListeners();

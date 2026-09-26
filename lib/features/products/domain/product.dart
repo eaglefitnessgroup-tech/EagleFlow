@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'product_condition.dart';
+import 'product_code.dart';
 
 class Product {
   // Required
@@ -50,7 +51,7 @@ class Product {
     this.imageBytes,
   });
 
-  String get normalizedProductCode => productCode.trim().toUpperCase();
+  String get normalizedProductCode => normalizeProductCode(productCode);
 
   Product copyWith({
     String? id,

@@ -19,6 +19,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
+  String? _loadError;
   int _totalProducts = 0;
   int _todaysQuotations = 0;
   int _totalQuotations = 0;
@@ -33,6 +34,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadDashboardData() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
+
     try {
       final productRepo = ServiceLocator().productRepository;
       final quotationRepo = ServiceLocator().quotationRepository;
@@ -53,7 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final sortedQuotations = List<Quotation>.from(quotations)
         ..sort((a, b) => b.createdDate.compareTo(a.createdDate));
-      
+
       final recent = sortedQuotations.take(5).toList();
 
       if (mounted) {
@@ -64,19 +72,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _allQuotations = sortedQuotations;
           _recentQuotations = recent;
           _isLoading = false;
+          _loadError = null;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _loadError = 'Failed to load dashboard data. Please try again.';
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load dashboard data: $e'),
-            backgroundColor: AppColors.statusRejectedText,
-          ),
-        );
       }
     }
   }
@@ -146,7 +150,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      bottomNavigationBar: isMobile ? const EagleBottomNav(currentIndex: 0) : null,
+      bottomNavigationBar: isMobile
+          ? const EagleBottomNav(currentIndex: 0)
+          : null,
       body: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,7 +165,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: AppColors.primaryBlue,
                       ),
                     )
+                  : _loadError != null
+                  ? _buildLoadErrorState()
                   : _buildMainContent(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.statusRejectedText,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _loadError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.statusRejectedText),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _loadDashboardData,
+              child: const Text('Retry'),
             ),
           ],
         ),
@@ -269,7 +306,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: route != null ? () => Navigator.of(context).pushNamed(route) : null,
+        onTap: route != null
+            ? () => Navigator.of(context).pushNamed(route)
+            : null,
         hoverColor: AppColors.primarySoft.withValues(alpha: 0.5),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -280,17 +319,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: 4,
               ),
             ),
-            color: isSelected ? AppColors.primarySoft.withValues(alpha: 0.3) : Colors.transparent,
+            color: isSelected
+                ? AppColors.primarySoft.withValues(alpha: 0.3)
+                : Colors.transparent,
           ),
           child: Row(
             children: [
-              Icon(icon, color: isSelected ? AppColors.primaryBlue : AppColors.mutedText, size: 22),
+              Icon(
+                icon,
+                color: isSelected ? AppColors.primaryBlue : AppColors.mutedText,
+                size: 22,
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   label,
                   style: TextStyle(
-                    color: isSelected ? AppColors.primaryBlue : AppColors.mutedText,
+                    color: isSelected
+                        ? AppColors.primaryBlue
+                        : AppColors.mutedText,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 14,
                   ),
@@ -317,7 +364,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: CustomScrollView(
               slivers: [
                 SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: paddingH, vertical: paddingV),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: paddingH,
+                    vertical: paddingV,
+                  ),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
                       _buildTopBar(),
@@ -352,9 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _buildSearchField(),
-          ),
+          Expanded(child: _buildSearchField()),
           const SizedBox(width: 16),
           InkWell(
             onTap: () {
@@ -387,18 +435,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 '${_getGreeting()}, ${ServiceLocator().authController.currentUser?.name ?? 'User'}',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.charcoal,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 24,
-                    ),
+                  color: AppColors.charcoal,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Here is your overview for today.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.mutedText,
-                      fontSize: 15,
-                    ),
+                  color: AppColors.mutedText,
+                  fontSize: 15,
+                ),
               ),
             ],
           ),
@@ -553,24 +601,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Row(
                 children: [
-                  Expanded(child: _buildStatCard('Total Products', _totalProducts.toString(), Icons.inventory_2_outlined)),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total Products',
+                      _totalProducts.toString(),
+                      Icons.inventory_2_outlined,
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildStatCard('Today\'s Quotations', _todaysQuotations.toString(), Icons.today_outlined)),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Today\'s Quotations',
+                      _todaysQuotations.toString(),
+                      Icons.today_outlined,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
-              _buildStatCard('Total Quotations', _totalQuotations.toString(), Icons.request_quote_outlined),
+              _buildStatCard(
+                'Total Quotations',
+                _totalQuotations.toString(),
+                Icons.request_quote_outlined,
+              ),
             ],
           );
         }
 
         return Row(
           children: [
-            Expanded(child: _buildStatCard('Total Products', _totalProducts.toString(), Icons.inventory_2_outlined)),
+            Expanded(
+              child: _buildStatCard(
+                'Total Products',
+                _totalProducts.toString(),
+                Icons.inventory_2_outlined,
+              ),
+            ),
             const SizedBox(width: 24),
-            Expanded(child: _buildStatCard('Today\'s Quotations', _todaysQuotations.toString(), Icons.today_outlined)),
+            Expanded(
+              child: _buildStatCard(
+                'Today\'s Quotations',
+                _todaysQuotations.toString(),
+                Icons.today_outlined,
+              ),
+            ),
             const SizedBox(width: 24),
-            Expanded(child: _buildStatCard('Total Quotations', _totalQuotations.toString(), Icons.request_quote_outlined)),
+            Expanded(
+              child: _buildStatCard(
+                'Total Quotations',
+                _totalQuotations.toString(),
+                Icons.request_quote_outlined,
+              ),
+            ),
           ],
         );
       },
@@ -597,12 +679,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(fontSize: 12, color: AppColors.mutedText, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.mutedText,
+                    fontWeight: FontWeight.w600,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(icon, color: AppColors.primaryBlue.withValues(alpha: 0.5), size: 20),
+              Icon(
+                icon,
+                color: AppColors.primaryBlue.withValues(alpha: 0.5),
+                size: 20,
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -762,7 +852,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     );
   }
-  
+
   Widget _buildQuickActionsGrid(BuildContext context) {
     final children = [
       _buildActionCard(
@@ -773,7 +863,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _buildActionCard(
         title: 'Previous Quotations',
         icon: Icons.history_outlined,
-        onTap: () => Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
+        onTap: () =>
+            Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
       ),
       _buildActionCard(
         title: 'Stock',
@@ -796,7 +887,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _buildActionCard(
           title: 'Stock Management',
           icon: Icons.admin_panel_settings_outlined,
-          onTap: () => Navigator.of(context).pushNamed(AppRoutes.stockManagement),
+          onTap: () =>
+              Navigator.of(context).pushNamed(AppRoutes.stockManagement),
         ),
     ];
 
@@ -829,12 +921,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           content = Column(children: rows);
         } else {
           content = Row(
-            children: children.map((child) => Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(right: child == children.last ? 0 : 16.0),
-                child: child,
-              ),
-            )).toList(),
+            children: children
+                .map(
+                  (child) => Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: child == children.last ? 0 : 16.0,
+                      ),
+                      child: child,
+                    ),
+                  ),
+                )
+                .toList(),
           );
         }
 
@@ -844,9 +942,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
               'Quick Actions',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.charcoal,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: AppColors.charcoal,
+              ),
             ),
             const SizedBox(height: 12),
             content,
@@ -907,9 +1005,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Text(
                 'Recent Quotations',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.charcoal,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.charcoal,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -918,7 +1016,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Navigator.of(context).pushNamed(AppRoutes.previousQuotations);
               },
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
               ),
               child: const Text(
                 'View All',
@@ -1047,7 +1148,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  quote.quotationNumber.isNotEmpty ? quote.quotationNumber : 'DRAFT',
+                                  quote.quotationNumber.isNotEmpty
+                                      ? quote.quotationNumber
+                                      : 'DRAFT',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.mutedText,
@@ -1104,7 +1207,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            quote.quotationNumber.isNotEmpty ? quote.quotationNumber : 'DRAFT',
+                            quote.quotationNumber.isNotEmpty
+                                ? quote.quotationNumber
+                                : 'DRAFT',
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.mutedText,

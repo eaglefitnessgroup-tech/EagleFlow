@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../domain/product.dart';
+import '../domain/product_code.dart';
 import '../domain/product_condition.dart';
 import '../domain/product_repository.dart';
 import '../domain/bulk_import_models.dart';
@@ -325,7 +326,7 @@ class BulkImportService {
 
       // Product Code
       final rawCode = rowMap['Product Code'] ?? '';
-      final productCode = rawCode.trim().toUpperCase();
+      final productCode = normalizeProductCode(rawCode);
 
       String? imageStatus;
       List<int>? imageBytes;
@@ -428,9 +429,7 @@ class BulkImportService {
       if (conditionValue != null && conditionValue.isNotEmpty) {
         condition = ProductCondition.tryParse(conditionValue);
         if (condition == null) {
-          errors.add(
-            'Invalid Condition. Use New, Used, Refurbished, or Display.',
-          );
+          errors.add(ProductCondition.invalidValueMessage);
         }
       }
       final unit = (rowMap['Unit']?.isEmpty ?? true) ? 'Nos' : rowMap['Unit']!;
@@ -843,7 +842,7 @@ class BulkImportService {
     ]);
     instructions.appendRow([
       TextCellValue(
-        '5. Condition is optional. Use New, Used, Refurbished, or Display.',
+        '5. Condition is optional. Use ${ProductCondition.allowedValuesText}.',
       ),
     ]);
     instructions.appendRow([TextCellValue('6. Save as XLSX and upload.')]);
@@ -898,7 +897,9 @@ class BulkImportService {
 
   /// Checks whether an exception was caused by excel package's custom numFmtId check (< 164).
   bool _isCustomNumFmtException(Object e) {
-    return e.toString().contains('custom numFmtId starts at 164 but found a value of');
+    return e.toString().contains(
+      'custom numFmtId starts at 164 but found a value of',
+    );
   }
 
   /// Narrow fallback to normalize custom numFmtId values in xl/styles.xml when id < 164.
@@ -917,7 +918,10 @@ class BulkImportService {
       final contentBytes = stylesFile.content as List<int>;
       final xml = String.fromCharCodes(contentBytes);
 
-      final numFmtsMatch = RegExp(r'<numFmts[^>]*>(.*?)</numFmts>', dotAll: true).firstMatch(xml);
+      final numFmtsMatch = RegExp(
+        r'<numFmts[^>]*>(.*?)</numFmts>',
+        dotAll: true,
+      ).firstMatch(xml);
       if (numFmtsMatch == null) return null;
 
       final numFmtsBlock = numFmtsMatch.group(1) ?? '';

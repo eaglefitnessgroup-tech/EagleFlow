@@ -77,8 +77,7 @@ void main() {
     expect(find.byType(LoginScreen), findsNothing);
 
     authRepository.completeRestore(_authenticatedUser());
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.byType(DashboardScreen), findsOneWidget);
     expect(find.byType(SplashScreen), findsNothing);

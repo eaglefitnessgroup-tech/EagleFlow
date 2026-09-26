@@ -15,14 +15,36 @@ class EagleFlowApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: authController,
       builder: (context, _) {
-        if (authController.bootstrapState == AuthBootstrapState.initializing) {
+        if (authController.bootstrapState == AuthBootstrapState.initializing ||
+            authController.bootstrapState ==
+                AuthBootstrapState.authenticatedDataLoading) {
           return const _AuthBootstrapApp();
+        }
+
+        if (authController.bootstrapState == AuthBootstrapState.failed) {
+          return const _WorkspaceBootstrapFailureApp();
         }
 
         return _ResolvedEagleFlowApp(
           isAuthenticated: authController.isAuthenticated,
         );
       },
+    );
+  }
+}
+
+class _WorkspaceBootstrapFailureApp extends StatelessWidget {
+  const _WorkspaceBootstrapFailureApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'EagleFlow',
+      theme: AppTheme.lightTheme,
+      home: const Scaffold(
+        body: Center(child: Text('Unable to load workspace.')),
+      ),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -35,9 +57,7 @@ class _AuthBootstrapApp extends StatelessWidget {
     return MaterialApp(
       title: 'EagleFlow',
       theme: AppTheme.lightTheme,
-      routes: {
-        AppRoutes.splash: (context) => const SplashScreen(),
-      },
+      routes: {AppRoutes.splash: (context) => const SplashScreen()},
       onGenerateInitialRoutes: (_) => [
         MaterialPageRoute<void>(
           settings: const RouteSettings(name: AppRoutes.splash),

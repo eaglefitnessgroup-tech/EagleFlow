@@ -11,6 +11,7 @@ class ProductMasterController extends ChangeNotifier {
   List<Product> _products = [];
   bool _isLoading = false;
   String? _error;
+  int _loadGeneration = 0;
 
   List<Product> get products => _products;
   bool get isLoading => _isLoading;
@@ -38,21 +39,35 @@ class ProductMasterController extends ChangeNotifier {
 
   /// Loads all products from the repository
   Future<void> loadProducts() async {
+    final generation = ++_loadGeneration;
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final products = await _repository.getAllProducts();
+      final products = List<Product>.from(await _repository.getAllProducts());
+      if (generation != _loadGeneration) return;
       _products = products;
       // Apply default sorting: Newest First
       _products.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } catch (e) {
+      if (generation != _loadGeneration) return;
       _error = 'Failed to load products. Please try again.';
+      rethrow;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _loadGeneration) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
+  }
+
+  void reset() {
+    _loadGeneration++;
+    _products = [];
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
   }
 
   /// Refreshes the product list in the background

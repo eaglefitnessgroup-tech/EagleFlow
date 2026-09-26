@@ -27,6 +27,8 @@ class SupabaseQuotationRepository implements QuotationRepository {
   Future<Database> get _db async => await DatabaseService().database;
 
   Future<void>? _activeSyncFuture;
+  String? _activeSyncOwner;
+  int _syncGeneration = 0;
 
   @visibleForTesting
   bool get isConnectedToServer => supabase.isConnected;
@@ -43,7 +45,12 @@ class SupabaseQuotationRepository implements QuotationRepository {
   Future<List<dynamic>> fetchQuotationsFromServer() async {
     final client = supabase.client;
     final user = ServiceLocator().authController.currentUser;
-    if (client == null || user == null) return [];
+    if (client == null) {
+      throw StateError('Supabase client is not ready.');
+    }
+    if (user == null) {
+      throw StateError('Business user is not ready.');
+    }
 
     final response = await client
         .from('quotations')
@@ -54,51 +61,62 @@ class SupabaseQuotationRepository implements QuotationRepository {
   }
 
   Future<void> _syncQuotationsDown() async {
-    if (_activeSyncFuture != null) {
-      return _activeSyncFuture;
+    final owner = _currentBusinessUserId;
+    if (owner != null &&
+        _activeSyncFuture != null &&
+        _activeSyncOwner == owner) {
+      return _activeSyncFuture!;
     }
 
-    _activeSyncFuture = _doSyncQuotationsDown();
+    final generation = ++_syncGeneration;
+    final sync = _doSyncQuotationsDown(owner, generation);
+    _activeSyncFuture = sync;
+    _activeSyncOwner = owner;
     try {
-      await _activeSyncFuture;
+      await sync;
     } finally {
-      _activeSyncFuture = null;
+      if (identical(_activeSyncFuture, sync)) {
+        _activeSyncFuture = null;
+        _activeSyncOwner = null;
+      }
     }
   }
 
-  Future<void> _doSyncQuotationsDown() async {
-    try {
-      final serverQuotations = await fetchQuotationsFromServer();
+  Future<void> _doSyncQuotationsDown(String? owner, int generation) async {
+    final serverQuotations = await fetchQuotationsFromServer();
+    if (!_isCurrentSync(owner, generation)) return;
 
-      final db = await _db;
-      await db.transaction((txn) async {
-        for (var row in serverQuotations) {
-          try {
-            final serverQ = _fromSupabase(row);
-            final localRecord = await _quotationsStore
+    final db = await _db;
+    await db.transaction((txn) async {
+      for (var row in serverQuotations) {
+        if (!_isCurrentSync(owner, generation)) return;
+        final serverQ = _fromSupabase(row);
+        final localRecord = await _quotationsStore.record(serverQ.id).get(txn);
+
+        if (localRecord == null) {
+          await _quotationsStore.record(serverQ.id).put(txn, serverQ.toJson());
+        } else {
+          final localQ = Quotation.fromJson(localRecord);
+          if (serverQ.modifiedDate.isAfter(localQ.modifiedDate)) {
+            await _quotationsStore
                 .record(serverQ.id)
-                .get(txn);
-
-            if (localRecord == null) {
-              await _quotationsStore
-                  .record(serverQ.id)
-                  .put(txn, serverQ.toJson());
-            } else {
-              final localQ = Quotation.fromJson(localRecord);
-              if (serverQ.modifiedDate.isAfter(localQ.modifiedDate)) {
-                await _quotationsStore
-                    .record(serverQ.id)
-                    .put(txn, serverQ.toJson());
-              }
-            }
-          } catch (e) {
-            // Ignore parse errors for individual rows
+                .put(txn, serverQ.toJson());
           }
         }
-      });
-    } catch (e) {
-      // Ignore sync errors
-    }
+      }
+    });
+  }
+
+  String? get _currentBusinessUserId =>
+      ServiceLocator().authController.currentUser?.id;
+
+  bool _isCurrentSync(String? owner, int generation) =>
+      generation == _syncGeneration && _currentBusinessUserId == owner;
+
+  void invalidateSession() {
+    _syncGeneration++;
+    _activeSyncFuture = null;
+    _activeSyncOwner = null;
   }
 
   Future<void> handleRealtimeEvent(PostgresChangePayload payload) async {
@@ -228,11 +246,17 @@ class SupabaseQuotationRepository implements QuotationRepository {
   Future<List<Quotation>> getAllQuotations() async {
     final user = ServiceLocator().authController.currentUser;
 
-    if (user == null) return [];
+    if (user == null) {
+      throw StateError('Business user is not ready.');
+    }
 
     // Pull latest quotations from Supabase
     if (isConnectedToServer) {
       await _syncQuotationsDown();
+    }
+
+    if (ServiceLocator().authController.currentUser?.id != user.id) {
+      throw StateError('Quotation request was superseded by a session change.');
     }
 
     final all = await localCache.getAllQuotations();

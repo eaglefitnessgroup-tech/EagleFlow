@@ -112,9 +112,9 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
             q.customerInfo.name.toLowerCase().contains(
               _searchQuery.toLowerCase(),
             ) ||
-            _salespersonName(q).toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            ) ||
+            _salespersonName(
+              q,
+            ).toLowerCase().contains(_searchQuery.toLowerCase()) ||
             q.salespersonId.toLowerCase().contains(_searchQuery.toLowerCase());
 
         return matchesSearch;
@@ -130,10 +130,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
         );
       } else if (_sortBy == 'Highest Amount' || _sortBy == 'Lowest Amount') {
         double calculateTotal(Quotation q) =>
-            QuotationCalculator.calculateGrandTotal(
-              q.lineItems,
-              q.charges,
-            );
+            QuotationCalculator.calculateGrandTotal(q.lineItems, q.charges);
 
         if (_sortBy == 'Highest Amount') {
           _filteredQuotations.sort(
@@ -300,7 +297,9 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      bottomNavigationBar: isMobile ? const EagleBottomNav(currentIndex: 2) : null,
+      bottomNavigationBar: isMobile
+          ? const EagleBottomNav(currentIndex: 2)
+          : null,
       body: CustomScrollView(
         slivers: [
           SliverPadding(
@@ -308,11 +307,6 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 _buildHeader(context),
-                const SizedBox(height: 24),
-                QuotationsSummaryRow(
-                  totalCount: total,
-                  recentCount: recent,
-                ),
                 const SizedBox(height: 24),
                 if (_isLoading)
                   const Padding(
@@ -345,14 +339,28 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                     ),
                   )
                 else if (_allQuotations.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(48.0),
-                    child: Center(child: Text('No quotations found.')),
+                  Column(
+                    children: [
+                      QuotationsSummaryRow(
+                        totalCount: total,
+                        recentCount: recent,
+                      ),
+                      const SizedBox(height: 24),
+                      const Padding(
+                        padding: EdgeInsets.all(48.0),
+                        child: Center(child: Text('No quotations found.')),
+                      ),
+                    ],
                   )
                 else
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      QuotationsSummaryRow(
+                        totalCount: total,
+                        recentCount: recent,
+                      ),
+                      const SizedBox(height: 24),
                       QuotationFilterBar(
                         searchQuery: _searchQuery,
                         sortBy: _sortBy,
