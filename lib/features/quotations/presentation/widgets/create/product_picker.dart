@@ -7,6 +7,7 @@ import '../../../../products/presentation/widgets/product_image.dart';
 import '../../../../../../core/di/service_locator.dart';
 import '../../../../reservations/domain/reservation.dart';
 import 'package:intl/intl.dart';
+import 'product_series.dart';
 
 class ProductPicker {
   static Future<List<Product>?> show(BuildContext context) async {
@@ -51,10 +52,13 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   final Set<String> _selectedIds = {};
 
   List<Product> _allActiveProducts = [];
+  List<_ProductPickerBrand> _brands = [];
   List<_ProductPickerCategory> _categories = [];
   List<Product> _filteredProducts = [];
   List<Reservation> _activeReservations = [];
   Map<String, int> _currentStockMap = {};
+  String? _selectedBrandKey;
+  String? _selectedSeriesPrefix;
   String? _selectedCategoryKey;
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -77,24 +81,37 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   }
 
   Future<void> _loadProducts() async {
-    final reservations = await ServiceLocator().reservationRepository.getActiveReservations();
-    
+    final reservations = await ServiceLocator().reservationRepository
+        .getActiveReservations();
+
     final allActiveProducts = ServiceLocator().productMasterController.products
         .where((p) => p.isActive)
         .toList();
-        
+
     final stockFutures = allActiveProducts.map((p) async {
       final stock = await ServiceLocator().stockController.getCurrentStock(p);
       return MapEntry(p.id, stock);
     });
-    
+
     final stockEntries = await Future.wait(stockFutures);
     final stockMap = Map.fromEntries(stockEntries);
 
     if (mounted) {
       setState(() {
         _allActiveProducts = allActiveProducts;
+        _brands = _deriveBrands(allActiveProducts);
         _categories = _deriveCategories(allActiveProducts);
+        if (_selectedBrandKey != null &&
+            !_brands.any((brand) => brand.key == _selectedBrandKey)) {
+          _selectedBrandKey = null;
+          _selectedSeriesPrefix = null;
+        }
+        if (_selectedSeriesPrefix != null &&
+            !_availableSeries.any(
+              (series) => series.prefix == _selectedSeriesPrefix,
+            )) {
+          _selectedSeriesPrefix = null;
+        }
         if (_selectedCategoryKey != null &&
             !_categories.any(
               (category) => category.key == _selectedCategoryKey,
@@ -126,10 +143,8 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
 
     final categories = displayNamesByKey.entries
         .map(
-          (entry) => _ProductPickerCategory(
-            key: entry.key,
-            displayName: entry.value,
-          ),
+          (entry) =>
+              _ProductPickerCategory(key: entry.key, displayName: entry.value),
         )
         .toList();
     categories.sort((a, b) {
@@ -143,8 +158,61 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     return categories;
   }
 
+  List<_ProductPickerBrand> _deriveBrands(List<Product> products) {
+    final displayNamesByKey = <String, String>{};
+    for (final product in products) {
+      final displayName = product.brand.trim();
+      if (displayName.isEmpty) continue;
+      final key = displayName.toLowerCase();
+      displayNamesByKey.putIfAbsent(key, () => displayName);
+    }
+
+    final brands = displayNamesByKey.entries
+        .map(
+          (entry) =>
+              _ProductPickerBrand(key: entry.key, displayName: entry.value),
+        )
+        .toList();
+    brands.sort((a, b) {
+      final comparison = a.displayName.toLowerCase().compareTo(
+        b.displayName.toLowerCase(),
+      );
+      return comparison != 0
+          ? comparison
+          : a.displayName.compareTo(b.displayName);
+    });
+    return brands;
+  }
+
+  List<ProductSeriesDefinition> get _availableSeries {
+    if (_selectedBrandKey != 'premier') {
+      return const <ProductSeriesDefinition>[];
+    }
+
+    return derivePremierSeriesOptions(
+      _allActiveProducts
+          .where(
+            (product) =>
+                product.brand.trim().toLowerCase() == _selectedBrandKey,
+          )
+          .map((product) => product.productCode),
+    );
+  }
+
   List<Product> _applyFilters() {
     var filtered = _allActiveProducts.where((product) {
+      if (_selectedBrandKey == null) return true;
+      return product.brand.trim().toLowerCase() == _selectedBrandKey;
+    }).toList();
+
+    if (_selectedSeriesPrefix != null) {
+      filtered = filtered.where((product) {
+        return deriveProductSeriesPrefix(product.productCode) ==
+            _selectedSeriesPrefix;
+      }).toList();
+    }
+
+    filtered = filtered.where((product) {
       if (_selectedCategoryKey == null) return true;
       return product.category.trim().toLowerCase() == _selectedCategoryKey;
     }).toList();
@@ -156,10 +224,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
         final codeMatches = product.productCode.toLowerCase().contains(query);
         final brandMatches = product.brand.toLowerCase().contains(query);
         final categoryMatches = product.category.toLowerCase().contains(query);
-        return nameMatches ||
-            codeMatches ||
-            brandMatches ||
-            categoryMatches;
+        return nameMatches || codeMatches || brandMatches || categoryMatches;
       }).toList();
     }
 
@@ -173,12 +238,27 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     });
   }
 
+  void _selectBrand(String? brandKey) {
+    setState(() {
+      _selectedBrandKey = brandKey;
+      _selectedSeriesPrefix = null;
+      _filteredProducts = _applyFilters();
+    });
+  }
+
+  void _selectSeries(String? prefix) {
+    setState(() {
+      _selectedSeriesPrefix = prefix;
+      _filteredProducts = _applyFilters();
+    });
+  }
+
   List<Product> _sortProducts(List<Product> products) {
     final List<Product> sorted = List.from(products);
     sorted.sort((a, b) {
       final aStock = _currentStockMap[a.id] ?? a.openingStock;
       final bStock = _currentStockMap[b.id] ?? b.openingStock;
-      
+
       final aInStock = aStock > 0;
       final bInStock = bStock > 0;
 
@@ -196,9 +276,12 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
         _selectedIds.remove(product.id);
       });
     } else {
-      final reservationsForProduct = _activeReservations.where((r) => r.productId == product.id).toList();
+      final reservationsForProduct = _activeReservations
+          .where((r) => r.productId == product.id)
+          .toList();
       if (reservationsForProduct.isNotEmpty) {
-        final reservation = reservationsForProduct.first; // Pick first for warning
+        final reservation =
+            reservationsForProduct.first; // Pick first for warning
         final shouldAdd = await _showReservationWarning(reservation, product);
         if (shouldAdd == true && mounted) {
           setState(() {
@@ -224,9 +307,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
         child: SizedBox(
           width: isMobile ? double.infinity : 600,
           height: size.height < 840 ? size.height * 0.9 : 760,
-          child: const AddEditProductScreen(
-            allowAuthenticatedCreate: true,
-          ),
+          child: const AddEditProductScreen(allowAuthenticatedCreate: true),
         ),
       ),
     );
@@ -238,7 +319,10 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     await _loadProducts();
   }
 
-  Future<bool?> _showReservationWarning(Reservation reservation, Product product) {
+  Future<bool?> _showReservationWarning(
+    Reservation reservation,
+    Product product,
+  ) {
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm');
     return showDialog<bool>(
       context: context,
@@ -251,10 +335,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
               Expanded(
                 child: Text(
                   'Item Already Reserved',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
               ),
             ],
@@ -271,8 +352,16 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
               _buildWarningRow('Product', product.name),
               _buildWarningRow('Reserved By', reservation.reservedBy),
               _buildWarningRow('Reserved Qty', '${reservation.quantity}'),
-              _buildWarningRow('Reference', reservation.reference.isNotEmpty ? reservation.reference : 'N/A'),
-              _buildWarningRow('Expiry Date', dateFormat.format(reservation.expiryDate)),
+              _buildWarningRow(
+                'Reference',
+                reservation.reference.isNotEmpty
+                    ? reservation.reference
+                    : 'N/A',
+              ),
+              _buildWarningRow(
+                'Expiry Date',
+                dateFormat.format(reservation.expiryDate),
+              ),
             ],
           ),
           actions: [
@@ -305,10 +394,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
             width: 100,
             child: Text(
               '$label:',
-              style: const TextStyle(
-                color: AppColors.mutedText,
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: AppColors.mutedText, fontSize: 13),
             ),
           ),
           Expanded(
@@ -350,6 +436,8 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
         children: [
           _buildHeader(),
           _buildSearchBar(),
+          _buildBrandFilter(),
+          if (_selectedBrandKey == 'premier') _buildSeriesFilter(),
           _buildCategoryFilter(),
           Expanded(child: _buildList()),
           _buildBottomActionBar(),
@@ -448,15 +536,109 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     );
   }
 
+  Widget _buildBrandFilter() {
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    return Container(
+      color: Colors.white,
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 20,
+        0,
+        isMobile ? 16 : 20,
+        12,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: 240,
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                key: const Key('product-picker-brand-dropdown'),
+                value: _selectedBrandKey,
+                isExpanded: true,
+                icon: const Icon(
+                  Icons.arrow_drop_down,
+                  color: AppColors.mutedText,
+                ),
+                style: const TextStyle(
+                  color: AppColors.charcoal,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('All Brands'),
+                  ),
+                  for (final brand in _brands)
+                    DropdownMenuItem<String?>(
+                      value: brand.key,
+                      child: Text(
+                        brand.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: _selectBrand,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeriesFilter() {
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    final seriesOptions = _availableSeries;
+    return Container(
+      key: const Key('product-picker-series-filter'),
+      color: Colors.white,
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 20,
+        0,
+        isMobile ? 16 : 20,
+        12,
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _buildCategoryChip(
+            key: const Key('product-picker-series-all'),
+            label: 'All Series',
+            selected: _selectedSeriesPrefix == null,
+            onSelected: () => _selectSeries(null),
+            compact: true,
+          ),
+          for (final series in seriesOptions)
+            _buildCategoryChip(
+              key: ValueKey('product-picker-series-${series.prefix}'),
+              label: series.label,
+              selected: _selectedSeriesPrefix == series.prefix,
+              onSelected: () => _selectSeries(series.prefix),
+              compact: true,
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCategoryFilter() {
     final isMobile = MediaQuery.sizeOf(context).width < 600;
     final visibleCategoryCount = isMobile ? 2 : 4;
-    final visibleCategories = _categories
-        .take(visibleCategoryCount)
-        .toList();
-    final overflowCategories = _categories
-        .skip(visibleCategoryCount)
-        .toList();
+    final visibleCategories = _categories.take(visibleCategoryCount).toList();
+    final overflowCategories = _categories.skip(visibleCategoryCount).toList();
     final overflowIsSelected = overflowCategories.any(
       (category) => category.key == _selectedCategoryKey,
     );
@@ -557,6 +739,7 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     required String label,
     required bool selected,
     required VoidCallback onSelected,
+    bool compact = false,
   }) {
     return ChoiceChip(
       key: key,
@@ -566,6 +749,8 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
         if (value || selected) onSelected();
       },
       showCheckmark: false,
+      visualDensity: compact ? VisualDensity.compact : null,
+      materialTapTargetSize: compact ? MaterialTapTargetSize.shrinkWrap : null,
       selectedColor: AppColors.primarySoft,
       backgroundColor: AppColors.surface,
       side: BorderSide(
@@ -575,10 +760,11 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
         color: selected ? AppColors.primaryBlue : AppColors.charcoal,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      labelPadding: compact ? const EdgeInsets.symmetric(horizontal: 6) : null,
+      padding: compact
+          ? const EdgeInsets.symmetric(horizontal: 2)
+          : const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
 
@@ -621,7 +807,8 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
       itemBuilder: (context, index) {
         final product = _filteredProducts[index];
         final isSelected = _selectedIds.contains(product.id);
-        final currentStock = _currentStockMap[product.id] ?? product.openingStock;
+        final currentStock =
+            _currentStockMap[product.id] ?? product.openingStock;
         final inStock = currentStock > 0;
 
         return _buildProductTile(product, isSelected, inStock, currentStock);
@@ -629,7 +816,12 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
     );
   }
 
-  Widget _buildProductTile(Product product, bool isSelected, bool inStock, int currentStock) {
+  Widget _buildProductTile(
+    Product product,
+    bool isSelected,
+    bool inStock,
+    int currentStock,
+  ) {
     return GestureDetector(
       onTap: () {
         // Stock confirmation is skipped for step 2.1 as per instruction: "Do NOT implement stock confirmation."
@@ -856,10 +1048,14 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
 }
 
 class _ProductPickerCategory {
-  const _ProductPickerCategory({
-    required this.key,
-    required this.displayName,
-  });
+  const _ProductPickerCategory({required this.key, required this.displayName});
+
+  final String key;
+  final String displayName;
+}
+
+class _ProductPickerBrand {
+  const _ProductPickerBrand({required this.key, required this.displayName});
 
   final String key;
   final String displayName;

@@ -142,6 +142,7 @@ void main() {
       WidgetTester tester, {
       required String id,
       required String category,
+      String? productCode,
       String? name,
       String? brand,
       bool isActive = true,
@@ -150,7 +151,7 @@ void main() {
         await ServiceLocator().productRepository.addProduct(
           Product(
             id: id,
-            productCode: id.toUpperCase(),
+            productCode: productCode ?? id.toUpperCase(),
             name: name ?? '$category Product',
             category: category,
             brand: brand ?? 'CategoryBrand',
@@ -170,6 +171,35 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    Future<void> selectBrand(WidgetTester tester, String brand) async {
+      await tester.tap(find.byKey(const Key('product-picker-brand-dropdown')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(brand).last);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> addPremierSeriesProducts(WidgetTester tester) async {
+      final products = [
+        ('premier-apn', 'APN39', 'Active Pin Leg Press', 'Strength'),
+        ('premier-apl', 'APL12', 'Active PL Chest Press', 'Strength'),
+        ('premier-pxn', 'PXN20', 'Torque Pin Leg Press', 'Strength'),
+        ('premier-pxl', 'PXL-08', 'Torque PL Row', 'Strength'),
+        ('premier-epn', 'EPN14', 'Elite Pin Bike', 'Cardio'),
+        ('premier-unknown', 'TQL25', 'Premier Unknown Product', 'Strength'),
+      ];
+
+      for (final product in products) {
+        await addCategoryProduct(
+          tester,
+          id: product.$1,
+          productCode: product.$2,
+          name: product.$3,
+          category: product.$4,
+          brand: 'Premier',
+        );
+      }
+    }
+
     testWidgets('Add Selected is disabled at zero selection', (tester) async {
       await tester.pumpWidget(buildTestApp(null));
       await tester.tap(find.byKey(const Key('open_picker')));
@@ -182,6 +212,156 @@ void main() {
       expect(btnWidget.onPressed, isNull); // Disabled
     });
 
+    testWidgets('All Brands hides the Series filter', (tester) async {
+      await addPremierSeriesProducts(tester);
+      await openPicker(tester);
+
+      expect(find.text('All Brands'), findsOneWidget);
+      expect(
+        find.byKey(const Key('product-picker-series-filter')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('Premier shows exactly the approved friendly Series chips', (
+      tester,
+    ) async {
+      await addPremierSeriesProducts(tester);
+      await openPicker(tester);
+      await selectBrand(tester, 'Premier');
+
+      expect(
+        find.byKey(const Key('product-picker-series-filter')),
+        findsOneWidget,
+      );
+      expect(find.text('All Series'), findsOneWidget);
+      expect(find.text('Active Series (Pin)'), findsOneWidget);
+      expect(find.text('Active Series (PL)'), findsOneWidget);
+      expect(find.text('Torque Series (Pin)'), findsOneWidget);
+      expect(find.text('Torque Series (PL)'), findsOneWidget);
+      expect(find.text('Elite Series (Pin)'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is ChoiceChip &&
+              widget.key is ValueKey<String> &&
+              (widget.key! as ValueKey<String>).value.startsWith(
+                'product-picker-series-',
+              ),
+        ),
+        findsNWidgets(6),
+      );
+      expect(find.textContaining('EPL'), findsNothing);
+      expect(find.textContaining('TQL'), findsNothing);
+      expect(find.textContaining('TQN'), findsNothing);
+
+      final allSeries = tester.widget<ChoiceChip>(
+        find.byKey(const Key('product-picker-series-all')),
+      );
+      expect(allSeries.selected, isTrue);
+    });
+
+    testWidgets('changing Brand resets Series to All Series', (tester) async {
+      await addPremierSeriesProducts(tester);
+      await openPicker(tester);
+      await selectBrand(tester, 'Premier');
+
+      await tester.tap(find.byKey(const ValueKey('product-picker-series-PXN')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey('product-picker-series-PXN')),
+            )
+            .selected,
+        isTrue,
+      );
+
+      await selectBrand(tester, 'BrandA');
+      expect(
+        find.byKey(const Key('product-picker-series-filter')),
+        findsNothing,
+      );
+
+      await selectBrand(tester, 'Premier');
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const Key('product-picker-series-all')),
+            )
+            .selected,
+        isTrue,
+      );
+    });
+
+    testWidgets('Brand, Series, Category, and Search filters work together', (
+      tester,
+    ) async {
+      await addPremierSeriesProducts(tester);
+      await openPicker(tester);
+      await selectBrand(tester, 'Premier');
+
+      await tester.tap(find.byKey(const ValueKey('product-picker-series-PXN')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('product-picker-category-strength')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Leg Press');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Torque Pin Leg Press'), findsOneWidget);
+      expect(find.text('Active Pin Leg Press'), findsNothing);
+      expect(find.text('Torque PL Row'), findsNothing);
+      expect(find.text('Motorized Treadmill'), findsNothing);
+      expect(find.text('Premier Unknown Product'), findsNothing);
+    });
+
+    testWidgets(
+      'hidden selections remain selected across Brand and Series filters',
+      (tester) async {
+        await addPremierSeriesProducts(tester);
+        await openPicker(tester);
+
+        await tester.tap(find.text('Active Pin Leg Press'));
+        await tester.pump();
+        expect(find.text('1 Product Selected'), findsOneWidget);
+
+        await selectBrand(tester, 'Premier');
+        await tester.tap(
+          find.byKey(const ValueKey('product-picker-series-PXN')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Active Pin Leg Press'), findsNothing);
+        expect(find.text('1 Product Selected'), findsOneWidget);
+        final addButton = tester.widget<ElevatedButton>(
+          find.widgetWithText(ElevatedButton, 'Add Selected'),
+        );
+        expect(addButton.onPressed, isNotNull);
+      },
+    );
+
+    testWidgets('Premier Series chips wrap on mobile without overflow', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await addPremierSeriesProducts(tester);
+      await openPicker(tester);
+      await selectBrand(tester, 'Premier');
+
+      final wrap = tester.widget<Wrap>(
+        find.descendant(
+          of: find.byKey(const Key('product-picker-series-filter')),
+          matching: find.byType(Wrap),
+        ),
+      );
+      expect(wrap.runSpacing, 8);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets(
       'defaults to All and derives trimmed active categories without case duplicates',
       (tester) async {
@@ -190,11 +370,7 @@ void main() {
           id: 'duplicate-cardio',
           category: ' cardio ',
         );
-        await addCategoryProduct(
-          tester,
-          id: 'blank-category',
-          category: '   ',
-        );
+        await addCategoryProduct(tester, id: 'blank-category', category: '   ');
         await addCategoryProduct(
           tester,
           id: 'inactive-yoga',
@@ -220,111 +396,129 @@ void main() {
           find.byKey(const ValueKey('product-picker-category-yoga')),
           findsNothing,
         );
-        expect(find.byKey(const Key('product-picker-category-more')), findsNothing);
+        expect(
+          find.byKey(const Key('product-picker-category-more')),
+          findsNothing,
+        );
       },
     );
 
-    testWidgets('desktop shows All plus four categories and More for overflow', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      await addCategoryProduct(tester, id: 'flooring', category: 'Flooring');
-      await addCategoryProduct(tester, id: 'yoga', category: 'Yoga');
+    testWidgets(
+      'desktop shows All plus four categories and More for overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(1200, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await addCategoryProduct(tester, id: 'flooring', category: 'Flooring');
+        await addCategoryProduct(tester, id: 'yoga', category: 'Yoga');
 
-      await openPicker(tester);
+        await openPicker(tester);
 
-      expect(find.byKey(const Key('product-picker-category-all')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('product-picker-category-accessories')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('product-picker-category-cardio')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('product-picker-category-flooring')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('product-picker-category-weights')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('product-picker-category-yoga')),
-        findsNothing,
-      );
-      expect(find.byKey(const Key('product-picker-category-more')), findsOneWidget);
-      expect(tester.takeException(), isNull);
+        expect(
+          find.byKey(const Key('product-picker-category-all')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('product-picker-category-accessories')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('product-picker-category-cardio')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('product-picker-category-flooring')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('product-picker-category-weights')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('product-picker-category-yoga')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('product-picker-category-more')),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
 
-      await tester.ensureVisible(
-        find.byKey(const Key('product-picker-category-more')),
-      );
-      await tester.tap(find.byKey(const Key('product-picker-category-more')));
-      await tester.pumpAndSettle();
-      expect(find.text('Yoga'), findsOneWidget);
-    });
+        await tester.ensureVisible(
+          find.byKey(const Key('product-picker-category-more')),
+        );
+        await tester.tap(find.byKey(const Key('product-picker-category-more')));
+        await tester.pumpAndSettle();
+        expect(find.text('Yoga'), findsOneWidget);
+      },
+    );
 
-    testWidgets('mobile shows All plus two categories and More without overflow', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
+    testWidgets(
+      'mobile shows All plus two categories and More without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
 
-      await openPicker(tester);
+        await openPicker(tester);
 
-      expect(find.byKey(const Key('product-picker-category-all')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('product-picker-category-accessories')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('product-picker-category-cardio')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('product-picker-category-weights')),
-        findsNothing,
-      );
-      expect(find.byKey(const Key('product-picker-category-more')), findsOneWidget);
-      expect(tester.takeException(), isNull);
+        expect(
+          find.byKey(const Key('product-picker-category-all')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('product-picker-category-accessories')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('product-picker-category-cardio')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('product-picker-category-weights')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('product-picker-category-more')),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
 
-      await tester.ensureVisible(
-        find.byKey(const Key('product-picker-category-more')),
-      );
-      await tester.tap(find.byKey(const Key('product-picker-category-more')));
-      await tester.pumpAndSettle();
-      expect(find.text('Weights'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
+        await tester.ensureVisible(
+          find.byKey(const Key('product-picker-category-more')),
+        );
+        await tester.tap(find.byKey(const Key('product-picker-category-more')));
+        await tester.pumpAndSettle();
+        expect(find.text('Weights'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
-    testWidgets('visible category filters products and scopes existing search', (
-      tester,
-    ) async {
-      await openPicker(tester);
+    testWidgets(
+      'visible category filters products and scopes existing search',
+      (tester) async {
+        await openPicker(tester);
 
-      await tester.tap(
-        find.byKey(const ValueKey('product-picker-category-cardio')),
-      );
-      await tester.pumpAndSettle();
+        await tester.tap(
+          find.byKey(const ValueKey('product-picker-category-cardio')),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('Motorized Treadmill'), findsOneWidget);
-      expect(find.text('Exercise Bike'), findsOneWidget);
-      expect(find.text('Dumbbell Set'), findsNothing);
+        expect(find.text('Motorized Treadmill'), findsOneWidget);
+        expect(find.text('Exercise Bike'), findsOneWidget);
+        expect(find.text('Dumbbell Set'), findsNothing);
 
-      await tester.enterText(find.byType(TextField), 'BrandA');
-      await tester.pumpAndSettle();
-      expect(find.text('Motorized Treadmill'), findsOneWidget);
-      expect(find.text('Exercise Bike'), findsNothing);
+        await tester.enterText(find.byType(TextField), 'BrandA');
+        await tester.pumpAndSettle();
+        expect(find.text('Motorized Treadmill'), findsOneWidget);
+        expect(find.text('Exercise Bike'), findsNothing);
 
-      await tester.enterText(find.byType(TextField), 'BrandC');
-      await tester.pumpAndSettle();
-      expect(find.text('Dumbbell Set'), findsNothing);
-      expect(find.text('No products found'), findsOneWidget);
-    });
+        await tester.enterText(find.byType(TextField), 'BrandC');
+        await tester.pumpAndSettle();
+        expect(find.text('Dumbbell Set'), findsNothing);
+        expect(find.text('No products found'), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'overflow category filters locally and selection survives category and search changes',
@@ -336,11 +530,7 @@ void main() {
           name: 'Yoga Mat',
           brand: 'ZenBrand',
         );
-        await addCategoryProduct(
-          tester,
-          id: 'flooring',
-          category: 'Flooring',
-        );
+        await addCategoryProduct(tester, id: 'flooring', category: 'Flooring');
         await openPicker(tester);
 
         await tester.tap(find.text('Dumbbell Set'));
@@ -414,7 +604,8 @@ void main() {
       await tester.tap(find.byKey(const Key('open_picker')));
       await tester.pumpAndSettle();
 
-      final firstProductName = sampleProducts[2].name; // Dumbbell Set (first alphabetically in stock)
+      final firstProductName = sampleProducts[2]
+          .name; // Dumbbell Set (first alphabetically in stock)
 
       // Tap row
       await tester.tap(find.text(firstProductName).first);
@@ -551,7 +742,9 @@ void main() {
       'salesperson can create a global product and select it immediately',
       (tester) async {
         final auth = FakeAuthRepository();
-        ServiceLocator().authController.setCurrentUserForTesting(auth.testSales);
+        ServiceLocator().authController.setCurrentUserForTesting(
+          auth.testSales,
+        );
         List<Product>? returnedProducts;
 
         await tester.pumpWidget(
@@ -578,10 +771,7 @@ void main() {
           TextFormField,
           'Product Code / SKU *',
         );
-        final nameField = find.widgetWithText(
-          TextFormField,
-          'Product Name *',
-        );
+        final nameField = find.widgetWithText(TextFormField, 'Product Name *');
         final brandField = find.widgetWithText(TextFormField, 'Brand');
         final priceField = find.widgetWithText(
           TextFormField,
@@ -621,11 +811,11 @@ void main() {
 
     test('ProductMasterController loads new product from repository', () async {
       final controller = ServiceLocator().productMasterController;
-      
+
       // 1. Initial load
       await controller.loadProducts();
       expect(controller.products.length, sampleProducts.length);
-      
+
       // 2. Add a new product to the underlying repository directly
       final newProduct = Product(
         id: 'test-new-123',
@@ -641,12 +831,12 @@ void main() {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-      
+
       await ServiceLocator().productRepository.addProduct(newProduct);
-      
+
       // 3. Reload controller
       await controller.loadProducts();
-      
+
       // 4. Verify controller has the new product
       expect(controller.products.length, sampleProducts.length + 1);
       expect(
@@ -654,8 +844,10 @@ void main() {
         isTrue,
       );
     });
-    
-    testWidgets('ProductPicker displays correct stock after Stock Out', (tester) async {
+
+    testWidgets('ProductPicker displays correct stock after Stock Out', (
+      tester,
+    ) async {
       final loggedIn = await tester.runAsync(
         () => ServiceLocator().authController.login(
           email: 'admin@eagleflow.com',
@@ -667,7 +859,8 @@ void main() {
       expect(ServiceLocator().workspaceController.isReady, isTrue);
 
       // 1. Initial product has openingStock > 0
-      final product = ServiceLocator().productMasterController.products.firstWhere((p) => p.name == sampleProducts.first.name);
+      final product = ServiceLocator().productMasterController.products
+          .firstWhere((p) => p.name == sampleProducts.first.name);
       expect(product.openingStock > 0, isTrue);
 
       // 2. Add Stock Out to bring current stock to 0
@@ -685,7 +878,7 @@ void main() {
       await tester.runAsync(() async {
         await sembastRepo.addMovement(m);
       });
-      
+
       // Wait for movement to be saved
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -693,9 +886,11 @@ void main() {
       await tester.pumpWidget(buildTestApp(null));
       await tester.tap(find.byKey(const Key('open_picker')));
       await tester.pump(const Duration(milliseconds: 300));
-      for (var i = 0;
-          i < 20 && find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
-          i++) {
+      for (
+        var i = 0;
+        i < 20 && find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
+        i++
+      ) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 10)),
         );
@@ -705,9 +900,13 @@ void main() {
       expect(find.text('Add Selected'), findsOneWidget);
 
       // 4. Verify product tiles load without stock labels
-      
+
       final inStockWidgets = find.textContaining('in stock');
-      expect(inStockWidgets, findsNothing, reason: 'Stock labels are hidden in product picker');
+      expect(
+        inStockWidgets,
+        findsNothing,
+        reason: 'Stock labels are hidden in product picker',
+      );
 
       await tester.tap(find.text('Cancel'));
       await tester.pump();
