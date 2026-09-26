@@ -364,47 +364,56 @@ class QuotationPdfService {
           ),
         ),
         padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-        child: pw.Row(
-          children: [
-            _buildTableCell(
-              'S No.',
-              QuotationLayoutSpec.columnFlex['sno']!,
-              center: true,
-            ),
-            _buildTableCell(
-              'Photo',
-              QuotationLayoutSpec.columnFlex['photo']!,
-              center: true,
-            ),
-            _buildTableCell(
-              'Product',
-              QuotationLayoutSpec.columnFlex['product']!,
-              horizontalPadding: 12,
-            ),
-            _buildTableCell(
-              'Qty',
-              QuotationLayoutSpec.columnFlex['qty']!,
-              center: true,
-            ),
-            _buildTableCell(
-              'Price',
-              QuotationLayoutSpec.columnFlex['unitPrice']!,
-              center: true,
-            ),
-            _buildTableCell(
-              'Disc.',
-              QuotationLayoutSpec.columnFlex['discount']!,
-              center: true,
-            ),
-            _buildTableCell(
-              'Amount',
-              QuotationLayoutSpec.columnFlex['amount']!,
-              center: true,
-            ),
-          ],
-        ),
+        child: _buildTableHeaderRow(),
       ),
     );
+  }
+
+  pw.Row _buildTableHeaderRow() {
+    return pw.Row(
+      children: [
+        _buildTableCell(
+          'S No.',
+          QuotationLayoutSpec.columnFlex['sno']!,
+          center: true,
+        ),
+        _buildTableCell(
+          'Photo',
+          QuotationLayoutSpec.columnFlex['photo']!,
+          center: true,
+        ),
+        _buildTableCell(
+          'Product',
+          QuotationLayoutSpec.columnFlex['product']!,
+          horizontalPadding: 12,
+        ),
+        _buildTableCell(
+          'Qty',
+          QuotationLayoutSpec.columnFlex['qty']!,
+          center: true,
+        ),
+        _buildTableCell(
+          'Price',
+          QuotationLayoutSpec.columnFlex['unitPrice']!,
+          center: true,
+        ),
+        _buildTableCell(
+          'Disc.',
+          QuotationLayoutSpec.columnFlex['discount']!,
+          center: true,
+        ),
+        _buildTableCell(
+          'Amount',
+          QuotationLayoutSpec.columnFlex['amount']!,
+          center: true,
+        ),
+      ],
+    );
+  }
+
+  @visibleForTesting
+  pw.Widget buildTableHeaderForTesting() {
+    return _buildTableHeaderRow();
   }
 
   pw.Widget _buildTableCell(
@@ -508,10 +517,25 @@ class QuotationPdfService {
                   ),
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    'Code: ${item.productCode ?? "—"} | Brand: ${item.brand.isNotEmpty ? item.brand : "—"}',
-                    style: _smallStyle(),
+                    QuotationDocumentFormatters.formatProductMetadata(
+                      item.productCode,
+                      item.brand,
+                    ),
+                    style: _smallStyle(
+                      fontSize: QuotationLayoutSpec.productDetailFontSize,
+                    ),
                     maxLines: 1,
                   ),
+                  if (item.condition != null)
+                    pw.Text(
+                      QuotationDocumentFormatters.formatProductCondition(
+                        item.condition,
+                      )!,
+                      style: _smallStyle(
+                        fontSize: QuotationLayoutSpec.productDetailFontSize,
+                      ),
+                      maxLines: 1,
+                    ),
                   if (item.description != null && item.description!.isNotEmpty)
                     pw.Padding(
                       padding: const pw.EdgeInsets.only(top: 2),
@@ -521,7 +545,7 @@ class QuotationPdfService {
                             ) ??
                             '',
                         style: _smallStyle(
-                          fontSize: 8,
+                          fontSize: QuotationLayoutSpec.productDetailFontSize,
                           color: _textMain,
                           height: 1.3,
                         ),

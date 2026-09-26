@@ -3,6 +3,7 @@ import 'package:eagleflow/features/quotations/application/quotation_controller.d
 import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 
 void main() {
   group('QuotationController', () {
@@ -103,6 +104,35 @@ void main() {
         expect(added.description, p1.description);
         expect(added.isCustom, false);
       });
+
+      test('addProduct snapshots every Product Condition value', () {
+        for (final condition in ProductCondition.values) {
+          final product = p1.copyWith(
+            id: 'product-${condition.persistedValue}',
+            condition: condition,
+          );
+          controller.addProduct(product);
+          expect(controller.quotation.lineItems.last.condition, condition);
+        }
+      });
+
+      test(
+        'null condition stays null and an existing snapshot is immutable',
+        () {
+          final legacyProduct = p1.copyWith(id: 'legacy-product');
+          controller.addProduct(legacyProduct);
+          expect(controller.quotation.lineItems.last.condition, isNull);
+
+          final usedProduct = p1.copyWith(
+            id: 'condition-product',
+            condition: ProductCondition.used,
+          );
+          controller.addProduct(usedProduct);
+          final snapshot = controller.quotation.lineItems.last;
+          usedProduct.copyWith(condition: ProductCondition.display);
+          expect(snapshot.condition, ProductCondition.used);
+        },
+      );
 
       test('addProduct preserves three description lines exactly', () {
         const description =

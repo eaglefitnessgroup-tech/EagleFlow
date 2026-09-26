@@ -1,11 +1,14 @@
 import 'dart:typed_data';
 
+import '../../products/domain/product_condition.dart';
+
 class QuotationLineItem {
   final String id;
   final String? productId;
   final String? productCode;
   final String name;
   final String brand;
+  final ProductCondition? condition;
   final double unitPrice;
   final int quantity;
   final double discount;
@@ -22,6 +25,7 @@ class QuotationLineItem {
     this.productCode,
     required this.name,
     required this.brand,
+    this.condition,
     required this.unitPrice,
     required this.quantity,
     this.discount = 0.0,
@@ -39,6 +43,7 @@ class QuotationLineItem {
     String? productCode,
     String? name,
     String? brand,
+    ProductCondition? condition,
     double? unitPrice,
     int? quantity,
     double? discount,
@@ -55,6 +60,7 @@ class QuotationLineItem {
       productCode: productCode ?? this.productCode,
       name: name ?? this.name,
       brand: brand ?? this.brand,
+      condition: condition ?? this.condition,
       unitPrice: unitPrice ?? this.unitPrice,
       quantity: quantity ?? this.quantity,
       discount: discount ?? this.discount,
@@ -74,6 +80,7 @@ class QuotationLineItem {
       'productCode': productCode,
       'name': name,
       'brand': brand,
+      'condition': condition?.persistedValue,
       'unitPrice': unitPrice,
       'quantity': quantity,
       'discount': discount,
@@ -92,6 +99,7 @@ class QuotationLineItem {
       productCode: json['productCode'] as String?,
       name: json['name'] as String,
       brand: json['brand'] as String? ?? '',
+      condition: ProductCondition.tryParse(json['condition']),
       unitPrice: (json['unitPrice'] as num).toDouble(),
       quantity: json['quantity'] as int,
       discount: (json['discount'] as num?)?.toDouble() ?? 0.0,

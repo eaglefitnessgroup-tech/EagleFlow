@@ -61,6 +61,16 @@ class ProductInfoSection extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
+            if (product.condition != null) ...[
+              Text(
+                'Condition: ${product.condition!.displayLabel}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.mutedText,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
             Text(
               product.productCode,
               style: const TextStyle(fontSize: 14, color: AppColors.mutedText),

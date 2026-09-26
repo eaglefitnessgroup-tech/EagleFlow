@@ -1,7 +1,10 @@
+import 'product_condition.dart';
+
 class ProductUpdatePatch {
   final String? productName;
   final String? category;
   final String? brand;
+  final ProductCondition? condition;
   final double? sellingPrice;
   final String? unit;
   final int? minStockLevel;
@@ -13,6 +16,7 @@ class ProductUpdatePatch {
     this.productName,
     this.category,
     this.brand,
+    this.condition,
     this.sellingPrice,
     this.unit,
     this.minStockLevel,
@@ -25,6 +29,7 @@ class ProductUpdatePatch {
       productName == null &&
       category == null &&
       brand == null &&
+      condition == null &&
       sellingPrice == null &&
       unit == null &&
       minStockLevel == null &&
@@ -38,6 +43,7 @@ class ProductUpdatePatch {
     if (productName != null) 'productName',
     if (category != null) 'category',
     if (brand != null) 'brand',
+    if (condition != null) 'condition',
     if (sellingPrice != null) 'sellingPrice',
     if (unit != null) 'unit',
     if (minStockLevel != null) 'minStockLevel',

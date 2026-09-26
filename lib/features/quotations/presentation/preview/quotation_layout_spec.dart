@@ -27,11 +27,14 @@ class QuotationLayoutSpec {
   // Image constraints
   static const double productImageSize = 52;
 
+  // Product detail typography
+  static const double productDetailFontSize = 8;
+
   // Column Proportional Widths
   static const Map<String, int> columnFlex = {
-    'sno': 6,
-    'photo': 9,
-    'product': 49,
+    'sno': 8,
+    'photo': 13,
+    'product': 43,
     'qty': 6,
     'unitPrice': 10,
     'discount': 8,

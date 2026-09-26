@@ -1,6 +1,7 @@
 import 'package:eagleflow/features/products/application/bulk_product_update_service.dart';
 import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,6 +18,7 @@ void main() {
         name: 'First product',
         category: 'Equipment',
         brand: 'Eagle',
+        condition: ProductCondition.used,
         sellingPrice: 125.75,
         unit: 'Nos',
         minStockLevel: 4,
@@ -94,7 +96,7 @@ void main() {
 
   test('Selling Price is exported as a numeric cell', () {
     final sheet = generatedWorkbook().tables['Products']!;
-    final value = cellValue(sheet, 4, 1);
+    final value = cellValue(sheet, 5, 1);
 
     expect(value, isA<DoubleCellValue>());
     expect((value! as DoubleCellValue).value, 125.75);
@@ -102,7 +104,7 @@ void main() {
 
   test('Min Stock Level is exported as a numeric cell', () {
     final sheet = generatedWorkbook().tables['Products']!;
-    final value = cellValue(sheet, 6, 1);
+    final value = cellValue(sheet, 7, 1);
 
     expect(value, isA<IntCellValue>());
     expect((value! as IntCellValue).value, 4);
@@ -111,21 +113,62 @@ void main() {
   test('VAT Applicable is exported as Yes or No', () {
     final sheet = generatedWorkbook().tables['Products']!;
 
-    expect(textValue(cellValue(sheet, 8, 1)), 'Yes');
-    expect(textValue(cellValue(sheet, 8, 2)), 'No');
+    expect(textValue(cellValue(sheet, 9, 1)), 'Yes');
+    expect(textValue(cellValue(sheet, 9, 2)), 'No');
   });
 
   test('Active Product is exported as Yes or No', () {
     final sheet = generatedWorkbook().tables['Products']!;
 
-    expect(textValue(cellValue(sheet, 9, 1)), 'No');
-    expect(textValue(cellValue(sheet, 9, 2)), 'Yes');
+    expect(textValue(cellValue(sheet, 10, 1)), 'No');
+    expect(textValue(cellValue(sheet, 10, 2)), 'Yes');
   });
 
   test('multiline Description is preserved exactly', () {
     final sheet = generatedWorkbook().tables['Products']!;
 
-    expect(textValue(cellValue(sheet, 7, 1)), 'Line 1\nLine 2\nLine 3');
+    expect(textValue(cellValue(sheet, 8, 1)), 'Line 1\nLine 2\nLine 3');
+  });
+
+  test('Condition is after Brand and exports display labels or blank', () {
+    final sheet = generatedWorkbook().tables['Products']!;
+
+    expect(textValue(cellValue(sheet, 3, 0)), 'Brand');
+    expect(textValue(cellValue(sheet, 4, 0)), 'Condition');
+    expect(textValue(cellValue(sheet, 5, 0)), 'Selling Price');
+    expect(textValue(cellValue(sheet, 4, 1)), 'Used');
+    final blank = cellValue(sheet, 4, 2);
+    expect(blank == null || textValue(blank).isEmpty, isTrue);
+  });
+
+  test('all four Condition display labels export canonically', () {
+    final conditions = ProductCondition.values;
+    final conditionProducts = [
+      for (var index = 0; index < conditions.length; index++)
+        Product(
+          id: 'condition-$index',
+          productCode: 'COND-$index',
+          name: 'Condition product $index',
+          category: 'Equipment',
+          brand: 'Eagle',
+          condition: conditions[index],
+          sellingPrice: 1,
+          createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
+          updatedAt: DateTime.parse('2026-01-01T00:00:00Z'),
+        ),
+    ];
+    final workbook = Excel.decodeBytes(
+      service.generateCurrentProductsWorkbook(conditionProducts),
+    );
+    final sheet = workbook.tables['Products']!;
+
+    expect(
+      [
+        for (var row = 1; row <= conditions.length; row++)
+          textValue(cellValue(sheet, 4, row)),
+      ],
+      conditions.map((condition) => condition.displayLabel),
+    );
   });
 
   test('forbidden and internal fields are absent', () {
@@ -141,7 +184,7 @@ void main() {
     expect(headers, isNot(contains('ID')));
     expect(headers, isNot(contains('Created At')));
     expect(headers, isNot(contains('Updated At')));
-    expect(sheet.maxColumns, 10);
+    expect(sheet.maxColumns, 11);
   });
 
   test('exported workbook parses without header errors', () {
@@ -182,6 +225,27 @@ void main() {
     expect(editedRow.changes.single.fieldKey, 'productName');
     expect(editedRow.changes.single.oldValue, 'First product');
     expect(editedRow.changes.single.newValue, 'Edited product name');
+    expect(preview[1].status, BulkProductUpdateRowStatus.noChanges);
+  });
+
+  test('editing only exported Condition produces exactly one change', () {
+    final workbook = generatedWorkbook();
+    final sheet = workbook.tables['Products']!;
+    sheet.cell(CellIndex.indexByString('E2')).value = TextCellValue(
+      'Refurbished',
+    );
+
+    final preview = service.previewExcel(
+      workbook.encode()!,
+      currentProducts: products,
+    );
+    final editedRow = preview.first;
+
+    expect(editedRow.status, BulkProductUpdateRowStatus.valid);
+    expect(editedRow.patch.changedFieldNames, ['condition']);
+    expect(editedRow.changes, hasLength(1));
+    expect(editedRow.changes.single.oldValue, ProductCondition.used);
+    expect(editedRow.changes.single.newValue, ProductCondition.refurbished);
     expect(preview[1].status, BulkProductUpdateRowStatus.noChanges);
   });
 

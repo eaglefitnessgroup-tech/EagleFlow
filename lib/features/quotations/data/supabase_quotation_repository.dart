@@ -11,6 +11,7 @@ import '../domain/quotation_status.dart';
 import '../domain/quotation_line_item.dart';
 import '../domain/customer_info.dart';
 import '../domain/quotation_charges.dart';
+import '../../products/domain/product_condition.dart';
 import 'quotation_repository.dart';
 import 'sembast_quotation_repository.dart';
 
@@ -30,13 +31,13 @@ class SupabaseQuotationRepository implements QuotationRepository {
   @visibleForTesting
   bool get isConnectedToServer => supabase.isConnected;
 
- Future<void> init() async {
-  if (!isConnectedToServer) {
-    return;
-  }
+  Future<void> init() async {
+    if (!isConnectedToServer) {
+      return;
+    }
 
-  await _syncQuotationsDown();
-}
+    await _syncQuotationsDown();
+  }
 
   @visibleForTesting
   Future<List<dynamic>> fetchQuotationsFromServer() async {
@@ -123,9 +124,9 @@ class SupabaseQuotationRepository implements QuotationRepository {
       }
     } else if (table == 'quotation_items') {
       if (eventType == PostgresChangeEvent.delete) {
-         quotationId = oldRecord['quotation_id'] as String?;
+        quotationId = oldRecord['quotation_id'] as String?;
       } else {
-         quotationId = newRecord['quotation_id'] as String?;
+        quotationId = newRecord['quotation_id'] as String?;
       }
     }
 
@@ -139,15 +140,15 @@ class SupabaseQuotationRepository implements QuotationRepository {
             .eq('id', quotationId)
             .eq('salesperson_id', user.id)
             .maybeSingle();
-            
+
         if (response != null) {
-           final serverQ = _fromSupabase(response);
-           final db = await _db;
-           await _quotationsStore.record(serverQ.id).put(db, serverQ.toJson());
+          final serverQ = _fromSupabase(response);
+          final db = await _db;
+          await _quotationsStore.record(serverQ.id).put(db, serverQ.toJson());
         } else {
-           // It might have been deleted, clean up cache just in case
-           final db = await _db;
-           await _quotationsStore.record(quotationId).delete(db);
+          // It might have been deleted, clean up cache just in case
+          final db = await _db;
+          await _quotationsStore.record(quotationId).delete(db);
         }
       } catch (e) {
         // ignore
@@ -164,6 +165,7 @@ class SupabaseQuotationRepository implements QuotationRepository {
         productCode: item['product_code'] as String?,
         name: item['name'] as String,
         brand: item['brand'] as String? ?? '',
+        condition: ProductCondition.tryParse(item['condition']),
         unitPrice: (item['unit_price'] as num).toDouble(),
         quantity: item['quantity'] as int,
         discount: (item['discount'] as num).toDouble(),
@@ -223,20 +225,20 @@ class SupabaseQuotationRepository implements QuotationRepository {
   }
 
   @override
-Future<List<Quotation>> getAllQuotations() async {
-  final user = ServiceLocator().authController.currentUser;
+  Future<List<Quotation>> getAllQuotations() async {
+    final user = ServiceLocator().authController.currentUser;
 
-  if (user == null) return [];
+    if (user == null) return [];
 
-  // Pull latest quotations from Supabase
-  if (isConnectedToServer) {
-    await _syncQuotationsDown();
+    // Pull latest quotations from Supabase
+    if (isConnectedToServer) {
+      await _syncQuotationsDown();
+    }
+
+    final all = await localCache.getAllQuotations();
+
+    return all.where((q) => q.salespersonId == user.id).toList();
   }
-
-  final all = await localCache.getAllQuotations();
-
-  return all.where((q) => q.salespersonId == user.id).toList();
-}
 
   @override
   Future<Quotation?> getQuotationByNumber(String quotationNumber) async {
@@ -288,7 +290,7 @@ Future<List<Quotation>> getAllQuotations() async {
         throw Exception('Supabase client is null while connected');
       }
       final rpcPayload = _buildQuotationPayload(toSave);
-      
+
       final response = await client.rpc(
         'save_quotation',
         params: {'p_payload': rpcPayload},
@@ -299,12 +301,14 @@ Future<List<Quotation>> getAllQuotations() async {
           response.containsKey('error')) {
         throw Exception(response['error']);
       }
-      
+
       if (response != null &&
           response is Map<String, dynamic> &&
           response['quotationNumber'] != null &&
           response['quotationNumber'].toString().isNotEmpty) {
-        toSave = toSave.copyWith(quotationNumber: response['quotationNumber'] as String);
+        toSave = toSave.copyWith(
+          quotationNumber: response['quotationNumber'] as String,
+        );
       }
     } catch (e) {
       throw Exception('Failed to sync quotation to remote: $e');
@@ -406,13 +410,16 @@ Future<List<Quotation>> getAllQuotations() async {
       'valid_until': q.validUntil.toUtc().toIso8601String(),
       'expected_delivery': q.expectedDelivery.toUtc().toIso8601String(),
       'quotation_items': q.lineItems.map((e) {
-        final itemId = Uuid.isValidUUID(fromString: e.id) ? e.id : const Uuid().v4();
+        final itemId = Uuid.isValidUUID(fromString: e.id)
+            ? e.id
+            : const Uuid().v4();
         return {
           'id': itemId,
           'product_id': e.productId,
           'product_code': e.productCode,
           'name': e.name,
           'brand': e.brand,
+          'condition': e.condition?.persistedValue,
           'unit_price': e.unitPrice,
           'quantity': e.quantity,
           'discount': e.discount,
@@ -429,7 +436,9 @@ Future<List<Quotation>> getAllQuotations() async {
       'customerInfo': q.customerInfo.toJson(),
       'charges': q.charges.toJson(),
       'lineItems': q.lineItems.map((e) {
-        final itemId = Uuid.isValidUUID(fromString: e.id) ? e.id : const Uuid().v4();
+        final itemId = Uuid.isValidUUID(fromString: e.id)
+            ? e.id
+            : const Uuid().v4();
         final map = e.toJson();
         map['id'] = itemId;
         map.remove('imageBytes');

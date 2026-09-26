@@ -8,6 +8,7 @@ import 'package:eagleflow/features/products/data/sembast_product_repository.dart
 import 'package:eagleflow/features/products/data/supabase_product_repository.dart';
 import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 
 // Fake Supabase Product Repository that intercepts network calls for testing
 class FakeSupabaseProductRepository extends SupabaseProductRepository {
@@ -360,6 +361,7 @@ void main() {
           name: 'Original',
           category: 'Original category',
           brand: 'Original brand',
+          condition: ProductCondition.used,
           sellingPrice: 25,
           isVatApplicable: true,
           isActive: true,
@@ -398,7 +400,48 @@ void main() {
       expect(updated.productCode, 'PATCH-1');
       expect(updated.openingStock, 19);
       expect(updated.imageId, 'existing-image');
+      expect(updated.condition, ProductCondition.used);
+      expect(
+        repo.lastPartialUpdatePayload!.containsKey('condition'),
+        isFalse,
+      );
     });
+
+    test(
+      'condition-only update sends the canonical allowlisted value',
+      () async {
+        final product = await repo.addProduct(
+          Product(
+            id: '',
+            productCode: 'PATCH-CONDITION',
+            name: 'Original',
+            category: 'Category',
+            brand: 'Brand',
+            condition: ProductCondition.used,
+            sellingPrice: 25,
+            openingStock: 19,
+            imageId: 'existing-image',
+            createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
+            updatedAt: DateTime.parse('2026-01-01T00:00:00Z'),
+          ),
+        );
+
+        final updated = await repo.updateProductFields(
+          product.id,
+          const ProductUpdatePatch(condition: ProductCondition.display),
+        );
+
+        expect(repo.lastPartialUpdatePayload!.keys.toSet(), {
+          'condition',
+          'updated_at',
+        });
+        expect(repo.lastPartialUpdatePayload!['condition'], 'display');
+        expect(updated.condition, ProductCondition.display);
+        expect(updated.productCode, product.productCode);
+        expect(updated.openingStock, product.openingStock);
+        expect(updated.imageId, product.imageId);
+      },
+    );
 
     test('empty partial update does not issue a server write', () async {
       final product = await repo.addProduct(

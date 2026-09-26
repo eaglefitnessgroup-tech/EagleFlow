@@ -10,6 +10,7 @@ import '../../../core/supabase/supabase_service.dart';
 import '../../../core/di/service_locator.dart';
 import '../domain/bulk_update_models.dart';
 import '../domain/product.dart';
+import '../domain/product_condition.dart';
 import '../domain/product_repository.dart';
 import 'sembast_product_repository.dart';
 
@@ -398,6 +399,7 @@ class SupabaseProductRepository implements ProductRepository {
       'name': p.name,
       'category': p.category,
       'brand': p.brand,
+      'condition': p.condition?.persistedValue,
       'description': p.description,
       'model_number': p.modelNumber,
       'unit': p.unit,
@@ -418,6 +420,8 @@ class SupabaseProductRepository implements ProductRepository {
       if (patch.productName != null) 'name': patch.productName,
       if (patch.category != null) 'category': patch.category,
       if (patch.brand != null) 'brand': patch.brand,
+      if (patch.condition != null)
+        'condition': patch.condition!.persistedValue,
       if (patch.sellingPrice != null) 'selling_price': patch.sellingPrice,
       if (patch.unit != null) 'unit': patch.unit,
       if (patch.minStockLevel != null) 'min_stock_level': patch.minStockLevel,
@@ -434,6 +438,7 @@ class SupabaseProductRepository implements ProductRepository {
       name: row['name'] as String,
       category: row['category'] as String,
       brand: row['brand'] as String,
+      condition: ProductCondition.tryParse(row['condition']),
       description: row['description'] as String? ?? '',
       modelNumber: row['model_number'] as String?,
       unit: row['unit'] as String? ?? 'Nos',

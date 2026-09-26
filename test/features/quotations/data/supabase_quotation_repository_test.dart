@@ -10,6 +10,7 @@ import 'package:eagleflow/features/quotations/domain/quotation.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_status.dart';
 import 'package:eagleflow/features/quotations/domain/customer_info.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_charges.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 
 class FakeSupabaseQuotationRepository extends SupabaseQuotationRepository {
   List<Map<String, dynamic>> serverQuotations = [];
@@ -37,8 +38,7 @@ class TrackingSembastQuotationRepository extends SembastQuotationRepository {
   }
 }
 
-class DuplicateTestQuotationRepository
-    extends FakeSupabaseQuotationRepository {
+class DuplicateTestQuotationRepository extends FakeSupabaseQuotationRepository {
   int saveCount = 0;
 
   DuplicateTestQuotationRepository(super.localCache, super.supabase);
@@ -151,7 +151,20 @@ void main() {
           'updated_at': now.add(const Duration(hours: 2)).toIso8601String(),
           'valid_until': oldRecord.validUntil.toIso8601String(),
           'expected_delivery': oldRecord.expectedDelivery.toIso8601String(),
-          'quotation_items': [],
+          'quotation_items': [
+            {
+              'id': 'remote-item-1',
+              'product_id': 'product-1',
+              'product_code': 'CODE-1',
+              'name': 'Remote Product',
+              'brand': 'Brand',
+              'condition': 'refurbished',
+              'unit_price': 100,
+              'quantity': 1,
+              'discount': 0,
+              'sort_order': 0,
+            },
+          ],
         },
       ];
 
@@ -162,6 +175,7 @@ void main() {
       expect(q, isNotNull);
       expect(q!.customerInfo.name, 'Remote Customer');
       expect(q.status, QuotationStatus.sent);
+      expect(q.lineItems.single.condition, ProductCondition.refurbished);
     });
 
     test('2. Offline read fallback', () async {
@@ -196,8 +210,6 @@ void main() {
         );
       },
     );
-
-
 
     test('5. Salesperson own-only rules', () async {
       // Simulate Salesperson
@@ -254,10 +266,7 @@ void main() {
       final list = await repo.getAllQuotations();
       expect(list, hasLength(1));
       expect(list.single.salespersonId, 'ADMIN-001');
-      expect(
-        await repo.getQuotationByNumber('QT-S'),
-        isNull,
-      );
+      expect(await repo.getQuotationByNumber('QT-S'), isNull);
       expect(
         () => repo.getQuotationWithImages(qSales),
         throwsA(

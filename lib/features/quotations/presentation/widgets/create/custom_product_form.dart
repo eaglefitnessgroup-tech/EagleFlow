@@ -189,6 +189,7 @@ class _CustomProductFormContentState extends State<_CustomProductFormContent> {
       discount: discount,
       description: desc.isNotEmpty ? desc : null,
       productCode: code.isNotEmpty ? code : null,
+      condition: widget.initialItem?.condition,
       brand: brand.isNotEmpty ? brand : '—',
       imageBytes: _imageRemoved ? null : _imageBytes,
       imagePath: _imageRemoved ? null : widget.initialItem?.imagePath,

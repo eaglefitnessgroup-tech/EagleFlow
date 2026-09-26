@@ -4,6 +4,7 @@ import 'package:excel/excel.dart';
 import '../../../core/utils/file_download_util.dart';
 import '../domain/bulk_update_models.dart';
 import '../domain/product.dart';
+import '../domain/product_condition.dart';
 
 typedef BulkProductWorkbookSaver =
     Future<void> Function({required List<int> bytes, required String filename});
@@ -21,6 +22,7 @@ class BulkProductUpdateService {
     'Product Name',
     'Category',
     'Brand',
+    'Condition',
     'Selling Price',
     'Unit',
     'Min Stock Level',
@@ -34,6 +36,7 @@ class BulkProductUpdateService {
     'product name': 'Product Name',
     'category': 'Category',
     'brand': 'Brand',
+    'condition': 'Condition',
     'selling price': 'Selling Price',
     'unit': 'Unit',
     'min stock level': 'Min Stock Level',
@@ -78,6 +81,7 @@ class BulkProductUpdateService {
         TextCellValue(product.name),
         TextCellValue(product.category),
         TextCellValue(product.brand),
+        TextCellValue(product.condition?.displayLabel ?? ''),
         DoubleCellValue(product.sellingPrice),
         TextCellValue(product.unit),
         IntCellValue(product.minStockLevel),
@@ -475,10 +479,24 @@ class BulkProductUpdateService {
       }
     }
 
+    ProductCondition? condition;
+    final conditionCell = _optionalCell(row, headerIndexes, 'condition');
+    if (conditionCell != null &&
+        !conditionCell.isFormula &&
+        !conditionCell.isBlank) {
+      condition = ProductCondition.tryParse(conditionCell.text);
+      if (condition == null) {
+        errors.add(
+          'Invalid Condition. Use New, Used, Refurbished, or Display.',
+        );
+      }
+    }
+
     return ProductUpdatePatch(
       productName: stringValue('product name'),
       category: stringValue('category'),
       brand: stringValue('brand'),
+      condition: condition,
       sellingPrice: sellingPrice,
       unit: stringValue('unit'),
       minStockLevel: minStockLevel,
@@ -529,6 +547,20 @@ class BulkProductUpdateService {
           displayLabel: 'Brand',
           oldValue: product.brand,
           newValue: brand,
+        ),
+      );
+    }
+
+    ProductCondition? condition;
+    if (supplied.condition != null &&
+        supplied.condition != product.condition) {
+      condition = supplied.condition;
+      changes.add(
+        BulkProductUpdateChange(
+          fieldKey: 'condition',
+          displayLabel: 'Condition',
+          oldValue: product.condition,
+          newValue: condition,
         ),
       );
     }
@@ -620,6 +652,7 @@ class BulkProductUpdateService {
         productName: productName,
         category: category,
         brand: brand,
+        condition: condition,
         sellingPrice: sellingPrice,
         unit: unit,
         minStockLevel: minStockLevel,
@@ -651,6 +684,8 @@ class BulkProductUpdateService {
         return product.category;
       case 'brand':
         return product.brand;
+      case 'condition':
+        return product.condition;
       case 'sellingPrice':
         return product.sellingPrice;
       case 'unit':

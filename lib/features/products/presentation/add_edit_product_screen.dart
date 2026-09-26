@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../domain/product.dart';
+import '../domain/product_condition.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/guards/admin_guard.dart';
 import 'widgets/image_adjust_dialog.dart';
@@ -40,6 +41,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   bool _isVatApplicable = true;
   bool _isActive = true;
+  ProductCondition? _condition;
   Uint8List? _imageBytes;
 
   bool _isSaving = false;
@@ -65,6 +67,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       text: p?.minStockLevel.toString() ?? '5',
     );
     _descriptionController = TextEditingController(text: p?.description ?? '');
+    _condition = p?.condition;
 
     if (p != null) {
       _isVatApplicable = p.isVatApplicable;
@@ -84,8 +87,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     try {
       final client = ServiceLocator().supabaseService.client;
       if (client != null) {
-        final downloadPath = imageId.contains('/') ? imageId : '$imageId/main.jpg';
-        final bytes = await client.storage.from('product-images').download(downloadPath);
+        final downloadPath = imageId.contains('/')
+            ? imageId
+            : '$imageId/main.jpg';
+        final bytes = await client.storage
+            .from('product-images')
+            .download(downloadPath);
         if (mounted) {
           setState(() {
             _imageBytes = bytes;
@@ -122,15 +129,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final xfile = await picker.pickImage(source: ImageSource.gallery);
     if (xfile != null) {
       final bytes = await xfile.readAsBytes();
-      
+
       if (!mounted) return;
-      
+
       final adjustedBytes = await showDialog<Uint8List>(
         context: context,
         barrierDismissible: false,
         builder: (context) => ImageAdjustDialog(imageBytes: bytes),
       );
-      
+
       if (adjustedBytes != null) {
         setState(() {
           _imageBytes = adjustedBytes;
@@ -141,13 +148,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Future<void> _adjustExistingImage() async {
     if (_imageBytes == null) return;
-    
+
     final adjustedBytes = await showDialog<Uint8List>(
       context: context,
       barrierDismissible: false,
       builder: (context) => ImageAdjustDialog(imageBytes: _imageBytes!),
     );
-    
+
     if (adjustedBytes != null) {
       setState(() {
         _imageBytes = adjustedBytes;
@@ -194,6 +201,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       description: _descriptionController.text.trim(),
       isVatApplicable: _isVatApplicable,
       isActive: _isActive,
+      condition: _condition,
       imageBytes: _imageBytes,
     );
 
@@ -237,7 +245,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: AppColors.statusRejectedText),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.statusRejectedText,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -277,12 +287,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Widget _buildFormRow(Widget field1, Widget field2, bool isMobile) {
     if (isMobile) {
-      return Column(
-        children: [
-          field1,
-          field2,
-        ],
-      );
+      return Column(children: [field1, field2]);
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,282 +305,286 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final bool isMobile = MediaQuery.sizeOf(context).width < 600;
 
     final scaffold = Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.charcoal,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.charcoal,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
           ),
-          backgroundColor: Colors.white,
-          centerTitle: true,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: AppColors.charcoal),
-          actions: [
-            if (_isSaving)
-              const Padding(
-                padding: EdgeInsets.only(right: 20.0),
-                child: Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              )
-            else
-              TextButton(
-                onPressed: _save,
-                child: const Text(
-                  'Save',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.charcoal),
+        actions: [
+          if (_isSaving)
+            const Padding(
+              padding: EdgeInsets.only(right: 20.0),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-          ],
-        ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.w500,
-                    ),
+            )
+          else
+            TextButton(
+              onPressed: _save,
+              child: const Text(
+                'Save',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            if (_errorMessage != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
+              ),
 
-              // Image Picker
-              Center(
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: _isLoadingImage
-                        ? const Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppColors.primaryBlue),
+            // Image Picker
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _isLoadingImage
+                      ? const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.primaryBlue,
                               ),
                             ),
-                          )
-                        : _imageBytes != null
-                            ? Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  Image.memory(_imageBytes!, fit: BoxFit.cover),
-                                  Positioned(
-                                    top: 4,
-                                    right: 32,
-                                    child: GestureDetector(
-                                      onTap: _adjustExistingImage,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.black54,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.crop,
-                                          size: 16,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
+                          ),
+                        )
+                      : _imageBytes != null
+                      ? Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.memory(_imageBytes!, fit: BoxFit.cover),
+                            Positioned(
+                              top: 4,
+                              right: 32,
+                              child: GestureDetector(
+                                onTap: _adjustExistingImage,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
                                   ),
-                                  Positioned(
-                                    top: 4,
-                                    right: 4,
-                                    child: GestureDetector(
-                                      onTap: _removeImage,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.black54,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.close,
-                                          size: 16,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
+                                  child: const Icon(
+                                    Icons.crop,
+                                    size: 16,
+                                    color: Colors.white,
                                   ),
-                                ],
-                              )
-                            : const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.add_photo_alternate_outlined,
-                                    size: 32,
-                                    color: AppColors.mutedText,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Add Image',
-                                    style: TextStyle(
-                                      color: AppColors.mutedText,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: _removeImage,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate_outlined,
+                              size: 32,
+                              color: AppColors.mutedText,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Add Image',
+                              style: TextStyle(
+                                color: AppColors.mutedText,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            _buildTextField(
+              'Product Code / SKU *',
+              _codeController,
+              required: true,
+            ),
+            _buildTextField('Product Name *', _nameController, required: true),
+
+            _buildFormRow(
+              _buildTextField('Category', _categoryController),
+              _buildTextField('Brand', _brandController),
+              isMobile,
+            ),
+
+            _buildConditionField(),
+
+            _buildFormRow(
+              _buildTextField(
+                'Selling Price *',
+                _priceController,
+                isNumber: true,
+                required: true,
+              ),
+              _buildTextField('Unit', _unitController),
+              isMobile,
+            ),
+
+            _buildFormRow(
+              _buildTextField(
+                'Opening Stock',
+                _openingStockController,
+                isNumber: true,
+                readOnly: widget.product != null,
+              ),
+              _buildTextField(
+                'Min Stock Level',
+                _minStockController,
+                isNumber: true,
+              ),
+              isMobile,
+            ),
+
+            Shortcuts(
+              shortcuts: <ShortcutActivator, Intent>{
+                SingleActivator(LogicalKeyboardKey.enter, control: true):
+                    const _InsertNewlineIntent(),
+              },
+              child: Actions(
+                actions: <Type, Action<Intent>>{
+                  _InsertNewlineIntent: CallbackAction<_InsertNewlineIntent>(
+                    onInvoke: (intent) {
+                      final text = _descriptionController.text;
+                      final selection = _descriptionController.selection;
+
+                      if (selection.isValid) {
+                        final newText = text.replaceRange(
+                          selection.start,
+                          selection.end,
+                          '\n',
+                        );
+                        _descriptionController.value = TextEditingValue(
+                          text: newText,
+                          selection: TextSelection.collapsed(
+                            offset: selection.start + 1,
+                          ),
+                        );
+                      }
+                      return null;
+                    },
                   ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              _buildTextField(
-                'Product Code / SKU *',
-                _codeController,
-                required: true,
-              ),
-              _buildTextField(
-                'Product Name *',
-                _nameController,
-                required: true,
-              ),
-
-              _buildFormRow(
-                _buildTextField('Category', _categoryController),
-                _buildTextField('Brand', _brandController),
-                isMobile,
-              ),
-
-              _buildFormRow(
-                _buildTextField(
-                  'Selling Price *',
-                  _priceController,
-                  isNumber: true,
-                  required: true,
-                ),
-                _buildTextField('Unit', _unitController),
-                isMobile,
-              ),
-
-              _buildFormRow(
-                _buildTextField(
-                  'Opening Stock',
-                  _openingStockController,
-                  isNumber: true,
-                  readOnly: widget.product != null,
-                ),
-                _buildTextField(
-                  'Min Stock Level',
-                  _minStockController,
-                  isNumber: true,
-                ),
-                isMobile,
-              ),
-
-              Shortcuts(
-                shortcuts: <ShortcutActivator, Intent>{
-                  SingleActivator(LogicalKeyboardKey.enter, control: true): const _InsertNewlineIntent(),
                 },
-                child: Actions(
-                  actions: <Type, Action<Intent>>{
-                    _InsertNewlineIntent: CallbackAction<_InsertNewlineIntent>(
-                      onInvoke: (intent) {
-                        final text = _descriptionController.text;
-                        final selection = _descriptionController.selection;
-                        
-                        if (selection.isValid) {
-                          final newText = text.replaceRange(selection.start, selection.end, '\n');
-                          _descriptionController.value = TextEditingValue(
-                            text: newText,
-                            selection: TextSelection.collapsed(offset: selection.start + 1),
-                          );
-                        }
-                        return null;
-                      },
-                    ),
-                  },
-                  child: _buildTextField(
-                    'Description / Notes',
-                    _descriptionController,
-                    maxLines: 3,
-                    keyboardType: TextInputType.multiline,
-                  ),
+                child: _buildTextField(
+                  'Description / Notes',
+                  _descriptionController,
+                  maxLines: 3,
+                  keyboardType: TextInputType.multiline,
                 ),
               ),
+            ),
 
-              const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('VAT Applicable'),
-                contentPadding: EdgeInsets.zero,
-                activeThumbColor: AppColors.primaryBlue,
-                value: _isVatApplicable,
-                onChanged: (val) => setState(() => _isVatApplicable = val),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('VAT Applicable'),
+              contentPadding: EdgeInsets.zero,
+              activeThumbColor: AppColors.primaryBlue,
+              value: _isVatApplicable,
+              onChanged: (val) => setState(() => _isVatApplicable = val),
+            ),
+            SwitchListTile(
+              title: const Text('Active Product'),
+              subtitle: const Text(
+                'Inactive products cannot be added to new quotations',
               ),
-              SwitchListTile(
-                title: const Text('Active Product'),
-                subtitle: const Text(
-                  'Inactive products cannot be added to new quotations',
-                ),
-                contentPadding: EdgeInsets.zero,
-                activeThumbColor: AppColors.primaryBlue,
-                value: _isActive,
-                onChanged: (val) => setState(() => _isActive = val),
-              ),
-              if (widget.product != null) ...[
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _isSaving ? null : _deleteProduct,
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Delete Product'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.statusRejectedText,
-                      side: const BorderSide(color: AppColors.statusRejectedText),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+              contentPadding: EdgeInsets.zero,
+              activeThumbColor: AppColors.primaryBlue,
+              value: _isActive,
+              onChanged: (val) => setState(() => _isActive = val),
+            ),
+            if (widget.product != null) ...[
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isSaving ? null : _deleteProduct,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete Product'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.statusRejectedText,
+                    side: const BorderSide(color: AppColors.statusRejectedText),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-              ],
+              ),
+              const SizedBox(height: 16),
             ],
-          ),
+          ],
         ),
-      );
+      ),
+    );
 
     if (widget.allowAuthenticatedCreate && widget.product == null) {
       return scaffold;
     }
 
-    return AdminGuard(
-      child: scaffold,
-    );
+    return AdminGuard(child: scaffold);
   }
 
   Widget _buildTextField(
@@ -593,9 +602,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         controller: controller,
         readOnly: readOnly,
         enableInteractiveSelection: !readOnly,
-        keyboardType: keyboardType ?? (isNumber
-            ? const TextInputType.numberWithOptions(decimal: true)
-            : TextInputType.text),
+        keyboardType:
+            keyboardType ??
+            (isNumber
+                ? const TextInputType.numberWithOptions(decimal: true)
+                : TextInputType.text),
         maxLines: maxLines,
         decoration: InputDecoration(
           filled: readOnly,
@@ -621,6 +632,47 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 return null;
               }
             : null,
+      ),
+    );
+  }
+
+  Widget _buildConditionField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: DropdownButtonFormField<ProductCondition>(
+        key: const Key('product-condition-field'),
+        initialValue: _condition,
+        isExpanded: true,
+        hint: const Text('Select condition (optional)'),
+        decoration: InputDecoration(
+          labelText: 'Condition',
+          labelStyle: const TextStyle(color: AppColors.mutedText),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primaryBlue),
+          ),
+        ),
+        items: ProductCondition.values
+            .map(
+              (condition) => DropdownMenuItem<ProductCondition>(
+                value: condition,
+                child: Text(condition.displayLabel),
+              ),
+            )
+            .toList(),
+        onChanged: (condition) {
+          setState(() {
+            _condition = condition;
+          });
+        },
       ),
     );
   }

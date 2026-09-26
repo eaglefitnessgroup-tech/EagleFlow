@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'product_condition.dart';
+
 class Product {
   // Required
   final String id; // Internal UUID
@@ -20,6 +22,7 @@ class Product {
   final int minStockLevel;
   final int openingStock; // For Phase 3 initialization only
   final String? notes;
+  final ProductCondition? condition;
 
   // Image handling (Blob references)
   final String? imageId; // Reference to persisted blob in images_store
@@ -42,6 +45,7 @@ class Product {
     this.minStockLevel = 0,
     this.openingStock = 0,
     this.notes,
+    this.condition,
     this.imageId,
     this.imageBytes,
   });
@@ -65,6 +69,7 @@ class Product {
     int? minStockLevel,
     int? openingStock,
     String? notes,
+    ProductCondition? condition,
     String? imageId,
     Uint8List? imageBytes,
   }) {
@@ -85,6 +90,7 @@ class Product {
       minStockLevel: minStockLevel ?? this.minStockLevel,
       openingStock: openingStock ?? this.openingStock,
       notes: notes ?? this.notes,
+      condition: condition ?? this.condition,
       imageId: imageId ?? this.imageId,
       imageBytes: imageBytes ?? this.imageBytes,
     );
@@ -109,6 +115,7 @@ class Product {
       'minStockLevel': minStockLevel,
       'openingStock': openingStock,
       if (notes != null) 'notes': notes!.trim(),
+      if (condition != null) 'condition': condition!.persistedValue,
       if (imageId != null) 'imageId': imageId,
     };
   }
@@ -135,6 +142,7 @@ class Product {
       minStockLevel: json['minStockLevel'] as int? ?? 0,
       openingStock: json['openingStock'] as int? ?? 0,
       notes: json['notes'] as String?,
+      condition: ProductCondition.tryParse(json['condition']),
       imageId: json['imageId'] as String?,
     );
   }

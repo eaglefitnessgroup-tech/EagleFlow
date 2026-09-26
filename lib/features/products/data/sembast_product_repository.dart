@@ -247,6 +247,7 @@ class SembastProductRepository implements ProductRepository {
         name: patch.productName,
         category: patch.category,
         brand: patch.brand,
+        condition: patch.condition,
         sellingPrice: patch.sellingPrice,
         unit: patch.unit,
         minStockLevel: patch.minStockLevel,

@@ -6,6 +6,7 @@ import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 
 void main() {
   late Database db;
@@ -33,6 +34,7 @@ void main() {
         name: 'Original name',
         category: 'Original category',
         brand: 'Original brand',
+        condition: ProductCondition.used,
         sellingPrice: 125.5,
         isVatApplicable: true,
         isActive: true,
@@ -137,6 +139,35 @@ void main() {
       expect(updated.category, original.category);
       expect(updated.description, original.description);
       expect(updated.unit, original.unit);
+      expect(updated.condition, ProductCondition.used);
+    });
+
+    test('condition-only update changes condition and nothing else', () async {
+      final original = await addProduct();
+
+      final updated = await repository.updateProductFields(
+        original.id,
+        const ProductUpdatePatch(condition: ProductCondition.refurbished),
+      );
+
+      expect(updated.condition, ProductCondition.refurbished);
+      expect(updated.productCode, original.productCode);
+      expect(updated.name, original.name);
+      expect(updated.brand, original.brand);
+      expect(updated.sellingPrice, original.sellingPrice);
+      expect(updated.openingStock, original.openingStock);
+      expect(updated.imageId, original.imageId);
+    });
+
+    test('omitted condition retains the stored condition', () async {
+      final original = await addProduct();
+
+      final updated = await repository.updateProductFields(
+        original.id,
+        const ProductUpdatePatch(productName: 'Updated name'),
+      );
+
+      expect(updated.condition, ProductCondition.used);
     });
 
     test('Product Code and Opening Stock remain unchanged', () async {

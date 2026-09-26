@@ -7,6 +7,7 @@ import 'package:eagleflow/features/products/application/bulk_import_service.dart
 import 'package:eagleflow/features/products/domain/bulk_import_models.dart';
 import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 import 'package:eagleflow/features/products/domain/product_repository.dart';
 import 'package:eagleflow/core/supabase/supabase_service.dart';
 
@@ -184,6 +185,7 @@ class FakeBulkImportService extends BulkImportService {
 
   // -- insert control --
   bool insertShouldFail = false;
+  List<Map<String, dynamic>>? lastInsertedPayload;
 
   // -- remove (rollback) control --
   final List<String> removedPaths = [];
@@ -201,6 +203,9 @@ class FakeBulkImportService extends BulkImportService {
   @override
   Future<void> insertProducts(List<Map<String, dynamic>> payload) async {
     if (insertShouldFail) throw Exception('Fake batch insert failure');
+    lastInsertedPayload = payload
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
     // no-op: local writes happen through repository
   }
 
@@ -224,6 +229,8 @@ void main() {
 
   const validHeaders =
       'Product Code,Name,Category,Brand,Selling Price,Opening Stock,Min Stock Level,Unit,VAT Applicable,Active,Description,Model Number,Notes\n';
+  const headersWithCondition =
+      'Product Code,Name,Category,Brand,Condition,Selling Price,Opening Stock,Min Stock Level,Unit,VAT Applicable,Active,Description,Model Number,Notes\n';
 
   test('valid CSV generates successful preview', () async {
     const csv =
@@ -245,6 +252,62 @@ void main() {
     expect(prod.unit, 'Box');
     expect(prod.isVatApplicable, true);
     expect(prod.isActive, true);
+    expect(prod.condition, isNull);
+  });
+
+  test('accepts all four Product Condition values', () async {
+    const cases = {
+      'New': ProductCondition.newProduct,
+      'Used': ProductCondition.used,
+      'Refurbished': ProductCondition.refurbished,
+      'Display': ProductCondition.display,
+    };
+
+    for (final entry in cases.entries) {
+      final csv =
+          '${headersWithCondition}COND-${entry.key},Item,Cat,Brand,${entry.key},10,0,0,Nos,Yes,Yes,,,';
+      final preview = await service.previewImport(csv);
+
+      expect(preview.canImport, isTrue);
+      expect(preview.rows.single.product!.condition, entry.value);
+    }
+  });
+
+  test('Condition parsing is case-insensitive and trims whitespace', () async {
+    const csv =
+        '${headersWithCondition}COND-TRIM,Item,Cat,Brand,  rEfUrBiShEd  ,10,0,0,Nos,Yes,Yes,,,';
+
+    final preview = await service.previewImport(csv);
+
+    expect(preview.canImport, isTrue);
+    expect(
+      preview.rows.single.product!.condition,
+      ProductCondition.refurbished,
+    );
+  });
+
+  test('blank Condition remains null without defaulting to New', () async {
+    const csv =
+        '${headersWithCondition}COND-BLANK,Item,Cat,Brand,   ,10,0,0,Nos,Yes,Yes,,,';
+
+    final preview = await service.previewImport(csv);
+
+    expect(preview.canImport, isTrue);
+    expect(preview.rows.single.product!.condition, isNull);
+  });
+
+  test('invalid Condition produces a clear row validation error', () async {
+    const csv =
+        '${headersWithCondition}COND-BAD,Item,Cat,Brand,Damaged,10,0,0,Nos,Yes,Yes,,,';
+
+    final preview = await service.previewImport(csv);
+
+    expect(preview.canImport, isFalse);
+    expect(preview.rows.single.product, isNull);
+    expect(
+      preview.rows.single.errors,
+      contains('Invalid Condition. Use New, Used, Refurbished, or Display.'),
+    );
   });
 
   test('missing optional values applies defaults', () async {
@@ -260,6 +323,7 @@ void main() {
     expect(prod.minStockLevel, 0);
     expect(prod.isVatApplicable, true);
     expect(prod.isActive, true);
+    expect(prod.condition, isNull);
   });
 
   test('malformed headers fails preview', () async {
@@ -556,6 +620,47 @@ void main() {
     final preview = await service.previewImport('', excelBytes: bytes);
     expect(preview.canImport, true);
     expect(preview.validCount, 3);
+    expect(
+      preview.rows.map((row) => row.product!.condition).toList(),
+      [ProductCondition.newProduct, null, ProductCondition.refurbished],
+    );
+  });
+
+  test('generated template places optional Condition after Brand', () {
+    final workbook = Excel.decodeBytes(service.generateTemplate());
+    final sheet = workbook.tables['Products']!;
+    final headers = sheet.rows.first
+        .map((cell) => cell?.value?.toString() ?? '')
+        .toList();
+
+    final conditionIndex = headers.indexOf('Condition');
+    expect(conditionIndex, headers.indexOf('Brand') + 1);
+    expect(headers[conditionIndex + 1], 'Selling Price');
+  });
+
+  test('generated template uses only Condition display labels or blank', () {
+    final workbook = Excel.decodeBytes(service.generateTemplate());
+    final sheet = workbook.tables['Products']!;
+    final headers = sheet.rows.first
+        .map((cell) => cell?.value?.toString() ?? '')
+        .toList();
+    final conditionIndex = headers.indexOf('Condition');
+    final values = sheet.rows
+        .skip(1)
+        .map(
+          (row) => conditionIndex < row.length
+              ? row[conditionIndex]?.value?.toString() ?? ''
+              : '',
+        )
+        .toList();
+
+    expect(values, ['New', '', 'Refurbished']);
+    expect(
+      values.where((value) => value.isNotEmpty),
+      everyElement(
+        isIn(ProductCondition.values.map((value) => value.displayLabel)),
+      ),
+    );
   });
 
   group('ZIP Import Tests', () {
@@ -1008,6 +1113,19 @@ void main() {
       repo = MockProductRepository();
       fakeSupabase = FakeSupabaseService();
       fake = FakeBulkImportService(repo, fakeSupabase);
+    });
+
+    test('commit preserves typed Condition locally and remotely', () async {
+      const csv =
+          '${headersWithCondition}IMPORT-COND,Item,Cat,Brand,Display,10,0,0,Nos,Yes,Yes,,,';
+      final preview = await fake.previewImport(csv);
+
+      final result = await fake.commitImport(preview);
+
+      expect(result.success, isTrue);
+      final products = await repo.getAllProducts();
+      expect(products.single.condition, ProductCondition.display);
+      expect(fake.lastInsertedPayload!.single['condition'], 'display');
     });
 
     test('second upload failure rolls back the first uploaded image', () async {

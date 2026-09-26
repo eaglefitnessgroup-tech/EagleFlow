@@ -23,6 +23,7 @@ class ImportPreviewTable extends StatelessWidget {
           DataColumn(label: Text('Image')),
           DataColumn(label: Text('Code')),
           DataColumn(label: Text('Name')),
+          DataColumn(label: Text('Condition')),
           DataColumn(label: Text('Price')),
           DataColumn(label: Text('Errors')),
         ],
@@ -73,6 +74,7 @@ class ImportPreviewTable extends StatelessWidget {
 
               DataCell(Text(p?.productCode ?? '')),
               DataCell(Text(p?.name ?? '')),
+              DataCell(Text(p?.condition?.displayLabel ?? '')),
               DataCell(
                 Text(p != null ? p.sellingPrice.toStringAsFixed(2) : ''),
               ),

@@ -1,7 +1,49 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/quotation_document_formatters.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 
 void main() {
+  group('QuotationDocumentFormatters.formatProductCondition', () {
+    test('renders every display label in uppercase and hides null', () {
+      expect(
+        ProductCondition.values.map(
+          QuotationDocumentFormatters.formatProductCondition,
+        ),
+        [
+          'CONDITION: NEW',
+          'CONDITION: USED',
+          'CONDITION: REFURBISHED',
+          'CONDITION: DISPLAY',
+        ],
+      );
+      expect(QuotationDocumentFormatters.formatProductCondition(null), isNull);
+    });
+  });
+
+  group('QuotationDocumentFormatters.formatProductMetadata', () {
+    test('renders labels and display values in uppercase', () {
+      expect(
+        QuotationDocumentFormatters.formatProductMetadata('fxr01w', 'FloorX'),
+        'CODE: FXR01W | BRAND: FLOORX',
+      );
+      expect(
+        QuotationDocumentFormatters.formatProductMetadata('p-2', 'Burnsport'),
+        'CODE: P-2 | BRAND: BURNSPORT',
+      );
+      expect(
+        QuotationDocumentFormatters.formatProductMetadata('p-3', 'Premier'),
+        'CODE: P-3 | BRAND: PREMIER',
+      );
+    });
+
+    test('uses placeholders for missing metadata', () {
+      expect(
+        QuotationDocumentFormatters.formatProductMetadata(null, ''),
+        'CODE: — | BRAND: —',
+      );
+    });
+  });
+
   group('QuotationDocumentFormatters.formatSpecification', () {
     test('1 part - returns unchanged', () {
       final input = 'Only one part description';
@@ -16,9 +58,13 @@ void main() {
     });
 
     test('3 parts - splits around midpoint (ceil of 3/2 = 2)', () {
-      final input = '1410x680x450mm | Net Weight: 45kg | 10 years frame warranty';
+      final input =
+          '1410x680x450mm | Net Weight: 45kg | 10 years frame warranty';
       final result = QuotationDocumentFormatters.formatSpecification(input);
-      expect(result, '1410x680x450mm | Net Weight: 45kg\n10 years frame warranty');
+      expect(
+        result,
+        '1410x680x450mm | Net Weight: 45kg\n10 years frame warranty',
+      );
     });
 
     test('4 parts - splits around midpoint (4/2 = 2)', () {
@@ -34,16 +80,20 @@ void main() {
     });
 
     test('Long text parts are preserved properly', () {
-      final input = 'Very long string part 1 that wraps | Very long string part 2 that wraps | Short 3';
+      final input =
+          'Very long string part 1 that wraps | Very long string part 2 that wraps | Short 3';
       final result = QuotationDocumentFormatters.formatSpecification(input);
-      expect(result, 'Very long string part 1 that wraps | Very long string part 2 that wraps\nShort 3');
+      expect(
+        result,
+        'Very long string part 1 that wraps | Very long string part 2 that wraps\nShort 3',
+      );
     });
 
     test('Manual newline is preserved exactly without | splitting', () {
       final input = 'Part A | Part B\nPart C';
       final result = QuotationDocumentFormatters.formatSpecification(input);
       expect(result, 'Part A | Part B\nPart C');
-      
+
       final input2 = 'Only one part but with\nmanual newline';
       final result2 = QuotationDocumentFormatters.formatSpecification(input2);
       expect(result2, 'Only one part but with\nmanual newline');

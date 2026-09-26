@@ -79,11 +79,31 @@ class QuotationPaginator {
         text: TextSpan(
           text:
               'Code: ${item.productCode ?? "—"} | Brand: ${item.brand.isNotEmpty ? item.brand : "—"}',
-          style: QuotationDocumentTheme.small,
+          style: QuotationDocumentTheme.small.copyWith(
+            fontSize: QuotationLayoutSpec.productDetailFontSize,
+          ),
         ),
         textDirection: TextDirection.ltr,
         maxLines: 1,
       )..layout(maxWidth: productTextWidth);
+
+      double conditionHeight = 0;
+      final conditionText = QuotationDocumentFormatters.formatProductCondition(
+        item.condition,
+      );
+      if (conditionText != null) {
+        final TextPainter conditionPainter = TextPainter(
+          text: TextSpan(
+            text: conditionText,
+            style: QuotationDocumentTheme.small.copyWith(
+              fontSize: QuotationLayoutSpec.productDetailFontSize,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+          maxLines: 1,
+        )..layout(maxWidth: productTextWidth);
+        conditionHeight = conditionPainter.height;
+      }
 
       double descHeight = 0;
       if (item.description != null && item.description!.isNotEmpty) {
@@ -106,7 +126,11 @@ class QuotationPaginator {
       }
 
       final double contentH =
-          namePainter.height + 2.0 + codeBrandPainter.height + descHeight;
+          namePainter.height +
+          2.0 +
+          codeBrandPainter.height +
+          conditionHeight +
+          descHeight;
       // 8px vertical padding + 0.5px border
       final double rowHeight =
           math.max(QuotationLayoutSpec.productImageSize, contentH) + 8.5;

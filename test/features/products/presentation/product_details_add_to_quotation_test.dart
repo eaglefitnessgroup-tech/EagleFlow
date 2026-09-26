@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 import 'package:eagleflow/features/products/presentation/product_details_screen.dart';
 import 'package:eagleflow/features/products/presentation/widgets/details/quantity_selector.dart';
 import 'package:eagleflow/features/quotations/application/quotation_controller.dart';
@@ -109,5 +110,30 @@ void main() {
     expect(find.text('AED 1,250'), findsNWidgets(2));
     expect(find.byType(QuantitySelector), findsOneWidget);
     expect(find.text('Add to Quotation'), findsOneWidget);
+  });
+
+  testWidgets('Product Details shows the saved condition label', (
+    tester,
+  ) async {
+    product = product.copyWith(condition: ProductCondition.refurbished);
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProductDetailsScreen(testProduct: product)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Condition: Refurbished'), findsOneWidget);
+  });
+
+  testWidgets('Product Details safely hides a null legacy condition', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: ProductDetailsScreen(testProduct: product)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Condition:'), findsNothing);
+    expect(find.text(product.productCode), findsOneWidget);
   });
 }

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'package:eagleflow/app/theme/app_colors.dart';
 import '../../domain/bulk_update_models.dart';
+import '../../domain/product_condition.dart';
 
 class BulkUpdatePreviewTable extends StatelessWidget {
   final List<BulkProductUpdatePreviewRow> rows;
@@ -215,6 +216,7 @@ class _ChangesOrReason extends StatelessWidget {
   static String _formatValue(String fieldKey, Object? value) {
     if (value == null) return '—';
     if (value is bool) return value ? 'Yes' : 'No';
+    if (value is ProductCondition) return value.displayLabel;
     if (fieldKey == 'sellingPrice' && value is num) {
       return 'AED ${NumberFormat('#,##0.00').format(value)}';
     }

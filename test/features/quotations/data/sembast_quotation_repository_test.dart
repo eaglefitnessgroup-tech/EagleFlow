@@ -6,6 +6,7 @@ import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/features/quotations/data/sembast_quotation_repository.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 
 void main() {
   late Database db;
@@ -137,19 +138,46 @@ void main() {
       expect(loadedDup.lineItems.first.imageBytes, equals(bytes));
     });
 
-    test('saved and reopened quotation preserves its salesperson owner', () async {
-      final draft = QuotationDefaults.createEmptyDraft(
-        salespersonId: 'SALES-005',
-      );
+    test(
+      'saved and reopened quotation preserves its salesperson owner',
+      () async {
+        final draft = QuotationDefaults.createEmptyDraft(
+          salespersonId: 'SALES-005',
+        );
 
-      final saved = await repository.saveQuotation(draft);
-      final reopened = await repository.getQuotationByNumber(
-        saved.quotationNumber,
-      );
+        final saved = await repository.saveQuotation(draft);
+        final reopened = await repository.getQuotationByNumber(
+          saved.quotationNumber,
+        );
 
-      expect(saved.salespersonId, 'SALES-005');
-      expect(reopened, isNotNull);
-      expect(reopened!.salespersonId, 'SALES-005');
-    });
+        expect(saved.salespersonId, 'SALES-005');
+        expect(reopened, isNotNull);
+        expect(reopened!.salespersonId, 'SALES-005');
+      },
+    );
+
+    test(
+      'saved and reopened quotation preserves the condition snapshot',
+      () async {
+        final draft = QuotationDefaults.createEmptyDraft().copyWith(
+          lineItems: const [
+            QuotationLineItem(
+              id: 'condition-item',
+              name: 'Display Product',
+              brand: 'Brand',
+              condition: ProductCondition.display,
+              unitPrice: 10,
+              quantity: 1,
+            ),
+          ],
+        );
+        final saved = await repository.saveQuotation(draft);
+        final reopened = await repository.getQuotationByNumber(
+          saved.quotationNumber,
+        );
+        expect(reopened, isNotNull);
+        expect(reopened!.lineItems.single.condition, ProductCondition.display);
+      },
+    );
   });
 }

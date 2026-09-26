@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../domain/product.dart';
+import '../domain/product_condition.dart';
 import '../domain/product_repository.dart';
 import '../domain/bulk_import_models.dart';
 
@@ -283,8 +284,8 @@ class BulkImportService {
     final headers = rows.first.map((e) => e.toString().trim()).toList();
     // Required headers are checked individually below.
     // Full header list for reference: Product Code, Name, Category, Brand,
-    // Selling Price, Opening Stock, Min Stock Level, Unit, VAT Applicable,
-    // Active, Description, Model Number, Notes.
+    // Condition, Selling Price, Opening Stock, Min Stock Level, Unit,
+    // VAT Applicable, Active, Description, Model Number, Notes.
 
     // Check minimum required columns
     for (final req in ['Product Code', 'Name', 'Selling Price']) {
@@ -422,6 +423,16 @@ class BulkImportService {
       final brand = (rowMap['Brand']?.isEmpty ?? true)
           ? 'Unknown'
           : rowMap['Brand']!;
+      ProductCondition? condition;
+      final conditionValue = rowMap['Condition'];
+      if (conditionValue != null && conditionValue.isNotEmpty) {
+        condition = ProductCondition.tryParse(conditionValue);
+        if (condition == null) {
+          errors.add(
+            'Invalid Condition. Use New, Used, Refurbished, or Display.',
+          );
+        }
+      }
       final unit = (rowMap['Unit']?.isEmpty ?? true) ? 'Nos' : rowMap['Unit']!;
       final description = rowMap['Description'] ?? '';
       final modelNumber = rowMap['Model Number']?.isEmpty ?? true
@@ -445,6 +456,7 @@ class BulkImportService {
           name: name,
           category: category,
           brand: brand,
+          condition: condition,
           sellingPrice: sellingPrice,
           isVatApplicable: isVatApplicable,
           isActive: isActive,
@@ -634,6 +646,7 @@ class BulkImportService {
             'name': p.name,
             'category': p.category,
             'brand': p.brand,
+            'condition': p.condition?.persistedValue,
             'selling_price': p.sellingPrice,
             'is_vat_applicable': p.isVatApplicable,
             'is_active': p.isActive,
@@ -747,6 +760,7 @@ class BulkImportService {
       'Name',
       'Category',
       'Brand',
+      'Condition',
       'Selling Price',
       'Opening Stock',
       'Min Stock Level',
@@ -765,6 +779,7 @@ class BulkImportService {
       TextCellValue('Standard Example Product'),
       TextCellValue('Electronics'),
       TextCellValue('Sony'),
+      TextCellValue('New'),
       TextCellValue('199.99'),
       TextCellValue('50'),
       TextCellValue('10'),
@@ -779,6 +794,7 @@ class BulkImportService {
     sheet.appendRow([
       TextCellValue('EXAMPLE-002'),
       TextCellValue('Minimal Example'),
+      TextCellValue(''),
       TextCellValue(''),
       TextCellValue(''),
       TextCellValue('99.00'),
@@ -797,6 +813,7 @@ class BulkImportService {
       TextCellValue('Another Product'),
       TextCellValue('Accessories'),
       TextCellValue('Apple'),
+      TextCellValue('Refurbished'),
       TextCellValue('29.99'),
       TextCellValue('100'),
       TextCellValue('20'),
@@ -824,7 +841,12 @@ class BulkImportService {
     instructions.appendRow([
       TextCellValue('4. No formulas in required fields.'),
     ]);
-    instructions.appendRow([TextCellValue('5. Save as XLSX and upload.')]);
+    instructions.appendRow([
+      TextCellValue(
+        '5. Condition is optional. Use New, Used, Refurbished, or Display.',
+      ),
+    ]);
+    instructions.appendRow([TextCellValue('6. Save as XLSX and upload.')]);
 
     return excel.encode()!;
   }

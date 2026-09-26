@@ -1,4 +1,5 @@
 import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -41,6 +42,15 @@ void main() {
 
       expect(patch.hasChanges, isTrue);
       expect(patch.changedFieldNames, ['minStockLevel']);
+    });
+
+    test('condition is a typed change while null means no change', () {
+      const changed = ProductUpdatePatch(condition: ProductCondition.used);
+      const omitted = ProductUpdatePatch(condition: null);
+
+      expect(changed.hasChanges, isTrue);
+      expect(changed.changedFieldNames, ['condition']);
+      expect(omitted.isEmpty, isTrue);
     });
 
     test('excluded fields are not exposed by ProductUpdatePatch', () {

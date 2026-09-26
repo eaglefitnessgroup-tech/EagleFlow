@@ -1,6 +1,7 @@
 import 'package:eagleflow/features/products/application/bulk_product_update_service.dart';
 import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
+import 'package:eagleflow/features/products/domain/product_condition.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,6 +17,7 @@ void main() {
       name: 'Original name',
       category: 'Original category',
       brand: 'Original brand',
+      condition: ProductCondition.used,
       sellingPrice: 25,
       unit: 'Nos',
       minStockLevel: 7,
@@ -85,6 +87,97 @@ void main() {
     expect(row.patch.category, isNull);
     expect(row.patch.sellingPrice, isNull);
     expect(row.patch.isActive, isNull);
+    expect(row.patch.condition, isNull);
+  });
+
+  test('Condition accepts all four canonical display labels', () {
+    const cases = {
+      'New': ProductCondition.newProduct,
+      'Used': ProductCondition.used,
+      'Refurbished': ProductCondition.refurbished,
+      'Display': ProductCondition.display,
+    };
+
+    for (final entry in cases.entries) {
+      final current = existingProduct.copyWith(
+        condition: entry.value == ProductCondition.used
+            ? ProductCondition.display
+            : ProductCondition.used,
+      );
+      final row = service.previewCsv(
+        'Product Code,Condition\nSKU-001,${entry.key}',
+        currentProducts: [current],
+      ).single;
+
+      expect(row.status, BulkProductUpdateRowStatus.valid);
+      expect(row.patch.condition, entry.value);
+    }
+  });
+
+  test('Condition parsing is case-insensitive and trims whitespace', () {
+    final row = previewCsv(
+      'Product Code,Condition\nSKU-001,  rEfUrBiShEd  ',
+    ).single;
+
+    expect(row.status, BulkProductUpdateRowStatus.valid);
+    expect(row.patch.condition, ProductCondition.refurbished);
+  });
+
+  test('invalid Condition produces a clear invalid-row reason', () {
+    final row = previewCsv(
+      'Product Code,Condition\nSKU-001,Damaged',
+    ).single;
+
+    expect(row.status, BulkProductUpdateRowStatus.invalid);
+    expect(
+      row.validationReason,
+      contains('Invalid Condition. Use New, Used, Refurbished, or Display.'),
+    );
+    expect(row.patch.isEmpty, isTrue);
+  });
+
+  test('blank Condition means no change', () {
+    final rows = previewCsv('Product Code,Condition\nSKU-001,   ');
+
+    expect(rows.single.status, BulkProductUpdateRowStatus.noChanges);
+    expect(rows.single.patch.condition, isNull);
+  });
+
+  test('same Condition is noChanges', () {
+    final row = previewCsv('Product Code,Condition\nSKU-001,Used').single;
+
+    expect(row.status, BulkProductUpdateRowStatus.noChanges);
+    expect(row.changes, isEmpty);
+  });
+
+  test('changed Condition produces exactly one typed change', () {
+    final row = previewCsv(
+      'Product Code,Condition\nSKU-001,Refurbished',
+    ).single;
+
+    expect(row.status, BulkProductUpdateRowStatus.valid);
+    expect(row.patch.changedFieldNames, ['condition']);
+    expect(row.changes, hasLength(1));
+    expect(row.changes.single.fieldKey, 'condition');
+    expect(row.changes.single.displayLabel, 'Condition');
+    expect(row.changes.single.oldValue, ProductCondition.used);
+    expect(row.changes.single.newValue, ProductCondition.refurbished);
+  });
+
+  test('minimal XLSX with Product Code and Condition is accepted', () {
+    final bytes = workbookBytes(
+      [TextCellValue('Product Code'), TextCellValue('Condition')],
+      [
+        [TextCellValue('SKU-001'), TextCellValue('Display')],
+      ],
+    );
+
+    final row = service
+        .previewExcel(bytes, currentProducts: [existingProduct])
+        .single;
+
+    expect(row.status, BulkProductUpdateRowStatus.valid);
+    expect(row.patch.condition, ProductCondition.display);
   });
 
   test('blank and whitespace-only cells mean no change', () {

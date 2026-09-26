@@ -67,18 +67,37 @@ class QuotationProductRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Code: ${item.productCode ?? "—"} | Brand: ${item.brand.isNotEmpty ? item.brand : "—"}',
-                    style: QuotationDocumentTheme.small,
+                    QuotationDocumentFormatters.formatProductMetadata(
+                      item.productCode,
+                      item.brand,
+                    ),
+                    style: QuotationDocumentTheme.small.copyWith(
+                      fontSize: QuotationLayoutSpec.productDetailFontSize,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (item.condition != null)
+                    Text(
+                      QuotationDocumentFormatters.formatProductCondition(
+                        item.condition,
+                      )!,
+                      style: QuotationDocumentTheme.small.copyWith(
+                        fontSize: QuotationLayoutSpec.productDetailFontSize,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   if (item.description != null && item.description!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        QuotationDocumentFormatters.formatSpecification(item.description) ?? '',
+                        QuotationDocumentFormatters.formatSpecification(
+                              item.description,
+                            ) ??
+                            '',
                         style: QuotationDocumentTheme.small.copyWith(
-                          fontSize: 8.0,
+                          fontSize: QuotationLayoutSpec.productDetailFontSize,
                           color: QuotationDocumentTheme.textMain,
                           height: 1.3,
                         ),
