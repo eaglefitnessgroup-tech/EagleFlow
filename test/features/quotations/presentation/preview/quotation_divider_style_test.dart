@@ -13,8 +13,8 @@ import 'package:pdf/widgets.dart' as pw;
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const expectedFlutterColor = Color(0xFFF1F5F9);
-  const expectedPdfColor = PdfColor.fromInt(0xFFF1F5F9);
+  const expectedFlutterColor = Color(0xFFE2E8F0);
+  const expectedPdfColor = PdfColor.fromInt(0xFFE2E8F0);
 
   Finder fixedWidthDivider(Finder scope, double width) {
     return find.descendant(

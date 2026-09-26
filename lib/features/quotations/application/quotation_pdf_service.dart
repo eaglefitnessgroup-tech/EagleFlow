@@ -28,6 +28,7 @@ class QuotationPdfService {
   final PdfColor _textMain = const PdfColor.fromInt(0xFF334155);
   final PdfColor _textMuted = const PdfColor.fromInt(0xFF64748B);
   final PdfColor _border = const PdfColor.fromInt(0xFFF1F5F9);
+  final PdfColor _dividerColor = const PdfColor.fromInt(0xFFE2E8F0);
   final PdfColor _red = const PdfColor.fromInt(0xFFF44336);
   static const double _dividerThickness = 1;
 
@@ -198,14 +199,14 @@ class QuotationPdfService {
 
   pw.Divider _buildDocumentDivider() {
     return pw.Divider(
-      color: _border,
+      color: _dividerColor,
       thickness: _dividerThickness,
       height: _dividerThickness,
     );
   }
 
   pw.BorderSide _documentDividerBorderSide() {
-    return pw.BorderSide(color: _border, width: _dividerThickness);
+    return pw.BorderSide(color: _dividerColor, width: _dividerThickness);
   }
 
   pw.Widget _buildFixedWidthDocumentDivider(double width) {
@@ -216,13 +217,13 @@ class QuotationPdfService {
       child: pw.Container(
         width: width,
         height: _dividerThickness,
-        color: _border,
+        color: _dividerColor,
       ),
     );
   }
 
   @visibleForTesting
-  PdfColor get documentDividerColorForTesting => _border;
+  PdfColor get documentDividerColorForTesting => _dividerColor;
 
   @visibleForTesting
   double get documentDividerThicknessForTesting => _dividerThickness;
