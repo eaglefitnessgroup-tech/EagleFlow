@@ -40,8 +40,8 @@ class QuotationInfoPage extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Container(
                   width: 55,
-                  height: 1,
-                  color: QuotationDocumentTheme.textMuted,
+                  height: QuotationDocumentTheme.dividerThickness,
+                  color: QuotationDocumentTheme.dividerColor,
                 ),
               ),
               const SizedBox(height: 8),

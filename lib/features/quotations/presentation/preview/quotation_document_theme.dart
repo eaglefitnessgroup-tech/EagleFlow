@@ -9,6 +9,12 @@ class QuotationDocumentTheme {
   static const Color textMain = Color(0xFF334155); // Slate 700
   static const Color textMuted = Color(0xFF64748B); // Slate 500
   static const Color border = Color(0xFFF1F5F9); // Slate 100 (Very subtle)
+  static const Color dividerColor = border;
+  static const double dividerThickness = 1;
+  static const BorderSide dividerBorderSide = BorderSide(
+    color: dividerColor,
+    width: dividerThickness,
+  );
   static const Color background = Colors.white;
 
   // Typography

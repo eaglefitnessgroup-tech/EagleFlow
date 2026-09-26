@@ -41,9 +41,9 @@ class QuotationDocumentHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Divider(
-          color: QuotationDocumentTheme.border,
-          thickness: 1,
-          height: 1,
+          color: QuotationDocumentTheme.dividerColor,
+          thickness: QuotationDocumentTheme.dividerThickness,
+          height: QuotationDocumentTheme.dividerThickness,
         ),
         const SizedBox(height: 8),
       ],

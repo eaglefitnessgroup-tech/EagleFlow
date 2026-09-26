@@ -29,6 +29,7 @@ class QuotationPdfService {
   final PdfColor _textMuted = const PdfColor.fromInt(0xFF64748B);
   final PdfColor _border = const PdfColor.fromInt(0xFFF1F5F9);
   final PdfColor _red = const PdfColor.fromInt(0xFFF44336);
+  static const double _dividerThickness = 1;
 
   Future<Uint8List> generatePdf(Quotation quotation) async {
     // 1. Pre-cache all product images securely
@@ -189,11 +190,53 @@ class QuotationPdfService {
           ],
         ),
         pw.SizedBox(height: 8),
-        pw.Divider(color: _border, thickness: 1, height: 1),
+        _buildDocumentDivider(),
         pw.SizedBox(height: 8),
       ],
     );
   }
+
+  pw.Divider _buildDocumentDivider() {
+    return pw.Divider(
+      color: _border,
+      thickness: _dividerThickness,
+      height: _dividerThickness,
+    );
+  }
+
+  pw.BorderSide _documentDividerBorderSide() {
+    return pw.BorderSide(color: _border, width: _dividerThickness);
+  }
+
+  pw.Widget _buildFixedWidthDocumentDivider(double width) {
+    return pw.Container(
+      width: width,
+      height: 1.5,
+      alignment: pw.Alignment.center,
+      child: pw.Container(
+        width: width,
+        height: _dividerThickness,
+        color: _border,
+      ),
+    );
+  }
+
+  @visibleForTesting
+  PdfColor get documentDividerColorForTesting => _border;
+
+  @visibleForTesting
+  double get documentDividerThicknessForTesting => _dividerThickness;
+
+  @visibleForTesting
+  pw.Divider buildDocumentDividerForTesting() => _buildDocumentDivider();
+
+  @visibleForTesting
+  pw.BorderSide documentDividerBorderSideForTesting() =>
+      _documentDividerBorderSide();
+
+  @visibleForTesting
+  pw.Widget buildFixedWidthDocumentDividerForTesting(double width) =>
+      _buildFixedWidthDocumentDivider(width);
 
   pw.Widget _buildCoverSection(Quotation quotation, String salesmanName) {
     final profile = CompanyProfile.defaultProfile;
@@ -237,16 +280,7 @@ class QuotationPdfService {
                     child: pw.Text('QUOTATION TO', style: _smallBoldStyle()),
                   ),
                   pw.SizedBox(height: 4),
-                  pw.Container(
-                    width: 130,
-                    height: 1.5,
-                    alignment: pw.Alignment.center,
-                    child: pw.Container(
-                      width: 130,
-                      height: 1,
-                      color: _textMuted,
-                    ),
-                  ),
+                  _buildFixedWidthDocumentDivider(130),
                   pw.SizedBox(height: 8),
                   _buildCustomerRow(
                     'CUSTOMER',
@@ -359,8 +393,8 @@ class QuotationPdfService {
       child: pw.Container(
         decoration: pw.BoxDecoration(
           border: pw.Border(
-            top: pw.BorderSide(color: _navy, width: 1.5),
-            bottom: pw.BorderSide(color: _textMuted, width: 1),
+            top: _documentDividerBorderSide(),
+            bottom: _documentDividerBorderSide(),
           ),
         ),
         padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 2),
@@ -784,12 +818,7 @@ class QuotationPdfService {
           style: _smallBoldStyle(fontSize: 10.5).copyWith(letterSpacing: 0.6),
         ),
         pw.SizedBox(height: 2),
-        pw.Container(
-          width: 55,
-          height: 1.5,
-          alignment: pw.Alignment.center,
-          child: pw.Container(width: 55, height: 1, color: _textMuted),
-        ),
+        _buildFixedWidthDocumentDivider(55),
         pw.SizedBox(height: 8),
 
         pw.Table(

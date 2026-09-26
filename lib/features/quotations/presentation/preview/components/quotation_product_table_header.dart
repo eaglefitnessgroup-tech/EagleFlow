@@ -10,11 +10,8 @@ class QuotationProductTableHeader extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         border: Border(
-          top: BorderSide(color: QuotationDocumentTheme.navy, width: 1.5),
-          bottom: BorderSide(
-            color: QuotationDocumentTheme.textMuted,
-            width: 1,
-          ),
+          top: QuotationDocumentTheme.dividerBorderSide,
+          bottom: QuotationDocumentTheme.dividerBorderSide,
         ),
       ),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
