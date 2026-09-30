@@ -484,6 +484,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                     onUnitPriceChanged: _controller.updateUnitPrice,
                     onDiscountChanged: _controller.updateLineDiscount,
                     onRemove: _controller.removeItem,
+                    onReorder: _controller.reorderLineItem,
                     onProductsAdded: _handleProductsAdded,
                     onCustomItemAdded: _controller.addCustomItem,
                     onCustomItemUpdated: _controller.updateCustomItem,

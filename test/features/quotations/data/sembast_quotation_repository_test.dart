@@ -180,6 +180,30 @@ void main() {
       },
     );
 
+    test(
+      'saved and reopened quotation preserves reordered item order',
+      () async {
+        QuotationLineItem item(String id) => QuotationLineItem(
+          id: id,
+          name: 'Item $id',
+          brand: 'Brand',
+          unitPrice: 10,
+          quantity: 1,
+        );
+        final reordered = QuotationDefaults.createEmptyDraft().copyWith(
+          lineItems: [item('c'), item('a'), item('b')],
+        );
+
+        final saved = await repository.saveQuotation(reordered);
+        final reopened = await repository.getQuotationByNumber(
+          saved.quotationNumber,
+        );
+
+        expect(reopened, isNotNull);
+        expect(reopened!.lineItems.map((item) => item.id), ['c', 'a', 'b']);
+      },
+    );
+
     test('multiple revisions with the same quotation number coexist', () async {
       final original = QuotationDefaults.createEmptyDraft().copyWith(
         id: 'revision-base',

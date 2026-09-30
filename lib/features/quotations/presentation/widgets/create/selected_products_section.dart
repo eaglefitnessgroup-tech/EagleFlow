@@ -13,6 +13,7 @@ class SelectedProductsSection extends StatefulWidget {
   final void Function(String, double) onUnitPriceChanged;
   final void Function(String, double) onDiscountChanged;
   final void Function(String) onRemove;
+  final void Function(int, int) onReorder;
   final void Function(List<Product>) onProductsAdded;
   final void Function(QuotationLineItem) onCustomItemAdded;
   final void Function(String, QuotationLineItem) onCustomItemUpdated;
@@ -24,6 +25,7 @@ class SelectedProductsSection extends StatefulWidget {
     required this.onUnitPriceChanged,
     required this.onDiscountChanged,
     required this.onRemove,
+    required this.onReorder,
     required this.onProductsAdded,
     required this.onCustomItemAdded,
     required this.onCustomItemUpdated,
@@ -75,6 +77,36 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
     } else {
       widget.onCustomItemUpdated(initialItem.id, newItem);
     }
+  }
+
+  Widget _buildDragHandle({
+    required QuotationLineItem item,
+    required int index,
+    required bool isMobile,
+  }) {
+    final handle = Semantics(
+      label: 'Reorder ${item.name}',
+      button: true,
+      child: Tooltip(
+        message: isMobile ? 'Long press to reorder' : 'Drag to reorder',
+        child: SizedBox(
+          key: ValueKey('quotation-item-drag-handle-${item.id}'),
+          width: 32,
+          height: 40,
+          child: const Icon(
+            Icons.drag_indicator,
+            size: 20,
+            color: AppColors.mutedText,
+          ),
+        ),
+      ),
+    );
+
+    if (isMobile) {
+      return ReorderableDelayedDragStartListener(index: index, child: handle);
+    }
+
+    return ReorderableDragStartListener(index: index, child: handle);
   }
 
   @override
@@ -144,15 +176,25 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
               const SizedBox(height: 24),
               _buildDesktopHeader(context),
               const SizedBox(height: 8),
-              ListView.builder(
+              ReorderableListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: false,
+                // Flutter's legacy callback supplies the raw insertion index;
+                // the controller owns the downward-move adjustment.
+                // ignore: deprecated_member_use
+                onReorder: widget.onReorder,
                 itemCount: widget.items.length,
                 itemBuilder: (context, index) {
                   final item = widget.items[index];
                   return QuotationProductTile(
                     key: ValueKey(item.id),
                     item: item,
+                    dragHandle: _buildDragHandle(
+                      item: item,
+                      index: index,
+                      isMobile: isMobile,
+                    ),
                     onQuantityChanged: (qty) =>
                         widget.onQuantityChanged(item.id, qty),
                     onUnitPriceChanged: (price) =>
@@ -209,6 +251,7 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
           ),
           child: const Row(
             children: [
+              SizedBox(width: 32), // For drag handle
               SizedBox(width: 64), // For image space
               Expanded(
                 flex: 3,
@@ -319,114 +362,137 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
             _autocompleteFocusNode.requestFocus();
           });
         },
-        fieldViewBuilder: (BuildContext context,
-            TextEditingController textEditingController,
-            FocusNode focusNode,
-            VoidCallback onFieldSubmitted) {
-          return TextField(
-            controller: textEditingController,
-            focusNode: focusNode,
-            onSubmitted: (String value) {
-              onFieldSubmitted();
+        fieldViewBuilder:
+            (
+              BuildContext context,
+              TextEditingController textEditingController,
+              FocusNode focusNode,
+              VoidCallback onFieldSubmitted,
+            ) {
+              return TextField(
+                controller: textEditingController,
+                focusNode: focusNode,
+                onSubmitted: (String value) {
+                  onFieldSubmitted();
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search product by name, code...',
+                  hintStyle: const TextStyle(
+                    color: AppColors.mutedText,
+                    fontSize: 13,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.mutedText,
+                    size: 18,
+                  ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: const BorderSide(color: AppColors.primaryBlue),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                style: const TextStyle(fontSize: 13, color: AppColors.charcoal),
+              );
             },
-            decoration: InputDecoration(
-              hintText: 'Search product by name, code...',
-              hintStyle: const TextStyle(color: AppColors.mutedText, fontSize: 13),
-              prefixIcon: const Icon(Icons.search, color: AppColors.mutedText, size: 18),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AppColors.primaryBlue),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-            style: const TextStyle(fontSize: 13, color: AppColors.charcoal),
-          );
-        },
-        optionsViewBuilder: (BuildContext context,
-            AutocompleteOnSelected<Product> onSelected,
-            Iterable<Product> options) {
-          return Align(
-            alignment: Alignment.topLeft,
-            child: Material(
-              elevation: 4,
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.white,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 250, maxWidth: 350),
-                child: ListView.separated(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1, color: AppColors.border),
-                  itemBuilder: (BuildContext context, int index) {
-                    final Product option = options.elementAt(index);
-                    return InkWell(
-                      onTap: () {
-                        onSelected(option);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              option.name,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.charcoal,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+        optionsViewBuilder:
+            (
+              BuildContext context,
+              AutocompleteOnSelected<Product> onSelected,
+              Iterable<Product> options,
+            ) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxHeight: 250,
+                      maxWidth: 350,
+                    ),
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1, color: AppColors.border),
+                      itemBuilder: (BuildContext context, int index) {
+                        final Product option = options.elementAt(index);
+                        return InkWell(
+                          onTap: () {
+                            onSelected(option);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Expanded(
-                                  child: Text(
-                                    option.productCode,
-                                    style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.mutedText),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
                                 Text(
-                                  'AED ${option.sellingPrice.toStringAsFixed(2)}',
+                                  option.name,
                                   style: const TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.primaryBlue,
+                                    color: AppColors.charcoal,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        option.productCode,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.mutedText,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Text(
+                                      'AED ${option.sellingPrice.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primaryBlue,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          );
-        },
+              );
+            },
       ),
     );
   }

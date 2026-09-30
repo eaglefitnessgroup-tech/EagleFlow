@@ -12,6 +12,7 @@ class QuotationProductTile extends StatefulWidget {
   final ValueChanged<int> onQuantityChanged;
   final ValueChanged<double> onUnitPriceChanged;
   final ValueChanged<double> onDiscountChanged;
+  final Widget dragHandle;
 
   const QuotationProductTile({
     super.key,
@@ -21,6 +22,7 @@ class QuotationProductTile extends StatefulWidget {
     required this.onQuantityChanged,
     required this.onUnitPriceChanged,
     required this.onDiscountChanged,
+    required this.dragHandle,
   });
 
   @override
@@ -152,6 +154,8 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              widget.dragHandle,
+              const SizedBox(width: 8),
               _buildImage(),
               const SizedBox(width: 16),
               Expanded(
@@ -383,6 +387,7 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
       ),
       child: Row(
         children: [
+          widget.dragHandle,
           _buildImage(),
           const SizedBox(width: 16),
           Expanded(

@@ -100,6 +100,100 @@ void main() {
       expect(controller.quotation.lineItems.isEmpty, isTrue);
     });
 
+    group('Line item reordering', () {
+      QuotationLineItem item(String id) => QuotationLineItem(
+        id: id,
+        productId: 'product-$id',
+        productCode: id,
+        name: 'Item $id',
+        brand: 'Brand',
+        unitPrice: 10,
+        quantity: 1,
+      );
+
+      QuotationController controllerWithItems() => QuotationController(
+        QuotationDefaults.createEmptyDraft().copyWith(
+          lineItems: [item('a'), item('b'), item('c'), item('d')],
+        ),
+      );
+
+      List<String> ids(QuotationController value) =>
+          value.quotation.lineItems.map((item) => item.id).toList();
+
+      test('moves an item upward', () {
+        final reorderController = controllerWithItems();
+
+        reorderController.reorderLineItem(2, 1);
+
+        expect(ids(reorderController), ['a', 'c', 'b', 'd']);
+      });
+
+      test('moves an item downward using Flutter index adjustment', () {
+        final reorderController = controllerWithItems();
+
+        reorderController.reorderLineItem(1, 4);
+
+        expect(ids(reorderController), ['a', 'c', 'd', 'b']);
+      });
+
+      test('moves the first item to the last position', () {
+        final reorderController = controllerWithItems();
+        final originalItem = reorderController.quotation.lineItems.first;
+
+        reorderController.reorderLineItem(0, 4);
+
+        expect(ids(reorderController), ['b', 'c', 'd', 'a']);
+        expect(reorderController.quotation.lineItems.last, same(originalItem));
+      });
+
+      test('moves the last item to the first position', () {
+        final reorderController = controllerWithItems();
+
+        reorderController.reorderLineItem(3, 0);
+
+        expect(ids(reorderController), ['d', 'a', 'b', 'c']);
+      });
+
+      test('ignores invalid indexes and no-op moves without notifying', () {
+        final reorderController = controllerWithItems();
+        var notifications = 0;
+        reorderController.addListener(() => notifications++);
+
+        reorderController.reorderLineItem(-1, 0);
+        reorderController.reorderLineItem(4, 0);
+        reorderController.reorderLineItem(0, -1);
+        reorderController.reorderLineItem(0, 5);
+        reorderController.reorderLineItem(1, 1);
+        reorderController.reorderLineItem(1, 2);
+
+        expect(ids(reorderController), ['a', 'b', 'c', 'd']);
+        expect(notifications, 0);
+      });
+
+      test('new products still append after a reorder', () {
+        final reorderController = controllerWithItems();
+        final product = Product(
+          id: 'new-product',
+          name: 'New Product',
+          brand: 'Brand',
+          productCode: 'NEW',
+          category: 'Category',
+          sellingPrice: 50,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        );
+
+        reorderController.reorderLineItem(0, 4);
+        reorderController.addProduct(product);
+
+        expect(ids(reorderController), ['b', 'c', 'd', 'a', isNotEmpty]);
+        expect(
+          reorderController.quotation.lineItems.last.productId,
+          'new-product',
+        );
+      });
+    });
+
     group('Product Integration', () {
       final p1 = Product(
         id: 'p_1',
@@ -401,6 +495,43 @@ void main() {
         revisionController.updateNotes(customerNotes: 'New revision content');
         expect(source.customerNotes, 'R1 snapshot');
       });
+
+      test(
+        'revision inherits source order and can reorder without mutating source',
+        () {
+          QuotationLineItem item(String id) => QuotationLineItem(
+            id: id,
+            name: 'Item $id',
+            brand: 'Brand',
+            unitPrice: 10,
+            quantity: 1,
+          );
+          final source = QuotationDefaults.createEmptyDraft().copyWith(
+            id: 'source-id',
+            quotationNumber: 'QT-AN-0027-26',
+            lineItems: [item('a'), item('c'), item('b')],
+          );
+
+          final revisionController = QuotationController.forRevision(source);
+
+          expect(
+            revisionController.quotation.lineItems.map((item) => item.name),
+            ['Item a', 'Item c', 'Item b'],
+          );
+
+          revisionController.reorderLineItem(2, 0);
+
+          expect(
+            revisionController.quotation.lineItems.map((item) => item.name),
+            ['Item b', 'Item a', 'Item c'],
+          );
+          expect(source.lineItems.map((item) => item.name), [
+            'Item a',
+            'Item c',
+            'Item b',
+          ]);
+        },
+      );
     });
   });
 }

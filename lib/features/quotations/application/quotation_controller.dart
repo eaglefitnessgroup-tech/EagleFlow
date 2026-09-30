@@ -120,6 +120,30 @@ class QuotationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void reorderLineItem(int oldIndex, int newIndex) {
+    final itemCount = _quotation.lineItems.length;
+    if (oldIndex < 0 ||
+        oldIndex >= itemCount ||
+        newIndex < 0 ||
+        newIndex > itemCount) {
+      return;
+    }
+
+    final adjustedNewIndex = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    if (adjustedNewIndex == oldIndex ||
+        adjustedNewIndex < 0 ||
+        adjustedNewIndex >= itemCount) {
+      return;
+    }
+
+    final newItems = List<QuotationLineItem>.from(_quotation.lineItems);
+    final item = newItems.removeAt(oldIndex);
+    newItems.insert(adjustedNewIndex, item);
+
+    _quotation = _quotation.copyWith(lineItems: newItems);
+    notifyListeners();
+  }
+
   void updateCharges({
     double? delivery,
     double? installation,

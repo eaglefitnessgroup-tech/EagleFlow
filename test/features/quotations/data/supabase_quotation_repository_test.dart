@@ -158,13 +158,35 @@ void main() {
               'id': 'remote-item-1',
               'product_id': 'product-1',
               'product_code': 'CODE-1',
-              'name': 'Remote Product',
+              'name': 'Third Product',
               'brand': 'Brand',
               'condition': 'refurbished',
               'unit_price': 100,
               'quantity': 1,
               'discount': 0,
+              'sort_order': 2,
+            },
+            {
+              'id': 'remote-item-2',
+              'product_id': 'product-2',
+              'product_code': 'CODE-2',
+              'name': 'First Product',
+              'brand': 'Brand',
+              'unit_price': 200,
+              'quantity': 1,
+              'discount': 0,
               'sort_order': 0,
+            },
+            {
+              'id': 'remote-item-3',
+              'product_id': 'product-3',
+              'product_code': 'CODE-3',
+              'name': 'Second Product',
+              'brand': 'Brand',
+              'unit_price': 300,
+              'quantity': 1,
+              'discount': 0,
+              'sort_order': 1,
             },
           ],
         },
@@ -179,7 +201,12 @@ void main() {
       expect(q.baseQuotationId, 'Q0');
       expect(q.revisionNo, 2);
       expect(q.status, QuotationStatus.sent);
-      expect(q.lineItems.single.condition, ProductCondition.refurbished);
+      expect(q.lineItems.map((item) => item.name), [
+        'First Product',
+        'Second Product',
+        'Third Product',
+      ]);
+      expect(q.lineItems.last.condition, ProductCondition.refurbished);
     });
 
     test('2. Offline read fallback', () async {
