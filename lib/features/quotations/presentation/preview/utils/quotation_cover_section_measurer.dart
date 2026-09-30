@@ -104,7 +104,9 @@ class QuotationCoverSectionMeasurer {
       customerValueWidth,
     ); // Temp date string for height
     rightHeight += _measureCustomerRow(
-      quotation.quotationNumber.isNotEmpty ? quotation.quotationNumber : '—',
+      quotation.displayQuotationNumber.isNotEmpty
+          ? quotation.displayQuotationNumber
+          : '—',
       customerValueWidth,
     );
     rightHeight += _measureCustomerRow(

@@ -179,5 +179,38 @@ void main() {
         expect(reopened!.lineItems.single.condition, ProductCondition.display);
       },
     );
+
+    test('multiple revisions with the same quotation number coexist', () async {
+      final original = QuotationDefaults.createEmptyDraft().copyWith(
+        id: 'revision-base',
+        quotationNumber: 'QT-AN-0027-26',
+      );
+      final revision1 = original.copyWith(
+        id: 'revision-1',
+        baseQuotationId: original.id,
+        revisionNo: 1,
+      );
+      final revision2 = original.copyWith(
+        id: 'revision-2',
+        baseQuotationId: original.id,
+        revisionNo: 2,
+      );
+
+      await repository.saveQuotation(original);
+      await repository.saveQuotation(revision1);
+      await repository.saveQuotation(revision2);
+
+      final saved = await repository.getAllQuotations();
+      expect(saved, hasLength(3));
+      expect(saved.map((quotation) => quotation.id).toSet(), {
+        'revision-base',
+        'revision-1',
+        'revision-2',
+      });
+      expect(saved.map((quotation) => quotation.quotationNumber).toSet(), {
+        'QT-AN-0027-26',
+      });
+      expect(saved.map((quotation) => quotation.revisionNo).toSet(), {0, 1, 2});
+    });
   });
 }

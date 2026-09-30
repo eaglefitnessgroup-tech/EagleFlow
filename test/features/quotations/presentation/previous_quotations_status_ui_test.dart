@@ -1,4 +1,5 @@
 import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
+import 'package:eagleflow/features/quotations/application/quotation_family.dart';
 import 'package:eagleflow/features/quotations/presentation/previous_quotations_screen.dart';
 import 'package:eagleflow/features/quotations/presentation/widgets/previous/quotation_filter_bar.dart';
 import 'package:eagleflow/features/quotations/presentation/widgets/previous/quotation_list_view.dart';
@@ -58,74 +59,73 @@ void main() {
     expect(countRecentQuotations(quotations, now: now), 2);
   });
 
-  testWidgets(
-    'desktop row and actions invoke View and Edit independently',
-    (tester) async {
-      tester.view.physicalSize = const Size(1400, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('desktop row and actions invoke View and Edit independently', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      var viewCount = 0;
-      var editCount = 0;
+    var viewCount = 0;
+    var editCount = 0;
 
-      final quotation = QuotationDefaults.createEmptyDraft(
-        salespersonId: 'sales-1',
-      ).copyWith(
-        id: 'quotation-1',
-        quotationNumber: 'QT-001',
-        customerInfo: QuotationDefaults.createEmptyDraft().customerInfo
-            .copyWith(name: 'Example Customer'),
-      );
+    final quotation =
+        QuotationDefaults.createEmptyDraft(salespersonId: 'sales-1').copyWith(
+          id: 'quotation-1',
+          quotationNumber: 'QT-001',
+          customerInfo: QuotationDefaults.createEmptyDraft().customerInfo
+              .copyWith(name: 'Example Customer'),
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: QuotationListView(
-              quotations: [quotation],
-              salespersonNames: const {'sales-1': 'Sales User'},
-              onView: (_) => viewCount++,
-              onEdit: (_) => editCount++,
-              onDuplicate: (_) {},
-              onShare: (_) {},
-              onDelete: (_) {},
-              onCreate: () {},
-            ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QuotationListView(
+            families: groupQuotationFamilies([quotation]),
+            salespersonNames: const {'sales-1': 'Sales User'},
+            onView: (_) => viewCount++,
+            onEdit: (_) => editCount++,
+            onRevise: (_) {},
+            onDuplicate: (_) {},
+            onShare: (_) {},
+            onDelete: (_) {},
+            onCreate: () {},
           ),
         ),
-      );
+      ),
+    );
 
-      expect(find.text('QT-001'), findsOneWidget);
-      expect(find.text('Example Customer'), findsOneWidget);
-      expect(find.text('Status'), findsNothing);
-      expect(find.text('Draft'), findsNothing);
-      expect(find.text('Actions'), findsOneWidget);
-      expect(find.text('View'), findsOneWidget);
-      expect(find.text('Edit'), findsOneWidget);
-      expect(find.text('Share PDF'), findsNothing);
-      expect(find.text('Duplicate'), findsNothing);
-      expect(find.text('Delete'), findsNothing);
+    expect(find.text('QT-001'), findsOneWidget);
+    expect(find.text('Example Customer'), findsOneWidget);
+    expect(find.text('Status'), findsNothing);
+    expect(find.text('Draft'), findsNothing);
+    expect(find.text('Actions'), findsOneWidget);
+    expect(find.text('View'), findsOneWidget);
+    expect(find.text('Edit'), findsOneWidget);
+    expect(find.text('Share'), findsNothing);
+    expect(find.text('Duplicate'), findsNothing);
+    expect(find.text('Delete'), findsNothing);
 
-      await tester.tap(find.text('QT-001'));
-      expect(viewCount, 1);
+    await tester.tap(find.text('QT-001'));
+    expect(viewCount, 1);
 
-      await tester.tap(find.text('View'));
-      expect(viewCount, 2);
+    await tester.tap(find.text('View'));
+    expect(viewCount, 2);
 
-      await tester.tap(find.text('Edit'));
-      expect(viewCount, 2);
-      expect(editCount, 1);
+    await tester.tap(find.text('Edit'));
+    expect(viewCount, 2);
+    expect(editCount, 1);
 
-      await tester.tap(find.byTooltip('More actions'));
-      await tester.pumpAndSettle();
-      expect(viewCount, 2);
-      expect(editCount, 1);
+    await tester.tap(find.byTooltip('More actions'));
+    await tester.pumpAndSettle();
+    expect(viewCount, 2);
+    expect(editCount, 1);
 
-      expect(find.text('Share PDF'), findsOneWidget);
-      expect(find.text('Duplicate'), findsOneWidget);
-      expect(find.text('Delete'), findsOneWidget);
-      expect(find.text('View'), findsOneWidget);
-      expect(find.text('Edit'), findsOneWidget);
-    },
-  );
+    expect(find.text('Share'), findsOneWidget);
+    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(find.text('View'), findsOneWidget);
+    expect(find.text('Edit'), findsOneWidget);
+  });
 }

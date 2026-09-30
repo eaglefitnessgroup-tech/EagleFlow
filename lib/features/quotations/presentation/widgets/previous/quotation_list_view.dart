@@ -2,14 +2,16 @@ import '../../../../../../core/utils/app_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../../../app/theme/app_colors.dart';
-import '../../../domain/quotation.dart';
 import '../../../application/quotation_calculator.dart';
+import '../../../application/quotation_family.dart';
+import '../../../domain/quotation.dart';
 
 class QuotationListView extends StatelessWidget {
-  final List<Quotation> quotations;
+  final List<QuotationFamily> families;
   final Map<String, String> salespersonNames;
   final ValueChanged<Quotation> onView;
   final ValueChanged<Quotation> onEdit;
+  final ValueChanged<Quotation> onRevise;
   final ValueChanged<Quotation> onDuplicate;
   final ValueChanged<Quotation> onShare;
   final ValueChanged<Quotation> onDelete;
@@ -17,10 +19,11 @@ class QuotationListView extends StatelessWidget {
 
   const QuotationListView({
     super.key,
-    required this.quotations,
+    required this.families,
     this.salespersonNames = const {},
     required this.onView,
     required this.onEdit,
+    required this.onRevise,
     required this.onDuplicate,
     required this.onShare,
     required this.onDelete,
@@ -29,22 +32,21 @@ class QuotationListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (quotations.isEmpty) {
-      return _buildEmptyState(context);
-    }
+    if (families.isEmpty) return _buildEmptyState(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 800;
-
-        if (isMobile) {
+        if (constraints.maxWidth < 800) {
+          final rows = _rows;
           return ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: quotations.length,
+            itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, index) =>
-                _buildMobileCard(context, quotations[index]),
+            itemBuilder: (context, index) {
+              final row = rows[index];
+              return _buildMobileCard(context, row.family, row.quotation);
+            },
           );
         }
 
@@ -124,13 +126,19 @@ class QuotationListView extends StatelessWidget {
     );
   }
 
-  Widget _buildMobileCard(BuildContext context, Quotation quotation) {
+  Widget _buildMobileCard(
+    BuildContext context,
+    QuotationFamily family,
+    Quotation quotation,
+  ) {
     final formatter = NumberFormat('#,##0.00');
     final dateFmt = DateFormat('MMM dd, yyyy');
-    final salesperson = salespersonNames[quotation.salespersonId] ??
+    final salesperson =
+        salespersonNames[quotation.salespersonId] ??
         (quotation.salespersonId.isNotEmpty ? quotation.salespersonId : '');
 
     return Container(
+      key: Key('quotation-card-${quotation.id}'),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -145,7 +153,7 @@ class QuotationListView extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    quotation.quotationNumber,
+                    quotation.displayQuotationNumber,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -183,80 +191,32 @@ class QuotationListView extends StatelessWidget {
           const Divider(height: 1, color: AppColors.border),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 2,
               children: [
                 TextButton.icon(
+                  key: Key('quotation-view-${quotation.id}'),
                   onPressed: () => onView(quotation),
-                  icon: const Icon(Icons.visibility_outlined, size: 20),
-                  label: const Text('View Quotation'),
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  label: const Text('View'),
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: AppColors.mutedText),
-                  onSelected: (val) {
-                    switch (val) {
-                      case 'edit':
-                        onEdit(quotation);
-                        break;
-                      case 'share':
-                        onShare(quotation);
-                        break;
-                      case 'duplicate':
-                        onDuplicate(quotation);
-                        break;
-                      case 'delete':
-                        _confirmDelete(context, quotation, true);
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_outlined, size: 18),
-                          SizedBox(width: 8),
-                          Text('Edit'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'share',
-                      child: Row(
-                        children: [
-                          Icon(Icons.share_outlined, size: 18),
-                          SizedBox(width: 8),
-                          Text('Share PDF'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'duplicate',
-                      child: Row(
-                        children: [
-                          Icon(Icons.copy_outlined, size: 18),
-                          SizedBox(width: 8),
-                          Text('Duplicate'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_outline,
-                            size: 18,
-                            color: Colors.red,
-                          ),
-                          SizedBox(width: 8),
-                          Text('Delete', style: TextStyle(color: Colors.red)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                if (family.canEdit(quotation))
+                  TextButton.icon(
+                    key: Key('quotation-edit-${quotation.id}'),
+                    onPressed: () => onEdit(quotation),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Edit'),
+                  ),
+                if (family.canRevise(quotation))
+                  TextButton.icon(
+                    key: Key('quotation-revise-${quotation.id}'),
+                    onPressed: () => onRevise(quotation),
+                    icon: const Icon(Icons.history, size: 18),
+                    label: const Text('Revise'),
+                  ),
+                _buildActionMenu(context, family, quotation),
               ],
             ),
           ),
@@ -300,6 +260,7 @@ class QuotationListView extends StatelessWidget {
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
     );
+    final rows = _rows;
 
     return Container(
       decoration: BoxDecoration(
@@ -324,27 +285,39 @@ class QuotationListView extends StatelessWidget {
             DataColumn(label: Text('Amount'), numeric: true),
             DataColumn(label: Text('Actions')),
           ],
-          rows: quotations.map((q) {
+          rows: rows.map((row) {
+            final quotation = row.quotation;
+            final family = row.family;
             return DataRow(
-              onSelectChanged: (_) => onView(q),
+              key: ValueKey('quotation-row-${quotation.id}'),
+              onSelectChanged: (_) => onView(quotation),
               cells: [
                 DataCell(
-                  Text(
-                    q.quotationNumber,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          quotation.displayQuotationNumber,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                DataCell(Text(dateFmt.format(q.createdDate))),
-                DataCell(Text(q.customerInfo.name)),
+                DataCell(Text(dateFmt.format(quotation.createdDate))),
+                DataCell(Text(quotation.customerInfo.name)),
                 DataCell(
                   Text(
-                    salespersonNames[q.salespersonId] ??
-                        (q.salespersonId.isNotEmpty ? q.salespersonId : '—'),
+                    salespersonNames[quotation.salespersonId] ??
+                        (quotation.salespersonId.isNotEmpty
+                            ? quotation.salespersonId
+                            : '—'),
                   ),
                 ),
                 DataCell(
                   Text(
-                    'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(q.lineItems, q.charges))}',
+                    'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(quotation.lineItems, quotation.charges))}',
                   ),
                 ),
                 DataCell(
@@ -354,78 +327,33 @@ class QuotationListView extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         TextButton.icon(
+                          key: Key('quotation-view-${quotation.id}'),
                           style: compactActionStyle,
-                          onPressed: () => onView(q),
+                          onPressed: () => onView(quotation),
                           icon: const Icon(Icons.visibility_outlined, size: 16),
                           label: const Text('View'),
                         ),
-                        const SizedBox(width: 4),
-                        TextButton.icon(
-                          style: compactActionStyle,
-                          onPressed: () => onEdit(q),
-                          icon: const Icon(Icons.edit_outlined, size: 16),
-                          label: const Text('Edit'),
-                        ),
-                        PopupMenuButton<String>(
-                          tooltip: 'More actions',
-                          icon: const Icon(
-                            Icons.more_vert,
-                            color: AppColors.mutedText,
+                        if (family.canEdit(quotation)) ...[
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            key: Key('quotation-edit-${quotation.id}'),
+                            style: compactActionStyle,
+                            onPressed: () => onEdit(quotation),
+                            icon: const Icon(Icons.edit_outlined, size: 16),
+                            label: const Text('Edit'),
                           ),
-                          onSelected: (val) {
-                            switch (val) {
-                              case 'share':
-                                onShare(q);
-                                break;
-                              case 'duplicate':
-                                onDuplicate(q);
-                                break;
-                              case 'delete':
-                                _confirmDelete(context, q, false);
-                                break;
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'share',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.share_outlined, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Share PDF'),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'duplicate',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.copy_outlined, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Duplicate'),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuDivider(),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                    color: Colors.red,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Delete',
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        ],
+                        if (family.canRevise(quotation)) ...[
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            key: Key('quotation-revise-${quotation.id}'),
+                            style: compactActionStyle,
+                            onPressed: () => onRevise(quotation),
+                            icon: const Icon(Icons.history, size: 16),
+                            label: const Text('Revise'),
+                          ),
+                        ],
+                        _buildActionMenu(context, family, quotation),
                       ],
                     ),
                   ),
@@ -439,21 +367,98 @@ class QuotationListView extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(
+  Widget _buildActionMenu(
     BuildContext context,
+    QuotationFamily family,
     Quotation quotation,
-    bool isMobile,
-  ) async {
+  ) {
+    return PopupMenuButton<String>(
+      key: Key('quotation-actions-${quotation.id}'),
+      tooltip: 'More actions',
+      icon: const Icon(Icons.more_vert, color: AppColors.mutedText),
+      onSelected: (value) {
+        switch (value) {
+          case 'share':
+            onShare(quotation);
+            break;
+          case 'duplicate':
+            onDuplicate(quotation);
+            break;
+          case 'delete':
+            _confirmDelete(context, quotation);
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'share',
+          child: _MenuItem(icon: Icons.share_outlined, label: 'Share'),
+        ),
+        if (family.canDuplicate(quotation))
+          const PopupMenuItem(
+            value: 'duplicate',
+            child: _MenuItem(icon: Icons.copy_outlined, label: 'Duplicate'),
+          ),
+        if (family.canDelete(quotation)) ...[
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'delete',
+            child: _MenuItem(
+              icon: Icons.delete_outline,
+              label: 'Delete',
+              destructive: true,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  List<_QuotationRow> get _rows => [
+    for (final family in families)
+      for (final quotation in family.members) _QuotationRow(family, quotation),
+  ];
+
+  Future<void> _confirmDelete(BuildContext context, Quotation quotation) async {
     final confirm = await AppDialogs.showConfirm(
       context,
       title: 'Delete Quotation',
       message:
-          'Are you sure you want to delete ${quotation.quotationNumber} for ${quotation.customerInfo.name}?',
+          'Are you sure you want to delete ${quotation.displayQuotationNumber} for ${quotation.customerInfo.name}?',
       confirmLabel: 'Delete',
       isDestructive: true,
     );
-    if (confirm) {
-      onDelete(quotation);
-    }
+    if (confirm) onDelete(quotation);
+  }
+}
+
+class _QuotationRow {
+  const _QuotationRow(this.family, this.quotation);
+
+  final QuotationFamily family;
+  final Quotation quotation;
+}
+
+class _MenuItem extends StatelessWidget {
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = destructive ? Colors.red : null;
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Text(label, style: TextStyle(color: color)),
+      ],
+    );
   }
 }

@@ -28,6 +28,12 @@ class _FakeQuotationRepository implements QuotationRepository {
   }
 
   @override
+  Future<Quotation> createRevision(
+    String sourceQuotationId,
+    Quotation revisionDraft,
+  ) async => revisionDraft;
+
+  @override
   Future<void> deleteQuotation(String id) => throw UnimplementedError();
 
   @override

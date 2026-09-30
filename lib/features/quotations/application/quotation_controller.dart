@@ -3,15 +3,54 @@ import 'package:flutter/foundation.dart';
 import '../domain/quotation.dart';
 import '../domain/quotation_line_item.dart';
 import '../domain/quotation_charges.dart';
+import '../domain/quotation_status.dart';
 import '../data/quotation_repository.dart';
 import '../../products/domain/product.dart';
 
 class QuotationController extends ChangeNotifier {
   Quotation _quotation;
+  String? _revisionSourceQuotationId;
 
-  QuotationController(this._quotation);
+  QuotationController(this._quotation, {this._revisionSourceQuotationId});
+
+  factory QuotationController.forRevision(Quotation source) {
+    if (source.id.isEmpty) {
+      throw ArgumentError(
+        'A saved quotation is required to create a revision.',
+      );
+    }
+
+    final now = DateTime.now();
+    final baseQuotationId = source.baseQuotationId ?? source.id;
+    final copiedItems = source.lineItems.indexed.map((entry) {
+      final index = entry.$1;
+      final item = entry.$2;
+      return item.copyWith(
+        id: 'revision-draft-$index-${item.id}',
+        imageBytes: item.imageBytes == null
+            ? null
+            : Uint8List.fromList(item.imageBytes!),
+      );
+    }).toList();
+
+    final draft = source.copyWith(
+      id: '',
+      baseQuotationId: baseQuotationId,
+      revisionNo: source.revisionNo + 1,
+      customerInfo: source.customerInfo.copyWith(),
+      charges: source.charges.copyWith(),
+      lineItems: copiedItems,
+      status: QuotationStatus.draft,
+      createdDate: now,
+      modifiedDate: now,
+    );
+
+    return QuotationController(draft, revisionSourceQuotationId: source.id);
+  }
 
   Quotation get quotation => _quotation;
+  bool get isRevisionDraft => _revisionSourceQuotationId != null;
+  String? get revisionSourceQuotationId => _revisionSourceQuotationId;
 
   void loadQuotation(Quotation newQuotation) {
     _quotation = newQuotation;
@@ -19,7 +58,11 @@ class QuotationController extends ChangeNotifier {
   }
 
   Future<Quotation> save(QuotationRepository repository) async {
-    final savedQuotation = await repository.saveQuotation(_quotation);
+    final sourceQuotationId = _revisionSourceQuotationId;
+    final savedQuotation = sourceQuotationId == null
+        ? await repository.saveQuotation(_quotation)
+        : await repository.createRevision(sourceQuotationId, _quotation);
+    _revisionSourceQuotationId = null;
     loadQuotation(savedQuotation);
     return savedQuotation;
   }

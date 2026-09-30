@@ -3,12 +3,14 @@ import '../../../../../../app/theme/app_colors.dart';
 
 class QuotationPageHeader extends StatelessWidget {
   final String quotationNumber;
+  final bool isRevision;
   final bool showBack;
   final VoidCallback? onBack;
 
   const QuotationPageHeader({
     super.key,
     required this.quotationNumber,
+    this.isRevision = false,
     this.showBack = false,
     this.onBack,
   });
@@ -46,18 +48,20 @@ class QuotationPageHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'New Quotation',
-                style: TextStyle(
+              Text(
+                isRevision ? 'Revise Quotation' : 'New Quotation',
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: AppColors.charcoal,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Create a quotation and send it to your customer.',
-                style: TextStyle(
+              Text(
+                isRevision
+                    ? quotationNumber
+                    : 'Create a quotation and send it to your customer.',
+                style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.mutedText,
                 ),
@@ -78,11 +82,15 @@ class QuotationPageHeader extends StatelessWidget {
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0),
-                child: Icon(Icons.chevron_right, size: 16, color: AppColors.mutedText),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: AppColors.mutedText,
+                ),
               ),
-              const Text(
-                'New Quotation',
-                style: TextStyle(
+              Text(
+                isRevision ? 'Revise Quotation' : 'New Quotation',
+                style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.charcoal,
                   fontWeight: FontWeight.w600,

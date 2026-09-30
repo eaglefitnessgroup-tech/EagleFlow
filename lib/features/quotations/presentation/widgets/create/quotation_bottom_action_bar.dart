@@ -6,6 +6,7 @@ class QuotationBottomActionBar extends StatelessWidget {
   final VoidCallback onPreview;
   final VoidCallback onSaveDraft;
   final bool isSaving;
+  final String saveLabel;
 
   const QuotationBottomActionBar({
     super.key,
@@ -13,6 +14,7 @@ class QuotationBottomActionBar extends StatelessWidget {
     required this.onPreview,
     required this.onSaveDraft,
     this.isSaving = false,
+    this.saveLabel = 'Save',
   });
 
   @override
@@ -60,9 +62,9 @@ class QuotationBottomActionBar extends StatelessWidget {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text(
-                            'Save',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                        : Text(
+                            saveLabel,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                   ),
                 ),

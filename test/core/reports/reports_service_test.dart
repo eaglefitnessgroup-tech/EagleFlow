@@ -92,6 +92,12 @@ class MockQuotationRepository implements QuotationRepository {
   Future<Quotation> saveQuotation(Quotation quotation) async => quotation;
 
   @override
+  Future<Quotation> createRevision(
+    String sourceQuotationId,
+    Quotation revisionDraft,
+  ) async => revisionDraft;
+
+  @override
   Future<void> deleteQuotation(String id) async {}
 
   @override

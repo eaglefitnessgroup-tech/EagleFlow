@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:eagleflow/core/di/service_locator.dart';
 import 'package:eagleflow/core/utils/pdf_share_helper.dart';
 import 'package:eagleflow/features/quotations/data/quotation_repository.dart';
+import 'package:eagleflow/features/quotations/application/quotation_family.dart';
 import 'package:eagleflow/features/quotations/domain/quotation.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
@@ -40,6 +41,12 @@ class _FakeQuotationRepository implements QuotationRepository {
 
   @override
   Future<Quotation> saveQuotation(Quotation quotation) async => quotation;
+
+  @override
+  Future<Quotation> createRevision(
+    String sourceQuotationId,
+    Quotation revisionDraft,
+  ) async => revisionDraft;
 }
 
 void main() {
@@ -102,7 +109,7 @@ void main() {
   Future<void> selectShare(WidgetTester tester) async {
     await tester.tap(find.byType(PopupMenuButton<String>));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Share PDF'));
+    await tester.tap(find.text('Share'));
     await tester.pumpAndSettle();
   }
 
@@ -220,9 +227,10 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: QuotationListView(
-              quotations: [summary],
+              families: groupQuotationFamilies([summary]),
               onView: (_) => viewCalls++,
               onEdit: (_) => editCalls++,
+              onRevise: (_) {},
               onDuplicate: (_) => duplicateCalls++,
               onShare: (_) {},
               onDelete: (_) => deleteCalls++,

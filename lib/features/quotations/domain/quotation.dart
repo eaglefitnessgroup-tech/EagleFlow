@@ -6,6 +6,8 @@ import 'quotation_status.dart';
 class Quotation {
   final String id;
   final String quotationNumber;
+  final String? baseQuotationId;
+  final int revisionNo;
   final CustomerInfo customerInfo;
   final String salespersonId;
   final DateTime createdDate;
@@ -23,6 +25,8 @@ class Quotation {
   const Quotation({
     required this.id,
     required this.quotationNumber,
+    this.baseQuotationId,
+    this.revisionNo = 0,
     required this.customerInfo,
     required this.salespersonId,
     required this.createdDate,
@@ -38,9 +42,15 @@ class Quotation {
     this.isStockOutProcessed = false,
   });
 
+  String get displayQuotationNumber =>
+      revisionNo > 0 ? '$quotationNumber / R$revisionNo' : quotationNumber;
+
   Quotation copyWith({
     String? id,
     String? quotationNumber,
+    String? baseQuotationId,
+    bool clearBaseQuotationId = false,
+    int? revisionNo,
     CustomerInfo? customerInfo,
     String? salespersonId,
     DateTime? createdDate,
@@ -58,6 +68,10 @@ class Quotation {
     return Quotation(
       id: id ?? this.id,
       quotationNumber: quotationNumber ?? this.quotationNumber,
+      baseQuotationId: clearBaseQuotationId
+          ? null
+          : baseQuotationId ?? this.baseQuotationId,
+      revisionNo: revisionNo ?? this.revisionNo,
       customerInfo: customerInfo ?? this.customerInfo,
       salespersonId: salespersonId ?? this.salespersonId,
       createdDate: createdDate ?? this.createdDate,
@@ -78,6 +92,8 @@ class Quotation {
     return {
       'id': id,
       'quotationNumber': quotationNumber,
+      'baseQuotationId': baseQuotationId,
+      'revisionNo': revisionNo,
       'customerInfo': customerInfo.toJson(),
       'salespersonId': salespersonId,
       'createdDate': createdDate.toIso8601String(),
@@ -98,6 +114,8 @@ class Quotation {
     return Quotation(
       id: json['id'] as String,
       quotationNumber: json['quotationNumber'] as String,
+      baseQuotationId: json['baseQuotationId'] as String?,
+      revisionNo: (json['revisionNo'] as num?)?.toInt() ?? 0,
       customerInfo: CustomerInfo.fromJson(
         json['customerInfo'] as Map<String, dynamic>,
       ),

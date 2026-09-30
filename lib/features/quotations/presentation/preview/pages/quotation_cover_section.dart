@@ -113,8 +113,8 @@ class QuotationCoverSection extends StatelessWidget {
                   ),
                   _buildCustomerRow(
                     'QT NO',
-                    quotation.quotationNumber.isNotEmpty
-                        ? quotation.quotationNumber
+                    quotation.displayQuotationNumber.isNotEmpty
+                        ? quotation.displayQuotationNumber
                         : '—',
                   ),
                   _buildCustomerRow(
@@ -128,8 +128,8 @@ class QuotationCoverSection extends StatelessWidget {
                     (salespersonName != null && salespersonName!.isNotEmpty)
                         ? salespersonName!
                         : (quotation.salespersonId.isNotEmpty
-                            ? quotation.salespersonId
-                            : '—'),
+                              ? quotation.salespersonId
+                              : '—'),
                   ),
                 ],
               ),
@@ -150,9 +150,15 @@ class QuotationCoverSection extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(label, style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0)),
+            child: Text(
+              label,
+              style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0),
+            ),
           ),
-          Text(' : ', style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0)),
+          Text(
+            ' : ',
+            style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0),
+          ),
           Expanded(
             child: Text(
               value,

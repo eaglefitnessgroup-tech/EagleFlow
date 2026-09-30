@@ -154,6 +154,16 @@ class SembastQuotationRepository implements QuotationRepository {
   }
 
   @override
+  Future<Quotation> createRevision(
+    String sourceQuotationId,
+    Quotation revisionDraft,
+  ) async {
+    throw UnsupportedError(
+      'Quotation revisions require a server connection for atomic numbering.',
+    );
+  }
+
+  @override
   Future<void> deleteQuotation(String id) async {
     final db = await _db;
     await db.transaction((txn) async {

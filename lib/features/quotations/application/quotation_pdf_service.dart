@@ -239,6 +239,12 @@ class QuotationPdfService {
   pw.Widget buildFixedWidthDocumentDividerForTesting(double width) =>
       _buildFixedWidthDocumentDivider(width);
 
+  @visibleForTesting
+  pw.Widget buildCoverSectionForTesting(
+    Quotation quotation, {
+    String salespersonName = '',
+  }) => _buildCoverSection(quotation, salespersonName);
+
   pw.Widget _buildCoverSection(Quotation quotation, String salesmanName) {
     final profile = CompanyProfile.defaultProfile;
 
@@ -322,8 +328,8 @@ class QuotationPdfService {
                   ),
                   _buildCustomerRow(
                     'QT NO',
-                    quotation.quotationNumber.isNotEmpty
-                        ? quotation.quotationNumber
+                    quotation.displayQuotationNumber.isNotEmpty
+                        ? quotation.displayQuotationNumber
                         : '—',
                   ),
                   _buildCustomerRow(

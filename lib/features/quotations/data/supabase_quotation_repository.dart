@@ -210,6 +210,8 @@ class SupabaseQuotationRepository implements QuotationRepository {
     return Quotation(
       id: row['id'] as String,
       quotationNumber: row['quotation_number'] as String,
+      baseQuotationId: row['base_quotation_id'] as String?,
+      revisionNo: (row['revision_no'] as num?)?.toInt() ?? 0,
       salespersonId: row['salesperson_id'] as String,
       customerInfo: CustomerInfo(
         name: row['customer_name'] as String? ?? '',
@@ -239,6 +241,7 @@ class SupabaseQuotationRepository implements QuotationRepository {
           ? DateTime.parse(row['expected_delivery'] as String).toLocal()
           : DateTime.now(),
       lineItems: lineItems,
+      isStockOutProcessed: row['is_stock_out_processed'] as bool? ?? false,
     );
   }
 
@@ -342,6 +345,65 @@ class SupabaseQuotationRepository implements QuotationRepository {
   }
 
   @override
+  Future<Quotation> createRevision(
+    String sourceQuotationId,
+    Quotation revisionDraft,
+  ) async {
+    final user = ServiceLocator().authController.currentUser;
+    if (user == null || revisionDraft.salespersonId != user.id) {
+      throw Exception(
+        'Unauthorized: Cannot revise quotations belonging to others.',
+      );
+    }
+    if (sourceQuotationId.isEmpty) {
+      throw ArgumentError('A saved source quotation is required.');
+    }
+    if (!isConnectedToServer) {
+      throw Exception(
+        'Offline: Quotation revisions require a server connection for atomic numbering.',
+      );
+    }
+
+    try {
+      final client = supabase.client;
+      if (client == null) {
+        throw Exception('Supabase client is null while connected');
+      }
+
+      final response = await client.rpc(
+        'create_quotation_revision',
+        params: {
+          'p_source_quotation_id': sourceQuotationId,
+          'p_payload': _buildQuotationPayload(revisionDraft),
+        },
+      );
+
+      if (response is! Map) {
+        throw Exception('Revision RPC returned an invalid response.');
+      }
+      final result = Map<String, dynamic>.from(response);
+      if (result['error'] != null) {
+        throw Exception(result['error']);
+      }
+
+      final revisionId = result['id']?.toString();
+      if (revisionId == null || revisionId.isEmpty) {
+        throw Exception('Revision RPC did not return a quotation ID.');
+      }
+
+      final authoritativeRow = await client
+          .from('quotations')
+          .select('*, quotation_items(*)')
+          .eq('id', revisionId)
+          .single();
+      final savedRevision = _fromSupabase(authoritativeRow);
+      return await localCache.saveQuotation(savedRevision);
+    } catch (e) {
+      throw Exception('Failed to create quotation revision: $e');
+    }
+  }
+
+  @override
   Future<void> deleteQuotation(String id) async {
     final user = ServiceLocator().authController.currentUser;
     if (!isConnectedToServer) {
@@ -415,6 +477,8 @@ class SupabaseQuotationRepository implements QuotationRepository {
     return {
       'id': q.id,
       'quotation_number': q.quotationNumber,
+      'base_quotation_id': q.baseQuotationId,
+      'revision_no': q.revisionNo,
       'salesperson_id': q.salespersonId,
       'customer_name': q.customerInfo.name,
       'customer_company': q.customerInfo.company,
@@ -429,6 +493,7 @@ class SupabaseQuotationRepository implements QuotationRepository {
       'customer_notes': q.customerNotes,
       'internal_notes': q.internalNotes,
       'status': q.status.name,
+      'is_stock_out_processed': q.isStockOutProcessed,
       'created_at': q.createdDate.toUtc().toIso8601String(),
       'updated_at': q.modifiedDate.toUtc().toIso8601String(),
       'valid_until': q.validUntil.toUtc().toIso8601String(),
@@ -456,6 +521,8 @@ class SupabaseQuotationRepository implements QuotationRepository {
       }).toList(),
       // Adding camelCase fallbacks just in case the RPC uses them
       'quotationNumber': q.quotationNumber,
+      'baseQuotationId': q.baseQuotationId,
+      'revisionNo': q.revisionNo,
       'salespersonId': q.salespersonId,
       'customerInfo': q.customerInfo.toJson(),
       'charges': q.charges.toJson(),
@@ -468,6 +535,7 @@ class SupabaseQuotationRepository implements QuotationRepository {
         map.remove('imageBytes');
         return map;
       }).toList(),
+      'isStockOutProcessed': q.isStockOutProcessed,
     };
   }
 }

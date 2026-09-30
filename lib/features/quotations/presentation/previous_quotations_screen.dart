@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/widgets/eagle_bottom_nav.dart';
 import '../domain/quotation.dart';
+import '../application/quotation_controller.dart';
+import '../application/quotation_family.dart';
 import 'widgets/previous/quotations_summary_row.dart';
 import 'widgets/previous/quotation_filter_bar.dart';
 import 'widgets/previous/quotation_list_view.dart';
@@ -14,6 +16,7 @@ import '../application/quotation_calculator.dart';
 import '../application/quotation_pdf_service.dart';
 import '../application/salesperson_name_resolver.dart';
 import '../../../../core/di/service_locator.dart';
+import 'quotation_preview_screen.dart';
 
 typedef PreviousQuotationPdfGenerator =
     Future<Uint8List> Function(Quotation quotation);
@@ -25,6 +28,20 @@ int countRecentQuotations(List<Quotation> quotations, {DateTime? now}) {
   final cutoffDate = referenceDate.subtract(const Duration(days: 30));
 
   return quotations.where((quotation) {
+    return !quotation.createdDate.isBefore(cutoffDate) &&
+        !quotation.createdDate.isAfter(referenceDate);
+  }).length;
+}
+
+int countRecentQuotationFamilies(
+  List<QuotationFamily> families, {
+  DateTime? now,
+}) {
+  final referenceDate = now ?? DateTime.now();
+  final cutoffDate = referenceDate.subtract(const Duration(days: 30));
+
+  return families.where((family) {
+    final quotation = family.latest;
     return !quotation.createdDate.isBefore(cutoffDate) &&
         !quotation.createdDate.isAfter(referenceDate);
   }).length;
@@ -49,7 +66,8 @@ class PreviousQuotationsScreen extends StatefulWidget {
 
 class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
   List<Quotation> _allQuotations = [];
-  List<Quotation> _filteredQuotations = [];
+  List<QuotationFamily> _allFamilies = [];
+  List<QuotationFamily> _filteredFamilies = [];
 
   String _searchQuery = '';
   String _sortBy = 'Newest';
@@ -87,6 +105,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       if (mounted) {
         setState(() {
           _allQuotations = data;
+          _allFamilies = groupQuotationFamilies(data);
           _isLoading = false;
         });
         _applyFilters();
@@ -103,45 +122,41 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
 
   void _applyFilters() {
     setState(() {
-      _filteredQuotations = _allQuotations.where((q) {
-        final matchesSearch =
-            _searchQuery.isEmpty ||
-            q.quotationNumber.toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            ) ||
-            q.customerInfo.name.toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            ) ||
-            _salespersonName(
-              q,
-            ).toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            q.salespersonId.toLowerCase().contains(_searchQuery.toLowerCase());
+      final query = _searchQuery.trim().toLowerCase();
+      bool matches(Quotation quotation) =>
+          quotation.quotationNumber.toLowerCase().contains(query) ||
+          quotation.displayQuotationNumber.toLowerCase().contains(query) ||
+          (quotation.revisionNo > 0 &&
+              'r${quotation.revisionNo}'.contains(query)) ||
+          quotation.customerInfo.name.toLowerCase().contains(query) ||
+          _salespersonName(quotation).toLowerCase().contains(query) ||
+          quotation.salespersonId.toLowerCase().contains(query);
 
-        return matchesSearch;
+      _filteredFamilies = _allFamilies.where((family) {
+        return query.isEmpty || family.members.any(matches);
       }).toList();
 
-      if (_sortBy == 'Newest') {
-        _filteredQuotations.sort(
-          (a, b) => b.createdDate.compareTo(a.createdDate),
-        );
-      } else if (_sortBy == 'Oldest') {
-        _filteredQuotations.sort(
-          (a, b) => a.createdDate.compareTo(b.createdDate),
-        );
-      } else if (_sortBy == 'Highest Amount' || _sortBy == 'Lowest Amount') {
-        double calculateTotal(Quotation q) =>
-            QuotationCalculator.calculateGrandTotal(q.lineItems, q.charges);
-
-        if (_sortBy == 'Highest Amount') {
-          _filteredQuotations.sort(
-            (a, b) => calculateTotal(b).compareTo(calculateTotal(a)),
-          );
+      _filteredFamilies.sort((a, b) {
+        int primary;
+        if (_sortBy == 'Newest') {
+          primary = b.latest.createdDate.compareTo(a.latest.createdDate);
+        } else if (_sortBy == 'Oldest') {
+          primary = a.latest.createdDate.compareTo(b.latest.createdDate);
         } else {
-          _filteredQuotations.sort(
-            (a, b) => calculateTotal(a).compareTo(calculateTotal(b)),
+          final totalA = QuotationCalculator.calculateGrandTotal(
+            a.latest.lineItems,
+            a.latest.charges,
           );
+          final totalB = QuotationCalculator.calculateGrandTotal(
+            b.latest.lineItems,
+            b.latest.charges,
+          );
+          primary = _sortBy == 'Highest Amount'
+              ? totalB.compareTo(totalA)
+              : totalA.compareTo(totalB);
         }
-      }
+        return primary != 0 ? primary : a.original.id.compareTo(b.original.id);
+      });
     });
   }
 
@@ -209,6 +224,32 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
     }
   }
 
+  Future<void> _handleRevise(Quotation quotation) async {
+    setState(() => _isLoading = true);
+    try {
+      final repo = ServiceLocator().quotationRepository;
+      final fullQuotation = await repo.getQuotationWithImages(quotation);
+      final controller = QuotationController.forRevision(fullQuotation);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        await Navigator.pushNamed(
+          context,
+          '/create-quotation',
+          arguments: controller,
+        );
+        _loadQuotations();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppSnackBars.showError(
+          context,
+          'Failed to prepare quotation revision. Please try again.',
+        );
+      }
+    }
+  }
+
   void _handleView(Quotation quotation) async {
     setState(() => _isLoading = true);
     try {
@@ -216,10 +257,17 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       final fullQuotation = await repo.getQuotationWithImages(quotation);
       if (mounted) {
         setState(() => _isLoading = false);
+        final family = _allFamilies.firstWhere(
+          (candidate) =>
+              candidate.members.any((member) => member.id == quotation.id),
+        );
         Navigator.pushNamed(
           context,
           '/quotation-preview',
-          arguments: fullQuotation,
+          arguments: QuotationPreviewArguments(
+            fullQuotation,
+            readOnly: family.hasRevisions,
+          ),
         );
       }
     } catch (e) {
@@ -248,7 +296,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       final pdfBytes = generator == null
           ? await QuotationPdfService().generatePdf(fullQuotation)
           : await generator(fullQuotation);
-      final sanitizedNumber = fullQuotation.quotationNumber.replaceAll(
+      final sanitizedNumber = fullQuotation.displayQuotationNumber.replaceAll(
         RegExp(r'[\\/:*?"<>|]'),
         '_',
       );
@@ -291,8 +339,8 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final total = _allQuotations.length;
-    final recent = countRecentQuotations(_allQuotations);
+    final total = _allFamilies.length;
+    final recent = countRecentQuotationFamilies(_allFamilies);
     final isMobile = MediaQuery.of(context).size.width < 800;
 
     return Scaffold(
@@ -374,12 +422,13 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      _buildResultCount(_filteredQuotations.length, total),
+                      _buildResultCount(_filteredFamilies.length, total),
                       QuotationListView(
-                        quotations: _filteredQuotations,
+                        families: _filteredFamilies,
                         salespersonNames: _salespersonNames,
                         onView: _handleView,
                         onEdit: _handleEdit,
+                        onRevise: _handleRevise,
                         onDuplicate: _handleDuplicate,
                         onShare: _handleShare,
                         onDelete: _handleDelete,
@@ -483,8 +532,11 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
         }
 
         return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [titleContent, actionButton],
+          children: [
+            Expanded(child: titleContent),
+            const SizedBox(width: 24),
+            actionButton,
+          ],
         );
       },
     );

@@ -144,6 +144,8 @@ void main() {
         {
           'id': 'Q1',
           'quotation_number': 'QT-0001-26',
+          'base_quotation_id': 'Q0',
+          'revision_no': 2,
           'salesperson_id': 'ADMIN-001',
           'customer_name': 'Remote Customer',
           'status': 'sent',
@@ -174,6 +176,8 @@ void main() {
       final q = await repo.getQuotationByNumber('QT-0001-26');
       expect(q, isNotNull);
       expect(q!.customerInfo.name, 'Remote Customer');
+      expect(q.baseQuotationId, 'Q0');
+      expect(q.revisionNo, 2);
       expect(q.status, QuotationStatus.sent);
       expect(q.lineItems.single.condition, ProductCondition.refurbished);
     });
@@ -333,6 +337,25 @@ void main() {
       expect(duplicated.quotationNumber, 'DRAFT-DUPLICATE');
       expect(duplicated.salespersonId, 'ADMIN-001');
       expect(duplicated.status, QuotationStatus.draft);
+    });
+
+    test('9. Revision creation fails clearly while offline', () async {
+      repo.overrideIsConnected = false;
+      final draft = createTestQuotation().copyWith(
+        baseQuotationId: 'source-id',
+        revisionNo: 1,
+      );
+
+      await expectLater(
+        repo.createRevision('source-id', draft),
+        throwsA(
+          isA<Exception>().having(
+            (error) => error.toString(),
+            'message',
+            contains('require a server connection for atomic numbering'),
+          ),
+        ),
+      );
     });
   });
 }

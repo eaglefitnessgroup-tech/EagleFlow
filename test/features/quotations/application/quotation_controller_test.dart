@@ -1,9 +1,53 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eagleflow/features/quotations/application/quotation_controller.dart';
+import 'package:eagleflow/features/quotations/data/quotation_repository.dart';
+import 'package:eagleflow/features/quotations/domain/quotation.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
 import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/products/domain/product_condition.dart';
+
+class _TrackingQuotationRepository implements QuotationRepository {
+  int normalSaveCount = 0;
+  int revisionSaveCount = 0;
+  String? revisionSourceId;
+
+  @override
+  Future<Quotation> saveQuotation(Quotation quotation) async {
+    normalSaveCount++;
+    return quotation;
+  }
+
+  @override
+  Future<Quotation> createRevision(
+    String sourceQuotationId,
+    Quotation revisionDraft,
+  ) async {
+    revisionSaveCount++;
+    revisionSourceId = sourceQuotationId;
+    return revisionDraft.copyWith(id: 'saved-revision', revisionNo: 1);
+  }
+
+  @override
+  Future<void> deleteQuotation(String id) => throw UnimplementedError();
+
+  @override
+  Future<Quotation> duplicateQuotation(Quotation sourceQuotation) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<Quotation>> getAllQuotations() => throw UnimplementedError();
+
+  @override
+  Future<Quotation?> getQuotationByNumber(String quotationNumber) =>
+      throw UnimplementedError();
+
+  @override
+  Future<Quotation> getQuotationWithImages(Quotation quotation) =>
+      throw UnimplementedError();
+}
 
 void main() {
   group('QuotationController', () {
@@ -271,6 +315,92 @@ void main() {
           expect(updated.quantity, 3);
         },
       );
+    });
+
+    group('Revision foundation', () {
+      test('revision draft deep-copies source and keeps source unchanged', () {
+        final imageBytes = Uint8List.fromList([1, 2, 3]);
+        final source =
+            QuotationDefaults.createEmptyDraft(
+              salespersonId: 'SALES-001',
+            ).copyWith(
+              id: 'source-id',
+              quotationNumber: 'QT-AN-0027-26',
+              lineItems: [
+                const QuotationLineItem(
+                  id: 'source-item',
+                  name: 'Snapshot',
+                  brand: 'Brand',
+                  unitPrice: 100,
+                  quantity: 2,
+                ).copyWith(imageBytes: imageBytes),
+              ],
+            );
+
+        final revisionController = QuotationController.forRevision(source);
+        final draft = revisionController.quotation;
+
+        expect(revisionController.isRevisionDraft, isTrue);
+        expect(revisionController.revisionSourceQuotationId, source.id);
+        expect(draft.id, isEmpty);
+        expect(draft.quotationNumber, source.quotationNumber);
+        expect(draft.baseQuotationId, source.id);
+        expect(draft.revisionNo, 1);
+        expect(draft.customerInfo, isNot(same(source.customerInfo)));
+        expect(draft.charges, isNot(same(source.charges)));
+        expect(draft.lineItems.single, isNot(same(source.lineItems.single)));
+        expect(
+          draft.lineItems.single.imageBytes,
+          isNot(same(source.lineItems.single.imageBytes)),
+        );
+
+        revisionController.updateQuantity(draft.lineItems.single.id, 5);
+        expect(revisionController.quotation.lineItems.single.quantity, 5);
+        expect(source.lineItems.single.quantity, 2);
+        expect(source.id, 'source-id');
+      });
+
+      test(
+        'revision save uses the explicit repository revision path',
+        () async {
+          final source = QuotationDefaults.createEmptyDraft(
+            salespersonId: 'SALES-001',
+          ).copyWith(id: 'source-id', quotationNumber: 'QT-AN-0027-26');
+          final revisionController = QuotationController.forRevision(source);
+          final repository = _TrackingQuotationRepository();
+
+          final saved = await revisionController.save(repository);
+
+          expect(repository.normalSaveCount, 0);
+          expect(repository.revisionSaveCount, 1);
+          expect(repository.revisionSourceId, 'source-id');
+          expect(saved.id, 'saved-revision');
+          expect(revisionController.isRevisionDraft, isFalse);
+        },
+      );
+
+      test('revision draft from R1 keeps R1 as the selected source', () {
+        final source =
+            QuotationDefaults.createEmptyDraft(
+              salespersonId: 'SALES-001',
+            ).copyWith(
+              id: 'r1-id',
+              quotationNumber: 'QT-AN-0027-26',
+              baseQuotationId: 'original-id',
+              revisionNo: 1,
+              customerNotes: 'R1 snapshot',
+            );
+
+        final revisionController = QuotationController.forRevision(source);
+
+        expect(revisionController.revisionSourceQuotationId, 'r1-id');
+        expect(revisionController.quotation.baseQuotationId, 'original-id');
+        expect(revisionController.quotation.revisionNo, 2);
+        expect(revisionController.quotation.customerNotes, 'R1 snapshot');
+
+        revisionController.updateNotes(customerNotes: 'New revision content');
+        expect(source.customerNotes, 'R1 snapshot');
+      });
     });
   });
 }

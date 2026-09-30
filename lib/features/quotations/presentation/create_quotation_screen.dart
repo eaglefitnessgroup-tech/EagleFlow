@@ -20,6 +20,7 @@ import 'widgets/create/quotation_summary_card.dart';
 import 'widgets/create/quotation_notes_card.dart';
 import 'widgets/create/quotation_status_strip.dart';
 import 'widgets/create/quotation_bottom_action_bar.dart';
+import 'quotation_preview_screen.dart';
 
 class CreateQuotationScreen extends StatefulWidget {
   const CreateQuotationScreen({super.key});
@@ -62,15 +63,17 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
   }
 
   Future<void> _handleQuantityChanged(String itemId, int qty) async {
-    final item = _controller.quotation.lineItems.where((i) => i.id == itemId).firstOrNull;
+    final item = _controller.quotation.lineItems
+        .where((i) => i.id == itemId)
+        .firstOrNull;
     if (item == null || item.isCustom || item.productId == null) {
       _controller.updateQuantity(itemId, qty);
       return;
     }
 
-    final product = ServiceLocator().productMasterController.products.where(
-      (p) => p.id == item.productId,
-    ).firstOrNull;
+    final product = ServiceLocator().productMasterController.products
+        .where((p) => p.id == item.productId)
+        .firstOrNull;
 
     if (product == null) {
       _controller.updateQuantity(itemId, qty);
@@ -103,13 +106,28 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
       return;
     }
 
+    final isRevisionSave = _controller.isRevisionDraft;
     setState(() => _isSaving = true);
 
     try {
       final repo = ServiceLocator().quotationRepository;
-      await _controller.save(repo);
+      final savedQuotation = await _controller.save(repo);
 
       if (mounted) {
+        if (isRevisionSave) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Revision saved successfully')),
+          );
+          await Navigator.pushReplacementNamed(
+            context,
+            '/quotation-preview',
+            arguments: QuotationPreviewArguments(
+              savedQuotation,
+              readOnly: true,
+            ),
+          );
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Quotation saved successfully')),
         );
@@ -158,10 +176,11 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                           quotation.lineItems,
                           quotation.charges,
                         );
-                        final grandTotal = QuotationCalculator.calculateGrandTotal(
-                          quotation.lineItems,
-                          quotation.charges,
-                        );
+                        final grandTotal =
+                            QuotationCalculator.calculateGrandTotal(
+                              quotation.lineItems,
+                              quotation.charges,
+                            );
 
                         return _buildDesktopLayout(
                           context,
@@ -181,6 +200,9 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                       return QuotationBottomActionBar(
                         canPreview: canPreview,
                         isSaving: _isSaving,
+                        saveLabel: _controller.isRevisionDraft
+                            ? 'Save Revision'
+                            : 'Save',
                         onSaveDraft: _handleSave,
                         onPreview: () async {
                           final updatedQuotation = await Navigator.pushNamed(
@@ -306,7 +328,9 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: route != null && !isSelected ? () => Navigator.of(context).pushNamed(route) : null,
+        onTap: route != null && !isSelected
+            ? () => Navigator.of(context).pushNamed(route)
+            : null,
         hoverColor: AppColors.primarySoft.withValues(alpha: 0.5),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -317,17 +341,25 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                 width: 4,
               ),
             ),
-            color: isSelected ? AppColors.primarySoft.withValues(alpha: 0.3) : Colors.transparent,
+            color: isSelected
+                ? AppColors.primarySoft.withValues(alpha: 0.3)
+                : Colors.transparent,
           ),
           child: Row(
             children: [
-              Icon(icon, color: isSelected ? AppColors.primaryBlue : AppColors.mutedText, size: 22),
+              Icon(
+                icon,
+                color: isSelected ? AppColors.primaryBlue : AppColors.mutedText,
+                size: 22,
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   label,
                   style: TextStyle(
-                    color: isSelected ? AppColors.primaryBlue : AppColors.mutedText,
+                    color: isSelected
+                        ? AppColors.primaryBlue
+                        : AppColors.mutedText,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 14,
                   ),
@@ -361,14 +393,18 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
           initialEmail: quotation.customerInfo.email,
           initialProjectLocation: quotation.customerInfo.projectLocation,
           onNameChanged: _controller.updateCustomerName,
-          onCompanyChanged: (val) => _controller.updateCustomerDetails(company: val),
-          onPhoneChanged: (val) => _controller.updateCustomerDetails(phone: val),
-          onEmailChanged: (val) => _controller.updateCustomerDetails(email: val),
-          onProjectLocationChanged: (val) => _controller.updateCustomerDetails(projectLocation: val),
+          onCompanyChanged: (val) =>
+              _controller.updateCustomerDetails(company: val),
+          onPhoneChanged: (val) =>
+              _controller.updateCustomerDetails(phone: val),
+          onEmailChanged: (val) =>
+              _controller.updateCustomerDetails(email: val),
+          onProjectLocationChanged: (val) =>
+              _controller.updateCustomerDetails(projectLocation: val),
         );
 
         final quotationInfoCard = QuotationInformationCard(
-          quotationNumber: quotation.quotationNumber,
+          quotationNumber: quotation.displayQuotationNumber,
           salespersonId: quotation.salespersonId,
           salespersonName: SalespersonNameResolver.resolve(
             salespersonId: quotation.salespersonId,
@@ -382,8 +418,10 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
         final notesCard = QuotationNotesCard(
           initialCustomerNotes: quotation.customerNotes,
           initialInternalNotes: quotation.internalNotes,
-          onCustomerNotesChanged: (val) => _controller.updateNotes(customerNotes: val),
-          onInternalNotesChanged: (val) => _controller.updateNotes(internalNotes: val),
+          onCustomerNotesChanged: (val) =>
+              _controller.updateNotes(customerNotes: val),
+          onInternalNotesChanged: (val) =>
+              _controller.updateNotes(internalNotes: val),
         );
 
         final summaryCol = Column(
@@ -420,7 +458,8 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   QuotationPageHeader(
-                    quotationNumber: quotation.quotationNumber,
+                    quotationNumber: quotation.displayQuotationNumber,
+                    isRevision: _controller.isRevisionDraft,
                     showBack: isMobile && Navigator.canPop(context),
                     onBack: () => Navigator.pop(context),
                   ),

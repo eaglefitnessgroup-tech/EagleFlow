@@ -31,6 +31,13 @@ typedef QuotationPdfSaver =
 typedef QuotationPdfPrinter =
     Future<void> Function(Uint8List bytes, String filename);
 
+class QuotationPreviewArguments {
+  const QuotationPreviewArguments(this.quotation, {this.readOnly = false});
+
+  final Quotation quotation;
+  final bool readOnly;
+}
+
 class QuotationPreviewScreen extends StatefulWidget {
   const QuotationPreviewScreen({
     super.key,
@@ -67,6 +74,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
   String _errorMsg = '';
   bool _isSaving = false;
   bool _isGeneratingPdf = false;
+  bool _readOnly = false;
   String? _resolvedSalespersonName;
   int _salespersonResolutionRequest = 0;
 
@@ -78,11 +86,19 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
     if (args is QuotationController) {
       _controller = args;
       _returnsToOriginatingEditor = true;
+      _readOnly = false;
+      _pages = QuotationPaginator.paginate(_controller!.quotation);
+    } else if (args is QuotationPreviewArguments) {
+      _controller = QuotationController(QuotationDefaults.createEmptyDraft());
+      _controller!.loadQuotation(args.quotation);
+      _returnsToOriginatingEditor = false;
+      _readOnly = args.readOnly || args.quotation.revisionNo > 0;
       _pages = QuotationPaginator.paginate(_controller!.quotation);
     } else if (args is Quotation) {
       _controller = QuotationController(QuotationDefaults.createEmptyDraft());
       _controller!.loadQuotation(args);
       _returnsToOriginatingEditor = false;
+      _readOnly = args.revisionNo > 0;
       _pages = QuotationPaginator.paginate(_controller!.quotation);
     } else {
       _isError = true;
@@ -180,7 +196,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
   }
 
   void _onEdit() {
-    if (_controller == null) return;
+    if (_controller == null || _readOnly) return;
 
     if (_returnsToOriginatingEditor) {
       Navigator.pop(context, _controller!.quotation);
@@ -195,7 +211,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
   }
 
   Future<void> _handleSave() async {
-    if (_isSaving || _controller == null) return;
+    if (_isSaving || _controller == null || _readOnly) return;
 
     final user = ServiceLocator().authController.currentUser;
     if (user == null) {
@@ -208,6 +224,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       return;
     }
 
+    final isRevisionSave = _controller!.isRevisionDraft;
     setState(() => _isSaving = true);
 
     try {
@@ -217,6 +234,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       if (mounted) {
         setState(() {
           _pages = QuotationPaginator.paginate(savedQuotation);
+          if (isRevisionSave) _readOnly = true;
         });
         ScaffoldMessenger.of(
           context,
@@ -251,7 +269,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
               salespersonName: _resolvedSalespersonName,
             )
           : generator(quotation, salespersonName: _resolvedSalespersonName);
-      final sanitizedNumber = quotation.quotationNumber.replaceAll(
+      final sanitizedNumber = quotation.displayQuotationNumber.replaceAll(
         RegExp(r'[\\/:*?"<>|]'),
         '_',
       );
@@ -284,10 +302,8 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       final pdfBytes = generator == null
           ? await QuotationPdfService().generatePdf(_controller!.quotation)
           : await generator(_controller!.quotation);
-      final sanitizedNumber = _controller!.quotation.quotationNumber.replaceAll(
-        RegExp(r'[\\/:*?"<>|]'),
-        '_',
-      );
+      final sanitizedNumber = _controller!.quotation.displayQuotationNumber
+          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final filename = '$sanitizedNumber.pdf';
       final pdfSaver = widget.pdfSaver ?? savePdf;
 
@@ -489,48 +505,53 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
               )
             : null,
         actions: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmall = MediaQuery.of(context).size.width < 400;
-              if (isSmall) {
-                return TextButton(
+          if (!_readOnly) ...[
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isSmall = MediaQuery.of(context).size.width < 400;
+                final saveLabel = _controller?.isRevisionDraft == true
+                    ? 'Save Revision'
+                    : 'Save';
+                if (isSmall) {
+                  return TextButton(
+                    onPressed: _isSaving ? null : _handleSave,
+                    child: Text(saveLabel),
+                  );
+                }
+                return TextButton.icon(
                   onPressed: _isSaving ? null : _handleSave,
-                  child: const Text('Save'),
+                  icon: const Icon(Icons.save_outlined, size: 16),
+                  label: Text(saveLabel),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.charcoal,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
                 );
-              }
-              return TextButton.icon(
-                onPressed: _isSaving ? null : _handleSave,
-                icon: const Icon(Icons.save_outlined, size: 16),
-                label: const Text('Save'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.charcoal,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-              );
-            },
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmall = MediaQuery.of(context).size.width < 400;
-              if (isSmall) {
-                return IconButton(
+              },
+            ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isSmall = MediaQuery.of(context).size.width < 400;
+                if (isSmall) {
+                  return IconButton(
+                    onPressed: _onEdit,
+                    icon: const Icon(Icons.edit, size: 18),
+                    tooltip: 'Edit',
+                    color: AppColors.charcoal,
+                  );
+                }
+                return TextButton.icon(
                   onPressed: _onEdit,
-                  icon: const Icon(Icons.edit, size: 18),
-                  tooltip: 'Edit',
-                  color: AppColors.charcoal,
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Edit'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.charcoal,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
                 );
-              }
-              return TextButton.icon(
-                onPressed: _onEdit,
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Edit'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.charcoal,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-              );
-            },
-          ),
+              },
+            ),
+          ],
           if (!isNarrow) _buildZoomControls(),
           IconButton(
             onPressed: _isGeneratingPdf
