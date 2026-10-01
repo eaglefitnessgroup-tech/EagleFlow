@@ -20,8 +20,11 @@ void main() {
               QuotationFilterBar(
                 searchQuery: '',
                 sortBy: 'Newest',
+                selectedDateRange: null,
                 onSearchChanged: (_) {},
                 onSortChanged: (_) {},
+                onDateFilterPressed: () {},
+                onDateFilterCleared: () {},
               ),
             ],
           ),
@@ -87,6 +90,7 @@ void main() {
             onView: (_) => viewCount++,
             onEdit: (_) => editCount++,
             onRevise: (_) {},
+            onDownload: (_) {},
             onDuplicate: (_) {},
             onShare: (_) {},
             onDelete: (_) {},
@@ -105,7 +109,10 @@ void main() {
     expect(find.text('Edit'), findsOneWidget);
     expect(find.text('Share'), findsNothing);
     expect(find.text('Duplicate'), findsNothing);
+    expect(find.text('Download'), findsNothing);
     expect(find.text('Delete'), findsNothing);
+    expect(find.byTooltip('Download quotation'), findsOneWidget);
+    expect(find.byTooltip('Delete quotation'), findsOneWidget);
 
     await tester.tap(find.text('QT-001'));
     expect(viewCount, 1);
@@ -124,7 +131,14 @@ void main() {
 
     expect(find.text('Share'), findsOneWidget);
     expect(find.text('Duplicate'), findsOneWidget);
-    expect(find.text('Delete'), findsOneWidget);
+    expect(find.text('Delete'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(PopupMenuItem<String>),
+        matching: find.text('Delete'),
+      ),
+      findsNothing,
+    );
     expect(find.text('View'), findsOneWidget);
     expect(find.text('Edit'), findsOneWidget);
   });

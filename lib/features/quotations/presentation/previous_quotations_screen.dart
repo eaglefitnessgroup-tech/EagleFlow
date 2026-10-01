@@ -22,6 +22,11 @@ typedef PreviousQuotationPdfGenerator =
     Future<Uint8List> Function(Quotation quotation);
 typedef PreviousQuotationPdfDownloader =
     Future<void> Function({required List<int> bytes, required String filename});
+typedef PreviousQuotationDateRangePicker =
+    Future<DateTimeRange?> Function(
+      BuildContext context,
+      DateTimeRange? initialDateRange,
+    );
 
 int countRecentQuotations(List<Quotation> quotations, {DateTime? now}) {
   final referenceDate = now ?? DateTime.now();
@@ -53,11 +58,13 @@ class PreviousQuotationsScreen extends StatefulWidget {
     this.pdfGenerator,
     this.pdfShareHelper,
     this.pdfDownloader,
+    this.dateRangePicker,
   });
 
   final PreviousQuotationPdfGenerator? pdfGenerator;
   final PdfShareHelper? pdfShareHelper;
   final PreviousQuotationPdfDownloader? pdfDownloader;
+  final PreviousQuotationDateRangePicker? dateRangePicker;
 
   @override
   State<PreviousQuotationsScreen> createState() =>
@@ -71,6 +78,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
 
   String _searchQuery = '';
   String _sortBy = 'Newest';
+  DateTimeRange? _dateRange;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -133,7 +141,14 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
           quotation.salespersonId.toLowerCase().contains(query);
 
       _filteredFamilies = _allFamilies.where((family) {
-        return query.isEmpty || family.members.any(matches);
+        final matchesSearch = query.isEmpty || family.members.any(matches);
+        final matchesDate =
+            _dateRange == null ||
+            family.members.any(
+              (quotation) =>
+                  _isWithinDateRange(quotation.createdDate, _dateRange!),
+            );
+        return matchesSearch && matchesDate;
       }).toList();
 
       _filteredFamilies.sort((a, b) {
@@ -158,6 +173,54 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
         return primary != 0 ? primary : a.original.id.compareTo(b.original.id);
       });
     });
+  }
+
+  bool _isWithinDateRange(DateTime date, DateTimeRange range) {
+    final quotationDate = DateTime(date.year, date.month, date.day);
+    final startDate = DateTime(
+      range.start.year,
+      range.start.month,
+      range.start.day,
+    );
+    final endDate = DateTime(range.end.year, range.end.month, range.end.day);
+    return !quotationDate.isBefore(startDate) &&
+        !quotationDate.isAfter(endDate);
+  }
+
+  Future<void> _pickDateRange() async {
+    final picker = widget.dateRangePicker;
+    final selectedRange = picker == null
+        ? await showDateRangePicker(
+            context: context,
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2100, 12, 31),
+            initialDateRange: _dateRange,
+            helpText: 'Filter by quotation date',
+            saveText: 'Apply',
+            fieldStartLabelText: 'From Date',
+            fieldEndLabelText: 'To Date',
+          )
+        : await picker(context, _dateRange);
+
+    if (selectedRange == null || !mounted) return;
+    _dateRange = DateTimeRange(
+      start: DateTime(
+        selectedRange.start.year,
+        selectedRange.start.month,
+        selectedRange.start.day,
+      ),
+      end: DateTime(
+        selectedRange.end.year,
+        selectedRange.end.month,
+        selectedRange.end.day,
+      ),
+    );
+    _applyFilters();
+  }
+
+  void _clearDateRange() {
+    _dateRange = null;
+    _applyFilters();
   }
 
   Future<void> _handleDelete(Quotation quotation) async {
@@ -337,11 +400,46 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
     }
   }
 
+  Future<void> _handleDownload(Quotation quotation) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final fullQuotation = await ServiceLocator().quotationRepository
+          .getQuotationWithImages(quotation);
+      if (!mounted) return;
+
+      final generator = widget.pdfGenerator;
+      final pdfBytes = generator == null
+          ? await QuotationPdfService().generatePdf(fullQuotation)
+          : await generator(fullQuotation);
+      final sanitizedNumber = fullQuotation.displayQuotationNumber.replaceAll(
+        RegExp(r'[\\/:*?"<>|]'),
+        '_',
+      );
+      await (widget.pdfDownloader ?? FileDownloadUtil.save)(
+        bytes: pdfBytes,
+        filename: '$sanitizedNumber.pdf',
+      );
+    } catch (_) {
+      if (mounted) {
+        AppSnackBars.showError(
+          context,
+          'Failed to download quotation PDF. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final total = _allFamilies.length;
     final recent = countRecentQuotationFamilies(_allFamilies);
     final isMobile = MediaQuery.of(context).size.width < 800;
+    final horizontalPadding = isMobile ? 24.0 : 32.0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -351,7 +449,12 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
       body: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              24,
+              horizontalPadding,
+              24,
+            ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 _buildHeader(context),
@@ -388,6 +491,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                   )
                 else if (_allQuotations.isEmpty)
                   Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       QuotationsSummaryRow(
                         totalCount: total,
@@ -402,7 +506,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                   )
                 else
                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       QuotationsSummaryRow(
                         totalCount: total,
@@ -412,6 +516,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                       QuotationFilterBar(
                         searchQuery: _searchQuery,
                         sortBy: _sortBy,
+                        selectedDateRange: _dateRange,
                         onSearchChanged: (val) {
                           _searchQuery = val;
                           _applyFilters();
@@ -420,6 +525,8 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                           _sortBy = val;
                           _applyFilters();
                         },
+                        onDateFilterPressed: _pickDateRange,
+                        onDateFilterCleared: _clearDateRange,
                       ),
                       const SizedBox(height: 24),
                       _buildResultCount(_filteredFamilies.length, total),
@@ -429,6 +536,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
                         onView: _handleView,
                         onEdit: _handleEdit,
                         onRevise: _handleRevise,
+                        onDownload: _handleDownload,
                         onDuplicate: _handleDuplicate,
                         onShare: _handleShare,
                         onDelete: _handleDelete,

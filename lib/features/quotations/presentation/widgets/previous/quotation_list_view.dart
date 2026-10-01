@@ -12,6 +12,7 @@ class QuotationListView extends StatelessWidget {
   final ValueChanged<Quotation> onView;
   final ValueChanged<Quotation> onEdit;
   final ValueChanged<Quotation> onRevise;
+  final ValueChanged<Quotation> onDownload;
   final ValueChanged<Quotation> onDuplicate;
   final ValueChanged<Quotation> onShare;
   final ValueChanged<Quotation> onDelete;
@@ -24,6 +25,7 @@ class QuotationListView extends StatelessWidget {
     required this.onView,
     required this.onEdit,
     required this.onRevise,
+    required this.onDownload,
     required this.onDuplicate,
     required this.onShare,
     required this.onDelete,
@@ -36,9 +38,10 @@ class QuotationListView extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 800) {
+        if (constraints.maxWidth < 1200) {
           final rows = _rows;
           return ListView.separated(
+            key: const Key('quotation-mobile-list'),
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: rows.length,
@@ -191,33 +194,9 @@ class QuotationListView extends StatelessWidget {
           const Divider(height: 1, color: AppColors.border),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Wrap(
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 2,
-              children: [
-                TextButton.icon(
-                  key: Key('quotation-view-${quotation.id}'),
-                  onPressed: () => onView(quotation),
-                  icon: const Icon(Icons.visibility_outlined, size: 18),
-                  label: const Text('View'),
-                ),
-                if (family.canEdit(quotation))
-                  TextButton.icon(
-                    key: Key('quotation-edit-${quotation.id}'),
-                    onPressed: () => onEdit(quotation),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Edit'),
-                  ),
-                if (family.canRevise(quotation))
-                  TextButton.icon(
-                    key: Key('quotation-revise-${quotation.id}'),
-                    onPressed: () => onRevise(quotation),
-                    icon: const Icon(Icons.history, size: 18),
-                    label: const Text('Revise'),
-                  ),
-                _buildActionMenu(context, family, quotation),
-              ],
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _buildDirectActions(context, family, quotation),
             ),
           ),
         ],
@@ -256,34 +235,80 @@ class QuotationListView extends StatelessWidget {
     final dateFmt = DateFormat('MMM dd, yyyy');
     final compactActionStyle = TextButton.styleFrom(
       minimumSize: Size.zero,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
+      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
     );
     final rows = _rows;
 
     return Container(
+      key: const Key('quotation-desktop-table'),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: DataTable(
           showCheckboxColumn: false,
           headingRowColor: WidgetStateProperty.all(AppColors.background),
-          dataRowMinHeight: 56,
-          dataRowMaxHeight: 56,
-          horizontalMargin: 24,
-          columnSpacing: 24,
+          headingRowHeight: 44,
+          headingTextStyle: const TextStyle(
+            color: AppColors.mutedText,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
+          dataTextStyle: const TextStyle(
+            color: AppColors.charcoal,
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+          dataRowColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.hovered)) {
+              return AppColors.primarySoft.withValues(alpha: 0.32);
+            }
+            return AppColors.surface;
+          }),
+          dividerThickness: 0.75,
+          dataRowMinHeight: 58,
+          dataRowMaxHeight: 58,
+          horizontalMargin: 20,
+          columnSpacing: 20,
           columns: const [
-            DataColumn(label: Text('QT No.')),
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Customer')),
-            DataColumn(label: Text('Salesperson')),
-            DataColumn(label: Text('Amount'), numeric: true),
-            DataColumn(label: Text('Actions')),
+            DataColumn(
+              label: Flexible(
+                child: Text('QT No.', overflow: TextOverflow.ellipsis),
+              ),
+              columnWidth: FlexColumnWidth(1.2),
+            ),
+            DataColumn(label: Text('Date'), columnWidth: FixedColumnWidth(128)),
+            DataColumn(
+              label: Flexible(
+                child: Text('Customer', overflow: TextOverflow.ellipsis),
+              ),
+              columnWidth: FlexColumnWidth(1.45),
+            ),
+            DataColumn(
+              label: Flexible(
+                child: Text('Salesperson', overflow: TextOverflow.ellipsis),
+              ),
+              columnWidth: FlexColumnWidth(1.15),
+            ),
+            DataColumn(
+              label: Text('Amount'),
+              numeric: true,
+              columnWidth: FixedColumnWidth(150),
+            ),
+            DataColumn(
+              label: Text('Actions'),
+              headingRowAlignment: MainAxisAlignment.end,
+              columnWidth: FixedColumnWidth(400),
+            ),
           ],
           rows: rows.map((row) {
             final quotation = row.quotation;
@@ -305,56 +330,46 @@ class QuotationListView extends StatelessWidget {
                     ],
                   ),
                 ),
-                DataCell(Text(dateFmt.format(quotation.createdDate))),
-                DataCell(Text(quotation.customerInfo.name)),
+                DataCell(
+                  Text(
+                    dateFmt.format(quotation.createdDate),
+                    maxLines: 1,
+                    softWrap: false,
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    quotation.customerInfo.name,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 DataCell(
                   Text(
                     salespersonNames[quotation.salespersonId] ??
                         (quotation.salespersonId.isNotEmpty
                             ? quotation.salespersonId
                             : '—'),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 DataCell(
                   Text(
                     'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(quotation.lineItems, quotation.charges))}',
+                    maxLines: 1,
+                    softWrap: false,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                 ),
                 DataCell(
                   Align(
                     alignment: Alignment.centerRight,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton.icon(
-                          key: Key('quotation-view-${quotation.id}'),
-                          style: compactActionStyle,
-                          onPressed: () => onView(quotation),
-                          icon: const Icon(Icons.visibility_outlined, size: 16),
-                          label: const Text('View'),
-                        ),
-                        if (family.canEdit(quotation)) ...[
-                          const SizedBox(width: 4),
-                          TextButton.icon(
-                            key: Key('quotation-edit-${quotation.id}'),
-                            style: compactActionStyle,
-                            onPressed: () => onEdit(quotation),
-                            icon: const Icon(Icons.edit_outlined, size: 16),
-                            label: const Text('Edit'),
-                          ),
-                        ],
-                        if (family.canRevise(quotation)) ...[
-                          const SizedBox(width: 4),
-                          TextButton.icon(
-                            key: Key('quotation-revise-${quotation.id}'),
-                            style: compactActionStyle,
-                            onPressed: () => onRevise(quotation),
-                            icon: const Icon(Icons.history, size: 16),
-                            label: const Text('Revise'),
-                          ),
-                        ],
-                        _buildActionMenu(context, family, quotation),
-                      ],
+                    child: _buildDirectActions(
+                      context,
+                      family,
+                      quotation,
+                      style: compactActionStyle,
+                      iconSize: 16,
                     ),
                   ),
                   onTap: () {},
@@ -367,16 +382,229 @@ class QuotationListView extends StatelessWidget {
     );
   }
 
-  Widget _buildActionMenu(
+  Widget _buildDirectActions(
     BuildContext context,
     QuotationFamily family,
-    Quotation quotation,
-  ) {
+    Quotation quotation, {
+    ButtonStyle? style,
+    double iconSize = 16,
+  }) {
+    final canEdit = family.canEdit(quotation);
     final canDelete = family.canDelete(quotation);
+
+    return Wrap(
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 2,
+      children: [
+        _buildTextActionButton(
+          key: Key('quotation-view-${quotation.id}'),
+          style: style,
+          onPressed: () => onView(quotation),
+          icon: Icons.visibility_outlined,
+          iconSize: iconSize,
+          label: 'View',
+        ),
+        _buildTextActionButton(
+          key: Key('quotation-edit-${quotation.id}'),
+          style: style,
+          onPressed: canEdit ? () => onEdit(quotation) : null,
+          icon: Icons.edit_outlined,
+          iconSize: iconSize,
+          label: 'Edit',
+        ),
+        _buildTextActionButton(
+          key: Key('quotation-revise-${quotation.id}'),
+          style: style,
+          onPressed: family.canRevise(quotation)
+              ? () => onRevise(quotation)
+              : null,
+          icon: Icons.history,
+          iconSize: iconSize,
+          label: 'Revise',
+        ),
+        _buildIconActionButton(
+          key: Key('quotation-download-${quotation.id}'),
+          onPressed: () => onDownload(quotation),
+          icon: Icons.download_outlined,
+          iconSize: iconSize,
+          tooltip: 'Download quotation',
+          compact: style != null,
+        ),
+        _buildIconActionButton(
+          key: Key('quotation-delete-${quotation.id}'),
+          onPressed: canDelete
+              ? () => _confirmDelete(context, quotation)
+              : null,
+          icon: Icons.delete_outline,
+          iconSize: iconSize,
+          tooltip: 'Delete quotation',
+          compact: style != null,
+        ),
+        _buildActionMenu(quotation, iconSize: iconSize, compact: style != null),
+      ],
+    );
+  }
+
+  Widget _buildTextActionButton({
+    required Key key,
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required double iconSize,
+    required String label,
+    ButtonStyle? style,
+  }) {
+    final stateStyle = ButtonStyle(
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return AppColors.mutedText.withValues(alpha: 0.42);
+        }
+        if (states.contains(WidgetState.hovered)) {
+          return AppColors.primaryDark;
+        }
+        return AppColors.primaryBlue;
+      }),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return Colors.transparent;
+        if (states.contains(WidgetState.hovered)) {
+          return AppColors.primarySoft.withValues(alpha: 0.65);
+        }
+        return Colors.transparent;
+      }),
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return Colors.transparent;
+        if (states.contains(WidgetState.pressed)) {
+          return AppColors.primarySoft;
+        }
+        return Colors.transparent;
+      }),
+      mouseCursor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled)
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+      ),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+      animationDuration: const Duration(milliseconds: 140),
+    );
+
+    return TextButton(
+      key: key,
+      style: stateStyle.merge(style),
+      onPressed: onPressed,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: iconSize),
+          const SizedBox(width: 4),
+          Text(label),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIconActionButton({
+    required Key key,
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required double iconSize,
+    required String tooltip,
+    required bool compact,
+  }) {
+    final size = compact ? 32.0 : 40.0;
+    return SizedBox.square(
+      dimension: size,
+      child: IconButton(
+        key: key,
+        onPressed: onPressed,
+        tooltip: tooltip,
+        icon: Icon(icon, size: iconSize),
+        style: ButtonStyle(
+          minimumSize: WidgetStatePropertyAll(Size.square(size)),
+          maximumSize: WidgetStatePropertyAll(Size.square(size)),
+          padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return AppColors.mutedText.withValues(alpha: 0.38);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return AppColors.charcoal;
+            }
+            return AppColors.mutedText;
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return Colors.transparent;
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return AppColors.primarySoft.withValues(alpha: 0.65);
+            }
+            return Colors.transparent;
+          }),
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return Colors.transparent;
+            }
+            if (states.contains(WidgetState.pressed)) {
+              return AppColors.primarySoft;
+            }
+            return Colors.transparent;
+          }),
+          mouseCursor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.disabled)
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          ),
+          animationDuration: const Duration(milliseconds: 140),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionMenu(
+    Quotation quotation, {
+    required double iconSize,
+    required bool compact,
+  }) {
+    final size = compact ? 32.0 : 40.0;
     return PopupMenuButton<String>(
       key: Key('quotation-actions-${quotation.id}'),
       tooltip: 'More actions',
-      icon: const Icon(Icons.more_vert, color: AppColors.mutedText),
+      iconSize: iconSize,
+      padding: EdgeInsets.zero,
+      splashRadius: 18,
+      style: ButtonStyle(
+        minimumSize: WidgetStatePropertyAll(Size.square(size)),
+        maximumSize: WidgetStatePropertyAll(Size.square(size)),
+        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.hovered)
+              ? AppColors.charcoal
+              : AppColors.mutedText,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.hovered)
+              ? AppColors.primarySoft.withValues(alpha: 0.65)
+              : Colors.transparent,
+        ),
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.pressed)
+              ? AppColors.primarySoft
+              : Colors.transparent,
+        ),
+        mouseCursor: const WidgetStatePropertyAll(SystemMouseCursors.click),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
+        animationDuration: const Duration(milliseconds: 140),
+      ),
+      icon: Icon(Icons.more_vert, size: iconSize),
       onSelected: (value) {
         switch (value) {
           case 'share':
@@ -384,9 +612,6 @@ class QuotationListView extends StatelessWidget {
             break;
           case 'duplicate':
             onDuplicate(quotation);
-            break;
-          case 'delete':
-            _confirmDelete(context, quotation);
             break;
         }
       },
@@ -398,17 +623,6 @@ class QuotationListView extends StatelessWidget {
         const PopupMenuItem(
           value: 'duplicate',
           child: _MenuItem(icon: Icons.copy_outlined, label: 'Duplicate'),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          value: 'delete',
-          enabled: canDelete,
-          child: _MenuItem(
-            icon: Icons.delete_outline,
-            label: 'Delete',
-            destructive: true,
-            disabled: !canDelete,
-          ),
         ),
       ],
     );
@@ -440,31 +654,15 @@ class _QuotationRow {
 }
 
 class _MenuItem extends StatelessWidget {
-  const _MenuItem({
-    required this.icon,
-    required this.label,
-    this.destructive = false,
-    this.disabled = false,
-  });
+  const _MenuItem({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
-  final bool destructive;
-  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
-    final color = disabled
-        ? Theme.of(context).disabledColor
-        : destructive
-        ? Colors.red
-        : null;
     return Row(
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: color)),
-      ],
+      children: [Icon(icon, size: 18), const SizedBox(width: 8), Text(label)],
     );
   }
 }

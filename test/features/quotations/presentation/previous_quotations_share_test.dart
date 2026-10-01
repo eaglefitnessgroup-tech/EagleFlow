@@ -181,6 +181,43 @@ void main() {
     );
   });
 
+  testWidgets('Download directly saves the selected quotation PDF', (
+    tester,
+  ) async {
+    final generatedBytes = Uint8List.fromList([7, 8, 9]);
+    Quotation? generatedQuotation;
+    List<int>? downloadedBytes;
+    String? downloadedFilename;
+    var shareCalls = 0;
+
+    await pumpScreen(
+      tester,
+      generator: (quotation) async {
+        generatedQuotation = quotation;
+        return generatedBytes;
+      },
+      shareHelper: PdfShareHelper(
+        share: (_) async {
+          shareCalls++;
+          return const ShareResult('shared', ShareResultStatus.success);
+        },
+      ),
+      downloader: ({required bytes, required filename}) async {
+        downloadedBytes = bytes;
+        downloadedFilename = filename;
+      },
+    );
+
+    await tester.tap(find.byKey(const Key('quotation-download-quotation-id')));
+    await tester.pumpAndSettle();
+
+    expect(repository.imageLoadInput, same(summary));
+    expect(generatedQuotation, same(full));
+    expect(downloadedBytes, generatedBytes);
+    expect(downloadedFilename, 'QT_123.pdf');
+    expect(shareCalls, 0);
+  });
+
   testWidgets('share failure shows an error without crashing', (tester) async {
     var shareCalls = 0;
     var downloadCalls = 0;
@@ -210,55 +247,56 @@ void main() {
     expect(find.byType(PreviousQuotationsScreen), findsOneWidget);
   });
 
-  testWidgets(
-    'View, Edit, Duplicate, and Delete callbacks remain independent',
-    (tester) async {
-      tester.view.physicalSize = const Size(1400, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('direct and overflow action callbacks remain independent', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      var viewCalls = 0;
-      var editCalls = 0;
-      var duplicateCalls = 0;
-      var deleteCalls = 0;
+    var viewCalls = 0;
+    var editCalls = 0;
+    var downloadCalls = 0;
+    var duplicateCalls = 0;
+    var deleteCalls = 0;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: QuotationListView(
-              families: groupQuotationFamilies([summary]),
-              onView: (_) => viewCalls++,
-              onEdit: (_) => editCalls++,
-              onRevise: (_) {},
-              onDuplicate: (_) => duplicateCalls++,
-              onShare: (_) {},
-              onDelete: (_) => deleteCalls++,
-              onCreate: () {},
-            ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QuotationListView(
+            families: groupQuotationFamilies([summary]),
+            onView: (_) => viewCalls++,
+            onEdit: (_) => editCalls++,
+            onRevise: (_) {},
+            onDownload: (_) => downloadCalls++,
+            onDuplicate: (_) => duplicateCalls++,
+            onShare: (_) {},
+            onDelete: (_) => deleteCalls++,
+            onCreate: () {},
           ),
         ),
-      );
+      ),
+    );
 
-      await tester.tap(find.text('View'));
-      await tester.tap(find.text('Edit'));
+    await tester.tap(find.text('View'));
+    await tester.tap(find.text('Edit'));
+    await tester.tap(find.byTooltip('Download quotation'));
 
-      await tester.tap(find.byTooltip('More actions'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Duplicate'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('More actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Duplicate'));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('More actions'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Delete'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('quotation-delete-quotation-id')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Delete'));
+    await tester.pumpAndSettle();
 
-      expect(viewCalls, 1);
-      expect(editCalls, 1);
-      expect(duplicateCalls, 1);
-      expect(deleteCalls, 1);
-    },
-  );
+    expect(viewCalls, 1);
+    expect(editCalls, 1);
+    expect(downloadCalls, 1);
+    expect(duplicateCalls, 1);
+    expect(deleteCalls, 1);
+  });
 }

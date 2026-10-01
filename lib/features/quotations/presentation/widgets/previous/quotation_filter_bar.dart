@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../../../../app/theme/app_colors.dart';
 
 class QuotationFilterBar extends StatelessWidget {
   final String searchQuery;
   final String sortBy;
+  final DateTimeRange? selectedDateRange;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onSortChanged;
+  final VoidCallback onDateFilterPressed;
+  final VoidCallback onDateFilterCleared;
 
   const QuotationFilterBar({
     super.key,
     required this.searchQuery,
     required this.sortBy,
+    required this.selectedDateRange,
     required this.onSearchChanged,
     required this.onSortChanged,
+    required this.onDateFilterPressed,
+    required this.onDateFilterCleared,
   });
 
   @override
@@ -27,13 +34,9 @@ class QuotationFilterBar extends StatelessWidget {
             children: [
               _buildSearchField(),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _buildSortDropdown()),
-                  const SizedBox(width: 12),
-                  _buildDateFilterBtn(),
-                ],
-              ),
+              _buildSortDropdown(),
+              const SizedBox(height: 12),
+              _buildDateFilterControls(),
             ],
           );
         }
@@ -44,7 +47,7 @@ class QuotationFilterBar extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(child: _buildSortDropdown()),
             const SizedBox(width: 16),
-            _buildDateFilterBtn(),
+            Expanded(child: _buildDateFilterControls()),
           ],
         );
       },
@@ -101,18 +104,43 @@ class QuotationFilterBar extends StatelessWidget {
     );
   }
 
-  Widget _buildDateFilterBtn() {
-    return OutlinedButton.icon(
-      onPressed: () {},
+  Widget _buildDateFilterControls() {
+    final range = selectedDateRange;
+    final label = range == null
+        ? 'Date Filter'
+        : '${DateFormat('dd MMM yyyy').format(range.start)} '
+              '– ${DateFormat('dd MMM yyyy').format(range.end)}';
+    final filterButton = OutlinedButton.icon(
+      key: const Key('quotation-date-filter'),
+      onPressed: onDateFilterPressed,
       icon: const Icon(Icons.calendar_today_outlined, size: 18),
-      label: const Text('Date Filter'),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        side: const BorderSide(color: AppColors.border),
-        foregroundColor: AppColors.charcoal,
+        minimumSize: const Size.fromHeight(50),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        side: BorderSide(
+          color: range == null ? AppColors.border : AppColors.primaryBlue,
+        ),
+        foregroundColor: range == null
+            ? AppColors.charcoal
+            : AppColors.primaryBlue,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         backgroundColor: AppColors.surface,
       ),
+    );
+
+    if (range == null) return filterButton;
+
+    return Row(
+      children: [
+        Expanded(child: filterButton),
+        const SizedBox(width: 8),
+        TextButton(
+          key: const Key('quotation-date-filter-clear'),
+          onPressed: onDateFilterCleared,
+          child: const Text('Clear'),
+        ),
+      ],
     );
   }
 }

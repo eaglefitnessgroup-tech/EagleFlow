@@ -230,30 +230,21 @@ void main() {
         ServiceLocator().mockQuotationRepository = repository;
 
         Future<bool> deleteEnabled(String id) async {
-          final actions = find.byKey(Key('quotation-actions-$id'));
-          await tester.ensureVisible(actions);
+          final action = find.byKey(Key('quotation-delete-$id'));
+          await tester.ensureVisible(action);
           await tester.pumpAndSettle();
-          await tester.tap(actions);
-          await tester.pumpAndSettle();
-          final item = tester.widget<PopupMenuItem<String>>(
-            find.ancestor(
-              of: find.text('Delete'),
-              matching: find.byType(PopupMenuItem<String>),
-            ),
-          );
-          final enabled = item.enabled;
-          Navigator.of(tester.element(find.text('Share'))).pop();
-          await tester.pumpAndSettle();
-          return enabled;
+          return tester.widget<IconButton>(action).onPressed != null;
         }
 
         Future<void> deleteVersion(String id) async {
-          final actions = find.byKey(Key('quotation-actions-$id'));
-          await tester.ensureVisible(actions);
+          ScaffoldMessenger.of(
+            tester.element(find.byType(PreviousQuotationsScreen)),
+          ).hideCurrentSnackBar();
           await tester.pumpAndSettle();
-          await tester.tap(actions);
+          final action = find.byKey(Key('quotation-delete-$id'));
+          await tester.ensureVisible(action);
           await tester.pumpAndSettle();
-          await tester.tap(find.text('Delete'));
+          await tester.tap(action);
           await tester.pumpAndSettle();
           await tester.tap(find.widgetWithText(ElevatedButton, 'Delete'));
           await tester.pumpAndSettle();
