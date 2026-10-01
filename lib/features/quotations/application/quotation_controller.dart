@@ -6,6 +6,7 @@ import '../domain/quotation_charges.dart';
 import '../domain/quotation_status.dart';
 import '../data/quotation_repository.dart';
 import '../../products/domain/product.dart';
+import 'quotation_line_item_factory.dart';
 
 class QuotationController extends ChangeNotifier {
   Quotation _quotation;
@@ -214,25 +215,9 @@ class QuotationController extends ChangeNotifier {
       return;
     }
 
-    final String uniqueId =
-        '${DateTime.now().millisecondsSinceEpoch}_${product.id}';
-    final int safeQty = math.max<int>(1, quantity);
-
-    final newItem = QuotationLineItem(
-      id: uniqueId,
-      productId: product.id,
-      productCode: product.productCode,
-      name: product.name,
-      brand: product.brand,
-      condition: product.condition,
-      unitPrice: product.sellingPrice,
-      quantity: safeQty,
-      discount: 0.0,
-      imageId: product.imageId,
-      imageBytes: product.imageBytes,
-      description: product.description,
-      isCustom: false,
-      isVatApplicable: product.isVatApplicable,
+    final newItem = QuotationLineItemFactory.fromProduct(
+      product,
+      quantity: quantity,
     );
 
     _quotation = _quotation.copyWith(
@@ -281,23 +266,9 @@ class QuotationController extends ChangeNotifier {
         );
       } else {
         // Create new
-        final String uniqueId =
-            '${DateTime.now().millisecondsSinceEpoch}_${product.id}';
-        final newItem = QuotationLineItem(
-          id: uniqueId,
-          productId: product.id,
-          productCode: product.productCode,
-          name: product.name,
-          brand: product.brand,
-          condition: product.condition,
-          unitPrice: product.sellingPrice,
+        final newItem = QuotationLineItemFactory.fromProduct(
+          product,
           quantity: safeQty,
-          discount: 0.0,
-          imageId: product.imageId,
-          imageBytes: product.imageBytes,
-          description: product.description,
-          isCustom: false,
-          isVatApplicable: product.isVatApplicable,
         );
         newItemsList.add(newItem);
       }
