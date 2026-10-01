@@ -89,6 +89,15 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     }
   }
 
+  void _handleBack() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      navigator.pushReplacementNamed(AppRoutes.previousQuotations);
+    }
+  }
+
   Future<void> _handleSave() async {
     if (_isSaving) return;
 
@@ -460,8 +469,10 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                   QuotationPageHeader(
                     quotationNumber: quotation.displayQuotationNumber,
                     isRevision: _controller.isRevisionDraft,
-                    showBack: isMobile && Navigator.canPop(context),
-                    onBack: () => Navigator.pop(context),
+                    isEditing:
+                        !_controller.isRevisionDraft && quotation.id.isNotEmpty,
+                    showBack: true,
+                    onBack: _handleBack,
                   ),
                   const SizedBox(height: 16),
                   if (isMobile) ...[

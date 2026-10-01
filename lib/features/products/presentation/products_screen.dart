@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/widgets/eagle_bottom_nav.dart';
 import '../domain/product.dart';
@@ -215,8 +216,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Widget _buildHeader() {
-    final isMobile = MediaQuery.sizeOf(context).width < 800;
-    final showBack = isMobile && Navigator.canPop(context);
     final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -238,16 +237,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
       ],
     );
 
-    if (!showBack) return title;
-
     return Row(
+      key: const Key('products-page-heading'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: IconButton(
             key: const Key('products-back-button'),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.pop();
+              } else {
+                navigator.pushReplacementNamed(AppRoutes.dashboard);
+              }
+            },
             icon: const Icon(Icons.arrow_back, color: AppColors.charcoal),
             tooltip: 'Back',
           ),

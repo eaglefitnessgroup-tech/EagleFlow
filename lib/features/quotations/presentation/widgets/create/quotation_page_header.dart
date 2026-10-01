@@ -4,6 +4,7 @@ import '../../../../../../app/theme/app_colors.dart';
 class QuotationPageHeader extends StatelessWidget {
   final String quotationNumber;
   final bool isRevision;
+  final bool isEditing;
   final bool showBack;
   final VoidCallback? onBack;
 
@@ -11,6 +12,7 @@ class QuotationPageHeader extends StatelessWidget {
     super.key,
     required this.quotationNumber,
     this.isRevision = false,
+    this.isEditing = false,
     this.showBack = false,
     this.onBack,
   });
@@ -30,7 +32,14 @@ class QuotationPageHeader extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, bool isMobile) {
+    final title = isRevision
+        ? 'Revise Quotation'
+        : isEditing
+        ? 'Edit Quotation'
+        : 'New Quotation';
+
     return Row(
+      key: const Key('quotation-page-heading'),
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -49,7 +58,7 @@ class QuotationPageHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isRevision ? 'Revise Quotation' : 'New Quotation',
+                title,
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -58,7 +67,7 @@ class QuotationPageHeader extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                isRevision
+                isRevision || isEditing
                     ? quotationNumber
                     : 'Create a quotation and send it to your customer.',
                 style: const TextStyle(
@@ -89,7 +98,7 @@ class QuotationPageHeader extends StatelessWidget {
                 ),
               ),
               Text(
-                isRevision ? 'Revise Quotation' : 'New Quotation',
+                title,
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.charcoal,
