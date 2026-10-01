@@ -87,17 +87,14 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
     final handle = Semantics(
       label: 'Reorder ${item.name}',
       button: true,
-      child: Tooltip(
-        message: isMobile ? 'Long press to reorder' : 'Drag to reorder',
-        child: SizedBox(
-          key: ValueKey('quotation-item-drag-handle-${item.id}'),
-          width: 32,
-          height: 40,
-          child: const Icon(
-            Icons.drag_indicator,
-            size: 20,
-            color: AppColors.mutedText,
-          ),
+      child: SizedBox(
+        key: ValueKey('quotation-item-drag-handle-${item.id}'),
+        width: 32,
+        height: 40,
+        child: const Icon(
+          Icons.drag_indicator,
+          size: 20,
+          color: AppColors.mutedText,
         ),
       ),
     );
@@ -111,199 +108,205 @@ class _SelectedProductsSectionState extends State<SelectedProductsSection> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
 
-        return Container(
-          padding: EdgeInsets.all(isMobile ? 20 : 24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 20 : 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.inventory_2_outlined, color: AppColors.charcoal, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        isMobile ? 'Items' : 'Quotation Items',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.charcoal,
-                        ),
-                      ),
-                    ],
+                  const Icon(
+                    Icons.inventory_2_outlined,
+                    color: AppColors.charcoal,
+                    size: 18,
                   ),
-                  if (!isMobile)
-                    Row(
-                      children: [
-                        _buildAutocompleteField(),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () => _openProductPicker(context),
-                          icon: const Icon(Icons.add, size: 16),
-                          label: const Text('Add Item'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(width: 8),
+                  Text(
+                    isMobile ? 'Items' : 'Quotation Items',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.charcoal,
                     ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 24),
-              _buildDesktopHeader(context),
-              const SizedBox(height: 8),
-              ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                buildDefaultDragHandles: false,
-                // Flutter's legacy callback supplies the raw insertion index;
-                // the controller owns the downward-move adjustment.
-                // ignore: deprecated_member_use
-                onReorder: widget.onReorder,
-                itemCount: widget.items.length,
-                itemBuilder: (context, index) {
-                  final item = widget.items[index];
-                  return QuotationProductTile(
-                    key: ValueKey(item.id),
-                    item: item,
-                    dragHandle: _buildDragHandle(
-                      item: item,
-                      index: index,
-                      isMobile: isMobile,
-                    ),
-                    onQuantityChanged: (qty) =>
-                        widget.onQuantityChanged(item.id, qty),
-                    onUnitPriceChanged: (price) =>
-                        widget.onUnitPriceChanged(item.id, price),
-                    onDiscountChanged: (disc) =>
-                        widget.onDiscountChanged(item.id, disc),
-                    onRemove: () => widget.onRemove(item.id),
-                    onEdit: item.isCustom
-                        ? () =>
-                              _openCustomProductForm(context, initialItem: item)
-                        : null,
-                  );
-                },
-              ),
-              if (isMobile) ...[
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openProductPicker(context),
-                    icon: const Icon(Icons.add, size: 20),
-                    label: const Text('Add Item'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+              if (!isMobile)
+                Row(
+                  children: [
+                    _buildAutocompleteField(),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _openProductPicker(context),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Add Item'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
-                  ),
+                  ],
                 ),
-              ],
             ],
           ),
-        );
-      },
+          const SizedBox(height: 24),
+          if (!isMobile) _buildDesktopHeader(),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: isMobile ? 560 : 520),
+            child: ReorderableListView.builder(
+              primary: false,
+              shrinkWrap: true,
+              physics: const ClampingScrollPhysics(),
+              buildDefaultDragHandles: false,
+              // Flutter's legacy callback supplies the raw insertion index;
+              // the controller owns the downward-move adjustment.
+              // ignore: deprecated_member_use
+              onReorder: widget.onReorder,
+              itemCount: widget.items.length,
+              itemBuilder: (context, index) {
+                final item = widget.items[index];
+                return QuotationProductTile(
+                  key: ValueKey(item.id),
+                  item: item,
+                  isMobile: isMobile,
+                  dragHandle: _buildDragHandle(
+                    item: item,
+                    index: index,
+                    isMobile: isMobile,
+                  ),
+                  onQuantityChanged: (qty) =>
+                      widget.onQuantityChanged(item.id, qty),
+                  onUnitPriceChanged: (price) =>
+                      widget.onUnitPriceChanged(item.id, price),
+                  onDiscountChanged: (disc) =>
+                      widget.onDiscountChanged(item.id, disc),
+                  onRemove: () => widget.onRemove(item.id),
+                  onEdit: item.isCustom
+                      ? () => _openCustomProductForm(context, initialItem: item)
+                      : null,
+                );
+              },
+            ),
+          ),
+          if (isMobile) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _openProductPicker(context),
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Add Item'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildDesktopHeader(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 600) {
-          return const SizedBox.shrink(); // Hide on mobile
-        }
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
+  Widget _buildDesktopHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(width: 32), // For drag handle
+          SizedBox(width: 64), // For image space
+          Expanded(
+            flex: 3,
+            child: Text(
+              'Product & Code',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.mutedText,
+              ),
+            ),
           ),
-          child: const Row(
-            children: [
-              SizedBox(width: 32), // For drag handle
-              SizedBox(width: 64), // For image space
-              Expanded(
-                flex: 3,
-                child: Text(
-                  'Product & Code',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.mutedText,
-                  ),
-                ),
+          Expanded(
+            child: Text(
+              'Unit Price',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.mutedText,
               ),
-              Expanded(
-                child: Text(
-                  'Unit Price',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.mutedText,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  'Qty',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.mutedText,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  'Discount (%)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.mutedText,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  'Line Total',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.mutedText,
-                  ),
-                ),
-              ),
-              SizedBox(width: 48), // For remove button space
-            ],
+            ),
           ),
-        );
-      },
+          Expanded(
+            child: Text(
+              'Qty',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.mutedText,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Discount (%)',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.mutedText,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Line Total',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.mutedText,
+              ),
+            ),
+          ),
+          SizedBox(width: 48), // For remove button space
+        ],
+      ),
     );
   }
 

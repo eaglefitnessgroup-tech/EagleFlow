@@ -1,6 +1,7 @@
 import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
 import 'package:eagleflow/features/quotations/presentation/widgets/create/selected_products_section.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -69,6 +70,135 @@ void main() {
     expect(state.reorderCount, 1);
   });
 
+  testWidgets('desktop handle drags first to last and last to first', (
+    tester,
+  ) async {
+    final state = await pumpHarness(
+      tester,
+      width: 900,
+      items: List.generate(4, item),
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('quotation-item-drag-handle-item-0')),
+      const Offset(0, 500),
+    );
+    await tester.pumpAndSettle();
+    expect(state.items.map((value) => value.id), [
+      'item-1',
+      'item-2',
+      'item-3',
+      'item-0',
+    ]);
+
+    await tester.drag(
+      find.byKey(const ValueKey('quotation-item-drag-handle-item-0')),
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+    expect(state.items.map((value) => value.id), [
+      'item-0',
+      'item-1',
+      'item-2',
+      'item-3',
+    ]);
+    expect(state.reorderCount, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('repeated handle drags keep stable keys and order', (
+    tester,
+  ) async {
+    final state = await pumpHarness(
+      tester,
+      width: 900,
+      items: List.generate(4, item),
+    );
+
+    for (var drag = 0; drag < 3; drag++) {
+      await tester.drag(
+        find.byKey(const ValueKey('quotation-item-drag-handle-item-0')),
+        Offset(0, drag.isEven ? 500 : -500),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    }
+
+    expect(state.items.map((value) => value.id), [
+      'item-1',
+      'item-2',
+      'item-3',
+      'item-0',
+    ]);
+    expect(state.reorderCount, 3);
+  });
+
+  testWidgets(
+    'active desktop mouse drag does not mutate layout during layout',
+    (tester) async {
+      await pumpHarness(
+        tester,
+        width: 900,
+        height: 600,
+        items: List.generate(8, item),
+      );
+      final handle = find.byKey(
+        const ValueKey('quotation-item-drag-handle-item-0'),
+      );
+      final start = tester.getCenter(handle);
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: start);
+      await gesture.moveTo(start);
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(
+        find.descendant(of: handle, matching: find.byType(Tooltip)),
+        findsNothing,
+      );
+      await gesture.down(start);
+      await tester.pump();
+
+      for (var step = 1; step <= 8; step++) {
+        await gesture.moveTo(start + Offset(0, step * 55));
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(tester.takeException(), isNull);
+      }
+
+      await gesture.up();
+      await gesture.removePointer();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('active drag remains stable when viewport constraints change', (
+    tester,
+  ) async {
+    await pumpHarness(
+      tester,
+      width: 900,
+      height: 600,
+      items: List.generate(8, item),
+    );
+    final handle = find.byKey(
+      const ValueKey('quotation-item-drag-handle-item-0'),
+    );
+    final start = tester.getCenter(handle);
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: start);
+    await gesture.down(start);
+    await tester.pump();
+    await gesture.moveTo(start + const Offset(0, 120));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    tester.view.physicalSize = const Size(500, 600);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    await gesture.up();
+    await gesture.removePointer();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('mobile handle uses delayed long-press drag behavior', (
     tester,
   ) async {
@@ -98,7 +228,7 @@ void main() {
     expect(state.reorderCount, 0);
   });
 
-  testWidgets('fields, content, and remove control never initiate dragging', (
+  testWidgets('editable fields and remove control never initiate dragging', (
     tester,
   ) async {
     final state = await pumpHarness(tester, width: 900, items: [item(0)]);
@@ -106,10 +236,12 @@ void main() {
     final fields = find.descendant(of: tile, matching: find.byType(TextField));
 
     expect(fields, findsNWidgets(3));
-    for (var index = 0; index < 3; index++) {
-      await tester.tap(fields.at(index));
-      await tester.pump();
-    }
+    await tester.enterText(fields.at(0), '125.50');
+    expect(find.text('125.50'), findsOneWidget);
+    await tester.enterText(fields.at(1), '7');
+    expect(find.text('7'), findsOneWidget);
+    await tester.enterText(fields.at(2), '12.5');
+    expect(find.text('12.5'), findsOneWidget);
     await tester.tap(find.text('Item 0'));
     await tester.pump();
     await tester.tap(
@@ -139,6 +271,60 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Item 2'), findsOneWidget);
+  });
+
+  testWidgets('long list auto-scrolls while dragging its handle', (
+    tester,
+  ) async {
+    final state = await pumpHarness(
+      tester,
+      width: 900,
+      height: 700,
+      items: List.generate(14, item),
+    );
+    final reorderable = find.byType(ReorderableListView);
+    final scrollable = find.descendant(
+      of: reorderable,
+      matching: find.byType(Scrollable),
+    );
+    final scrollableStates = tester
+        .stateList<ScrollableState>(scrollable)
+        .toList();
+    final position = scrollableStates
+        .reduce(
+          (current, candidate) =>
+              candidate.position.maxScrollExtent >
+                  current.position.maxScrollExtent
+              ? candidate
+              : current,
+        )
+        .position;
+    expect(position.maxScrollExtent, greaterThan(0));
+
+    final handle = find.byKey(
+      const ValueKey('quotation-item-drag-handle-item-0'),
+    );
+    final start = tester.getCenter(handle);
+    final listBottom = tester.getBottomLeft(reorderable).dy;
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: start);
+    await gesture.down(start);
+    await tester.pump();
+    await gesture.moveTo(Offset(start.dx, listBottom - 8));
+    for (var step = 0; step < 20; step++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.takeException(), isNull);
+    }
+
+    expect(position.pixels, greaterThan(0));
+    await gesture.up();
+    await gesture.removePointer();
+    await tester.pumpAndSettle();
+    expect(
+      state.items.indexWhere((value) => value.id == 'item-0'),
+      greaterThan(0),
+    );
+    expect(tester.takeException(), isNull);
   });
 }
 

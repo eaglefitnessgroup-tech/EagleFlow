@@ -55,11 +55,46 @@ void main() {
     expect(family.canEdit(r1), isFalse);
     expect(family.canEdit(r3), isFalse);
     expect(family.canDelete(original), isFalse);
+    expect(family.canDelete(r1), isFalse);
+    expect(family.canDelete(r2), isFalse);
+    expect(family.canDelete(r3), isTrue);
+    expect(family.canDuplicate(original), isTrue);
+    expect(family.canDuplicate(r1), isTrue);
+    expect(family.canDuplicate(r2), isTrue);
+    expect(family.canDuplicate(r3), isTrue);
     expect(family.canRevise(original), isTrue);
     expect(family.canRevise(r1), isTrue);
     expect(family.canRevise(r2), isTrue);
     expect(family.canRevise(r3), isTrue);
   });
+
+  test(
+    'deleting latest revision leaves prior revision latest without renumbering',
+    () {
+      final original = _quotation(id: 'base', number: 'QT-AN-0027-26');
+      final r1 = _quotation(
+        id: 'r1',
+        number: original.quotationNumber,
+        baseId: original.id,
+        revisionNo: 1,
+      );
+      final r2 = _quotation(
+        id: 'r2',
+        number: original.quotationNumber,
+        baseId: original.id,
+        revisionNo: 2,
+      );
+
+      final beforeDelete = groupQuotationFamilies([original, r1, r2]).single;
+      expect(beforeDelete.latest.id, 'r2');
+      expect(beforeDelete.canDelete(r2), isTrue);
+
+      final afterDelete = groupQuotationFamilies([original, r1]).single;
+      expect(afterDelete.latest.id, 'r1');
+      expect(afterDelete.latest.revisionNo, 1);
+      expect(afterDelete.canDelete(r1), isTrue);
+    },
+  );
 
   test('standalone original retains edit, revise, duplicate, and delete', () {
     final original = _quotation(id: 'base', number: 'QT-AN-0028-26');

@@ -453,6 +453,8 @@ class SupabaseQuotationRepository implements QuotationRepository {
     Quotation duplicated = sourceQuotation.copyWith(
       id: '',
       quotationNumber: '',
+      clearBaseQuotationId: true,
+      revisionNo: 0,
       status: QuotationStatus.draft,
       createdDate: now,
       modifiedDate: now,

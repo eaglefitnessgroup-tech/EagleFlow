@@ -51,6 +51,8 @@ Widget _listHarness({
   required List<QuotationFamily> families,
   ValueChanged<Quotation>? onEdit,
   ValueChanged<Quotation>? onRevise,
+  ValueChanged<Quotation>? onDuplicate,
+  ValueChanged<Quotation>? onDelete,
 }) {
   return MaterialApp(
     home: Scaffold(
@@ -60,9 +62,9 @@ Widget _listHarness({
           onView: (_) {},
           onEdit: onEdit ?? (_) {},
           onRevise: onRevise ?? (_) {},
-          onDuplicate: (_) {},
+          onDuplicate: onDuplicate ?? (_) {},
           onShare: (_) {},
-          onDelete: (_) {},
+          onDelete: onDelete ?? (_) {},
           onCreate: () {},
         ),
       ),
@@ -123,20 +125,63 @@ void main() {
       ),
       findsNothing,
     );
-    expect(find.text('Duplicate'), findsNothing);
-    expect(find.text('Delete'), findsNothing);
+    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(
+            find.ancestor(
+              of: find.text('Delete'),
+              matching: find.byType(PopupMenuItem<String>),
+            ),
+          )
+          .enabled,
+      isFalse,
+    );
     Navigator.of(tester.element(find.text('Share'))).pop();
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('quotation-actions-r1')));
     await tester.pumpAndSettle();
     expect(find.text('Share'), findsOneWidget);
+    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(
+            find.ancestor(
+              of: find.text('Delete'),
+              matching: find.byType(PopupMenuItem<String>),
+            ),
+          )
+          .enabled,
+      isFalse,
+    );
     expect(
       find.descendant(
         of: find.byType(PopupMenuItem<String>),
         matching: find.text('Revise'),
       ),
       findsNothing,
+    );
+    Navigator.of(tester.element(find.text('Share'))).pop();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('quotation-actions-r2')));
+    await tester.pumpAndSettle();
+    expect(find.text('Share'), findsOneWidget);
+    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(
+            find.ancestor(
+              of: find.text('Delete'),
+              matching: find.byType(PopupMenuItem<String>),
+            ),
+          )
+          .enabled,
+      isFalse,
     );
     Navigator.of(tester.element(find.text('Share'))).pop();
     await tester.pumpAndSettle();
@@ -154,7 +199,19 @@ void main() {
       findsNothing,
     );
     expect(find.text('Share'), findsOneWidget);
-    expect(find.text('Delete'), findsNothing);
+    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(
+            find.ancestor(
+              of: find.text('Delete'),
+              matching: find.byType(PopupMenuItem<String>),
+            ),
+          )
+          .enabled,
+      isTrue,
+    );
   });
 
   testWidgets('standalone original offers Edit and Revise', (tester) async {
@@ -182,7 +239,62 @@ void main() {
     );
     expect(find.text('Duplicate'), findsOneWidget);
     expect(find.text('Delete'), findsOneWidget);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(
+            find.ancestor(
+              of: find.text('Delete'),
+              matching: find.byType(PopupMenuItem<String>),
+            ),
+          )
+          .enabled,
+      isTrue,
+    );
   });
+
+  testWidgets(
+    'duplicate works on revisions and disabled delete sends no request',
+    (tester) async {
+      tester.view.physicalSize = const Size(1500, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var duplicatedId = '';
+      var deletedId = '';
+
+      await tester.pumpWidget(
+        _listHarness(
+          families: _revisionFamilies(),
+          onDuplicate: (quotation) => duplicatedId = quotation.id,
+          onDelete: (quotation) => deletedId = quotation.id,
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('quotation-actions-r1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Duplicate'));
+      await tester.pumpAndSettle();
+      expect(duplicatedId, 'r1');
+
+      await tester.tap(find.byKey(const Key('quotation-actions-r1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(deletedId, isEmpty);
+      expect(find.text('Delete Quotation'), findsNothing);
+      Navigator.of(tester.element(find.text('Share'))).pop();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('quotation-actions-r3')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete Quotation'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Delete'));
+      await tester.pumpAndSettle();
+      expect(deletedId, 'r3');
+    },
+  );
 
   testWidgets('mobile gives original Edit and every revision direct Revise', (
     tester,
@@ -214,6 +326,50 @@ void main() {
     expect(find.byKey(const Key('quotation-revise-r1')), findsOneWidget);
     expect(find.byKey(const Key('quotation-revise-r2')), findsOneWidget);
     expect(find.byKey(const Key('quotation-revise-r3')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('quotation-actions-base')));
+    await tester.pumpAndSettle();
+    expect(find.text('Share'), findsOneWidget);
+    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(
+            find.ancestor(
+              of: find.text('Delete'),
+              matching: find.byType(PopupMenuItem<String>),
+            ),
+          )
+          .enabled,
+      isFalse,
+    );
+    Navigator.of(tester.element(find.text('Share'))).pop();
+    await tester.pumpAndSettle();
+
+    final r3Actions = find.byKey(const Key('quotation-actions-r3'));
+    await tester.scrollUntilVisible(
+      r3Actions,
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(r3Actions);
+    await tester.pumpAndSettle();
+    expect(find.text('Share'), findsOneWidget);
+    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(
+            find.ancestor(
+              of: find.text('Delete'),
+              matching: find.byType(PopupMenuItem<String>),
+            ),
+          )
+          .enabled,
+      isTrue,
+    );
+    Navigator.of(tester.element(find.text('Share'))).pop();
+    await tester.pumpAndSettle();
 
     final r1Revise = find.byKey(const Key('quotation-revise-r1'));
     await tester.scrollUntilVisible(

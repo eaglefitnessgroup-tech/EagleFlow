@@ -13,9 +13,10 @@ class _FamilyRepository implements QuotationRepository {
 
   final List<Quotation> quotations;
   Quotation? imageRequest;
+  final List<String> deletedIds = [];
 
   @override
-  Future<List<Quotation>> getAllQuotations() async => quotations;
+  Future<List<Quotation>> getAllQuotations() async => List.of(quotations);
 
   @override
   Future<Quotation> getQuotationWithImages(Quotation quotation) async {
@@ -30,7 +31,10 @@ class _FamilyRepository implements QuotationRepository {
   ) async => revisionDraft;
 
   @override
-  Future<void> deleteQuotation(String id) async {}
+  Future<void> deleteQuotation(String id) async {
+    deletedIds.add(id);
+    quotations.removeWhere((quotation) => quotation.id == id);
+  }
 
   @override
   Future<Quotation> duplicateQuotation(Quotation sourceQuotation) async =>
@@ -185,4 +189,106 @@ void main() {
       expect(latest.id, 'r1');
     },
   );
+
+  for (final surface in <({String name, Size size})>[
+    (name: 'desktop', size: const Size(1500, 900)),
+    (name: 'mobile', size: const Size(390, 900)),
+  ]) {
+    testWidgets(
+      '${surface.name} refreshes delete eligibility after each latest revision deletion',
+      (tester) async {
+        tester.view.physicalSize = surface.size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final original = _quotation(
+          id: 'base',
+          number: 'QT-AN-0027-26',
+          customer: 'Original Customer',
+        );
+        final r1 = _quotation(
+          id: 'r1',
+          number: original.quotationNumber,
+          baseId: original.id,
+          revisionNo: 1,
+          customer: 'R1 Customer',
+        );
+        final r2 = _quotation(
+          id: 'r2',
+          number: original.quotationNumber,
+          baseId: original.id,
+          revisionNo: 2,
+          customer: 'R2 Customer',
+        );
+        final standalone = _quotation(
+          id: 'standalone',
+          number: 'QT-AN-0028-26',
+          customer: 'Standalone Customer',
+        );
+        final repository = _FamilyRepository([original, r1, r2, standalone]);
+        ServiceLocator().mockQuotationRepository = repository;
+
+        Future<bool> deleteEnabled(String id) async {
+          final actions = find.byKey(Key('quotation-actions-$id'));
+          await tester.ensureVisible(actions);
+          await tester.pumpAndSettle();
+          await tester.tap(actions);
+          await tester.pumpAndSettle();
+          final item = tester.widget<PopupMenuItem<String>>(
+            find.ancestor(
+              of: find.text('Delete'),
+              matching: find.byType(PopupMenuItem<String>),
+            ),
+          );
+          final enabled = item.enabled;
+          Navigator.of(tester.element(find.text('Share'))).pop();
+          await tester.pumpAndSettle();
+          return enabled;
+        }
+
+        Future<void> deleteVersion(String id) async {
+          final actions = find.byKey(Key('quotation-actions-$id'));
+          await tester.ensureVisible(actions);
+          await tester.pumpAndSettle();
+          await tester.tap(actions);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Delete'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.widgetWithText(ElevatedButton, 'Delete'));
+          await tester.pumpAndSettle();
+        }
+
+        await tester.pumpWidget(
+          const MaterialApp(home: PreviousQuotationsScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Showing 2 quotations'), findsOneWidget);
+        expect(await deleteEnabled('base'), isFalse);
+        expect(await deleteEnabled('r1'), isFalse);
+        expect(await deleteEnabled('r2'), isTrue);
+
+        await deleteVersion('r2');
+
+        expect(repository.deletedIds, ['r2']);
+        expect(find.text('QT-AN-0027-26 / R2'), findsNothing);
+        expect(find.text('QT-AN-0027-26 / R1'), findsOneWidget);
+        expect(find.text('Showing 2 quotations'), findsOneWidget);
+        expect(await deleteEnabled('base'), isFalse);
+        expect(await deleteEnabled('r1'), isTrue);
+
+        await deleteVersion('r1');
+
+        expect(repository.deletedIds, ['r2', 'r1']);
+        expect(find.text('QT-AN-0027-26 / R1'), findsNothing);
+        expect(find.text('QT-AN-0027-26'), findsOneWidget);
+        expect(find.text('Showing 2 quotations'), findsOneWidget);
+        expect(await deleteEnabled('base'), isTrue);
+        expect(original.revisionNo, 0);
+        expect(r1.revisionNo, 1);
+        expect(r2.revisionNo, 2);
+      },
+    );
+  }
 }

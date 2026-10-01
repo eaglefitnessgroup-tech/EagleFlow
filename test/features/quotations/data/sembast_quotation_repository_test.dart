@@ -4,6 +4,7 @@ import 'package:sembast/sembast_memory.dart';
 import 'package:sembast/blob.dart';
 import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/features/quotations/data/sembast_quotation_repository.dart';
+import 'package:eagleflow/features/quotations/application/quotation_family.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
 import 'package:eagleflow/features/products/domain/product_condition.dart';
@@ -138,6 +139,35 @@ void main() {
       expect(loadedDup.lineItems.first.imageBytes, equals(bytes));
     });
 
+    for (final revisionNo in [1, 2]) {
+      test(
+        'duplicate R$revisionNo is cached as an independent original',
+        () async {
+          final source = QuotationDefaults.createEmptyDraft().copyWith(
+            id: 'revision-$revisionNo',
+            quotationNumber: 'QT-AN-0027-26',
+            baseQuotationId: 'original-id',
+            revisionNo: revisionNo,
+            customerNotes: 'R$revisionNo snapshot',
+          );
+
+          final duplicated = await repository.duplicateQuotation(source);
+          final reopened = await repository.getQuotationByNumber(
+            duplicated.quotationNumber,
+          );
+
+          expect(duplicated.id, isNot(source.id));
+          expect(duplicated.quotationNumber, isNot(source.quotationNumber));
+          expect(duplicated.baseQuotationId, isNull);
+          expect(duplicated.revisionNo, 0);
+          expect(duplicated.customerNotes, 'R$revisionNo snapshot');
+          expect(reopened, isNotNull);
+          expect(reopened!.baseQuotationId, isNull);
+          expect(reopened.revisionNo, 0);
+        },
+      );
+    }
+
     test(
       'saved and reopened quotation preserves its salesperson owner',
       () async {
@@ -235,6 +265,34 @@ void main() {
         'QT-AN-0027-26',
       });
       expect(saved.map((quotation) => quotation.revisionNo).toSet(), {0, 1, 2});
+    });
+
+    test('deleting latest R2 leaves R1 latest without renumbering', () async {
+      final original = QuotationDefaults.createEmptyDraft().copyWith(
+        id: 'delete-base',
+        quotationNumber: 'QT-DELETE-26',
+      );
+      final r1 = original.copyWith(
+        id: 'delete-r1',
+        baseQuotationId: original.id,
+        revisionNo: 1,
+      );
+      final r2 = original.copyWith(
+        id: 'delete-r2',
+        baseQuotationId: original.id,
+        revisionNo: 2,
+      );
+      await repository.saveQuotation(original);
+      await repository.saveQuotation(r1);
+      await repository.saveQuotation(r2);
+
+      await repository.deleteQuotation(r2.id);
+
+      final saved = await repository.getAllQuotations();
+      final family = groupQuotationFamilies(saved).single;
+      expect(family.latest.id, r1.id);
+      expect(family.latest.revisionNo, 1);
+      expect(family.members.map((quotation) => quotation.revisionNo), [0, 1]);
     });
   });
 }

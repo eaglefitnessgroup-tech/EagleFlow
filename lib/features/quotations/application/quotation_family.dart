@@ -24,10 +24,11 @@ class QuotationFamily {
       members.any((member) => member.id == quotation.id);
 
   bool canDelete(Quotation quotation) =>
-      !hasRevisions && quotation.id == original.id;
+      (!hasRevisions && quotation.id == original.id) ||
+      (quotation.revisionNo > 0 && quotation.id == latest.id);
 
   bool canDuplicate(Quotation quotation) =>
-      !hasRevisions && quotation.id == original.id;
+      members.any((member) => member.id == quotation.id);
 
   static List<Quotation> _sortedMembers(List<Quotation> source) {
     final sorted = List<Quotation>.from(source);

@@ -164,7 +164,7 @@ class _PreviousQuotationsScreenState extends State<PreviousQuotationsScreen> {
     try {
       final repo = ServiceLocator().quotationRepository;
       await repo.deleteQuotation(quotation.id);
-      _loadQuotations();
+      await _loadQuotations();
       if (mounted) {
         AppSnackBars.showSuccess(context, 'Quotation deleted successfully.');
       }

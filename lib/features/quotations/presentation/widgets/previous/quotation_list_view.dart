@@ -372,6 +372,7 @@ class QuotationListView extends StatelessWidget {
     QuotationFamily family,
     Quotation quotation,
   ) {
+    final canDelete = family.canDelete(quotation);
     return PopupMenuButton<String>(
       key: Key('quotation-actions-${quotation.id}'),
       tooltip: 'More actions',
@@ -394,22 +395,21 @@ class QuotationListView extends StatelessWidget {
           value: 'share',
           child: _MenuItem(icon: Icons.share_outlined, label: 'Share'),
         ),
-        if (family.canDuplicate(quotation))
-          const PopupMenuItem(
-            value: 'duplicate',
-            child: _MenuItem(icon: Icons.copy_outlined, label: 'Duplicate'),
+        const PopupMenuItem(
+          value: 'duplicate',
+          child: _MenuItem(icon: Icons.copy_outlined, label: 'Duplicate'),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'delete',
+          enabled: canDelete,
+          child: _MenuItem(
+            icon: Icons.delete_outline,
+            label: 'Delete',
+            destructive: true,
+            disabled: !canDelete,
           ),
-        if (family.canDelete(quotation)) ...[
-          const PopupMenuDivider(),
-          const PopupMenuItem(
-            value: 'delete',
-            child: _MenuItem(
-              icon: Icons.delete_outline,
-              label: 'Delete',
-              destructive: true,
-            ),
-          ),
-        ],
+        ),
       ],
     );
   }
@@ -444,15 +444,21 @@ class _MenuItem extends StatelessWidget {
     required this.icon,
     required this.label,
     this.destructive = false,
+    this.disabled = false,
   });
 
   final IconData icon;
   final String label;
   final bool destructive;
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
-    final color = destructive ? Colors.red : null;
+    final color = disabled
+        ? Theme.of(context).disabledColor
+        : destructive
+        ? Colors.red
+        : null;
     return Row(
       children: [
         Icon(icon, size: 18, color: color),

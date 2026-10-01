@@ -40,12 +40,14 @@ class TrackingSembastQuotationRepository extends SembastQuotationRepository {
 
 class DuplicateTestQuotationRepository extends FakeSupabaseQuotationRepository {
   int saveCount = 0;
+  Quotation? saveInput;
 
   DuplicateTestQuotationRepository(super.localCache, super.supabase);
 
   @override
   Future<Quotation> saveQuotation(Quotation quotation) async {
     saveCount++;
+    saveInput = quotation;
     return quotation.copyWith(
       id: 'DUPLICATED-QUOTATION',
       quotationNumber: 'DRAFT-DUPLICATE',
@@ -364,7 +366,44 @@ void main() {
       expect(duplicated.quotationNumber, 'DRAFT-DUPLICATE');
       expect(duplicated.salespersonId, 'ADMIN-001');
       expect(duplicated.status, QuotationStatus.draft);
+      expect(duplicateRepo.saveInput?.baseQuotationId, isNull);
+      expect(duplicateRepo.saveInput?.revisionNo, 0);
     });
+
+    for (final revisionNo in [1, 2]) {
+      test(
+        'Duplicate R$revisionNo resets revision identity before save',
+        () async {
+          final trackingCache = TrackingSembastQuotationRepository();
+          final duplicateRepo = DuplicateTestQuotationRepository(
+            trackingCache,
+            locator.supabaseService,
+          );
+          final source = createTestQuotation().copyWith(
+            id: 'REVISION-$revisionNo',
+            quotationNumber: 'QT-AN-0027-26',
+            baseQuotationId: 'ORIGINAL',
+            revisionNo: revisionNo,
+            customerNotes: 'R$revisionNo snapshot',
+          );
+
+          final duplicated = await duplicateRepo.duplicateQuotation(source);
+
+          expect(duplicateRepo.saveCount, 1);
+          expect(duplicateRepo.saveInput?.id, isEmpty);
+          expect(duplicateRepo.saveInput?.quotationNumber, isEmpty);
+          expect(duplicateRepo.saveInput?.baseQuotationId, isNull);
+          expect(duplicateRepo.saveInput?.revisionNo, 0);
+          expect(
+            duplicateRepo.saveInput?.customerNotes,
+            'R$revisionNo snapshot',
+          );
+          expect(duplicated.id, 'DUPLICATED-QUOTATION');
+          expect(duplicated.revisionNo, 0);
+          expect(duplicated.baseQuotationId, isNull);
+        },
+      );
+    }
 
     test('9. Revision creation fails clearly while offline', () async {
       repo.overrideIsConnected = false;

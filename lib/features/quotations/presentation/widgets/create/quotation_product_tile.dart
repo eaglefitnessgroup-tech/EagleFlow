@@ -13,6 +13,7 @@ class QuotationProductTile extends StatefulWidget {
   final ValueChanged<double> onUnitPriceChanged;
   final ValueChanged<double> onDiscountChanged;
   final Widget dragHandle;
+  final bool isMobile;
 
   const QuotationProductTile({
     super.key,
@@ -23,6 +24,7 @@ class QuotationProductTile extends StatefulWidget {
     required this.onUnitPriceChanged,
     required this.onDiscountChanged,
     required this.dragHandle,
+    required this.isMobile,
   });
 
   @override
@@ -122,15 +124,7 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 600) {
-          return _buildMobileCard();
-        } else {
-          return _buildDesktopRow();
-        }
-      },
-    );
+    return widget.isMobile ? _buildMobileCard() : _buildDesktopRow();
   }
 
   Widget _buildMobileCard() {
@@ -351,7 +345,10 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
             keyboardType: keyboardType,
             style: const TextStyle(fontSize: 14, color: AppColors.charcoal),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: AppColors.border),

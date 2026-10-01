@@ -220,6 +220,8 @@ class SembastQuotationRepository implements QuotationRepository {
       duplicatedQuotation = sourceQuotation.copyWith(
         id: newId,
         quotationNumber: qtNumber,
+        clearBaseQuotationId: true,
+        revisionNo: 0,
         createdDate: now,
         modifiedDate: now,
         validUntil: newValidUntil,
