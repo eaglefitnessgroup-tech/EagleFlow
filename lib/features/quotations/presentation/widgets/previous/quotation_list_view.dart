@@ -281,31 +281,45 @@ class QuotationListView extends StatelessWidget {
           columnSpacing: 20,
           columns: const [
             DataColumn(
-              label: Flexible(
-                child: Text('QT No.', overflow: TextOverflow.ellipsis),
-              ),
-              columnWidth: FlexColumnWidth(1.2),
+              label: Text('QT No.', key: Key('quotation-header-number')),
+              headingRowAlignment: MainAxisAlignment.start,
+              columnWidth: FixedColumnWidth(190),
             ),
-            DataColumn(label: Text('Date'), columnWidth: FixedColumnWidth(128)),
             DataColumn(
-              label: Flexible(
-                child: Text('Customer', overflow: TextOverflow.ellipsis),
-              ),
-              columnWidth: FlexColumnWidth(1.45),
+              label: Text('Date', key: Key('quotation-header-date')),
+              headingRowAlignment: MainAxisAlignment.start,
+              columnWidth: FixedColumnWidth(128),
             ),
             DataColumn(
               label: Flexible(
-                child: Text('Salesperson', overflow: TextOverflow.ellipsis),
+                child: Text(
+                  'Customer',
+                  key: Key('quotation-header-customer'),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              columnWidth: FlexColumnWidth(1.15),
+              headingRowAlignment: MainAxisAlignment.start,
+              columnWidth: FlexColumnWidth(1.4),
             ),
             DataColumn(
-              label: Text('Amount'),
+              label: Flexible(
+                child: Text(
+                  'Salesperson',
+                  key: Key('quotation-header-salesperson'),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              headingRowAlignment: MainAxisAlignment.start,
+              columnWidth: FlexColumnWidth(1),
+            ),
+            DataColumn(
+              label: Text('Amount', key: Key('quotation-header-amount')),
               numeric: true,
+              headingRowAlignment: MainAxisAlignment.start,
               columnWidth: FixedColumnWidth(150),
             ),
             DataColumn(
-              label: Text('Actions'),
+              label: Text('Actions', key: Key('quotation-header-actions')),
               headingRowAlignment: MainAxisAlignment.end,
               columnWidth: FixedColumnWidth(400),
             ),
@@ -318,21 +332,18 @@ class QuotationListView extends StatelessWidget {
               onSelectChanged: (_) => onView(quotation),
               cells: [
                 DataCell(
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          quotation.displayQuotationNumber,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    quotation.displayQuotationNumber,
+                    key: Key('quotation-number-${quotation.id}'),
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
                 DataCell(
                   Text(
                     dateFmt.format(quotation.createdDate),
+                    key: Key('quotation-date-${quotation.id}'),
                     maxLines: 1,
                     softWrap: false,
                   ),
@@ -340,6 +351,7 @@ class QuotationListView extends StatelessWidget {
                 DataCell(
                   Text(
                     quotation.customerInfo.name,
+                    key: Key('quotation-customer-${quotation.id}'),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -349,12 +361,14 @@ class QuotationListView extends StatelessWidget {
                         (quotation.salespersonId.isNotEmpty
                             ? quotation.salespersonId
                             : '—'),
+                    key: Key('quotation-salesperson-${quotation.id}'),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 DataCell(
                   Text(
                     'AED ${formatter.format(QuotationCalculator.calculateGrandTotal(quotation.lineItems, quotation.charges))}',
+                    key: Key('quotation-amount-${quotation.id}'),
                     maxLines: 1,
                     softWrap: false,
                     textAlign: TextAlign.right,
