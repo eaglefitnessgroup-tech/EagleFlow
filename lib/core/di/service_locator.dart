@@ -26,6 +26,8 @@ import '../../features/reservations/application/reservation_completion_service.d
 import '../../features/quick_quote/domain/quick_quote_mapping_repository.dart';
 import '../../features/quick_quote/data/sembast_quick_quote_mapping_cache.dart';
 import '../../features/quick_quote/data/supabase_quick_quote_mapping_repository.dart';
+import '../../features/quick_quote/domain/quick_quote_config_repository.dart';
+import '../../features/quick_quote/data/supabase_quick_quote_config_repository.dart';
 
 class ServiceLocator {
   static ServiceLocator _instance = ServiceLocator._internal();
@@ -98,6 +100,13 @@ class ServiceLocator {
         localCache: _quickQuoteMappingCache,
         supabase: supabaseService,
       );
+
+  @visibleForTesting
+  QuickQuoteConfigRepository? mockQuickQuoteConfigRepository;
+
+  late final QuickQuoteConfigRepository quickQuoteConfigRepository =
+      mockQuickQuoteConfigRepository ??
+      SupabaseQuickQuoteConfigRepository(supabaseService);
 
   late final ProductMasterController productMasterController =
       ProductMasterController(productRepository);

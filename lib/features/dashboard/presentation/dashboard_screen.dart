@@ -892,6 +892,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onTap: () =>
               Navigator.of(context).pushNamed(AppRoutes.stockManagement),
         ),
+      if (ServiceLocator().authController.isAdmin)
+        _buildActionCard(
+          key: const Key('dashboard-quick-quote-automation-logic'),
+          title: 'Automation Logic',
+          icon: Icons.rule_folder_outlined,
+          onTap: () => Navigator.of(
+            context,
+          ).pushNamed(AppRoutes.quickQuoteAutomationLogic),
+        ),
     ];
 
     return LayoutBuilder(
@@ -1013,11 +1022,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildActionCard({
+    Key? key,
     required String title,
     required IconData icon,
     required VoidCallback onTap,
   }) {
     return Material(
+      key: key,
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
