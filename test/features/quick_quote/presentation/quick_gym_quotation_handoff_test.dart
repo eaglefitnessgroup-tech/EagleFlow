@@ -8,7 +8,6 @@ import 'package:eagleflow/features/quotations/domain/quotation.dart';
 import 'package:eagleflow/features/quotations/presentation/create_quotation_screen.dart';
 import 'package:eagleflow/features/quotations/presentation/widgets/create/customer_information_card.dart';
 import 'package:eagleflow/features/quotations/presentation/widgets/create/selected_products_section.dart';
-import 'package:eagleflow/features/quick_quote/domain/quick_quote_result.dart';
 import 'package:eagleflow/features/quick_quote/presentation/quick_gym_quotation_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -184,9 +183,7 @@ void main() {
       expect(find.text('Existing Preview Route'), findsOneWidget);
       expect(previewArguments, isA<QuotationController>());
 
-      Navigator.of(
-        tester.element(find.text('Existing Preview Route')),
-      ).pop();
+      Navigator.of(tester.element(find.text('Existing Preview Route'))).pop();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.widgetWithText(OutlinedButton, 'Save'));
@@ -200,18 +197,15 @@ void main() {
     },
   );
 
-  testWidgets('insufficient-budget result has no handoff action', (
+  testWidgets('unsupported configured budget has no handoff action', (
     tester,
   ) async {
     await fixture.initialize();
     expect(
       await tester.runAsync(() => fixture.controller.generate('1')),
-      isTrue,
+      isFalse,
     );
-    expect(
-      fixture.controller.result!.status,
-      QuickQuoteBudgetStatus.insufficientBudget,
-    );
+    expect(fixture.controller.result, isNull);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -223,8 +217,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Minimum Balanced Total'), findsOneWidget);
-    expect(find.text('Shortfall'), findsOneWidget);
+    expect(find.textContaining('not supported'), findsOneWidget);
     expect(find.byKey(const Key('continue-to-quotation-button')), findsNothing);
     expect(quotationRepository.saveCalls, 0);
   });

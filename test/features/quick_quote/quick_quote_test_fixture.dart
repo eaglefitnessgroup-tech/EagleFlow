@@ -4,6 +4,9 @@ import 'package:eagleflow/features/products/application/product_master_controlle
 import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/products/domain/product_repository.dart';
 import 'package:eagleflow/features/quick_quote/application/quick_quote_controller.dart';
+import 'package:eagleflow/features/quick_quote/domain/quick_quote_active_configuration.dart';
+import 'package:eagleflow/features/quick_quote/domain/quick_quote_active_config_repository.dart';
+import 'package:eagleflow/features/quick_quote/domain/quick_quote_configuration.dart';
 import 'package:eagleflow/features/quick_quote/domain/quick_quote_mapping_repository.dart';
 import 'package:eagleflow/features/quick_quote/domain/quick_quote_product_mapping.dart';
 import 'package:eagleflow/features/quick_quote/domain/quick_quote_rules.dart';
@@ -14,6 +17,10 @@ class QuickQuoteFixture {
     List<QuickQuoteProductMapping>? mappings,
     Object? refreshError,
     Object? cachedError,
+    QuickQuoteActiveConfiguration? activeConfiguration,
+    Object? activeConfigurationError,
+    QuickQuoteActiveConfigSource activeConfigurationSource =
+        QuickQuoteActiveConfigSource.remote,
     Completer<List<Product>>? productCompleter,
   }) : products = products ?? buildCompleteProducts(),
        mappings = mappings ?? buildCompleteMappings(),
@@ -26,11 +33,22 @@ class QuickQuoteFixture {
          cached: mappings ?? buildCompleteMappings(),
          refreshError: refreshError,
          cachedError: cachedError,
+       ),
+       activeConfigRepository = FakeActiveConfigRepository(
+         configuration:
+             activeConfiguration ??
+             buildRuntimeConfiguration(
+               buildCompleteProducts(),
+               buildCompleteMappings(),
+             ),
+         error: activeConfigurationError,
+         source: activeConfigurationSource,
        ) {
     productController = ProductMasterController(productRepository);
     controller = QuickQuoteController(
       productController: productController,
       mappingRepository: mappingRepository,
+      activeConfigRepository: activeConfigRepository,
     );
   }
 
@@ -38,10 +56,34 @@ class QuickQuoteFixture {
   final List<QuickQuoteProductMapping> mappings;
   final FakeProductRepository productRepository;
   final FakeMappingRepository mappingRepository;
+  final FakeActiveConfigRepository activeConfigRepository;
   late final ProductMasterController productController;
   late final QuickQuoteController controller;
 
   Future<void> initialize() => controller.initialize();
+}
+
+class FakeActiveConfigRepository implements QuickQuoteActiveConfigRepository {
+  FakeActiveConfigRepository({
+    required this.configuration,
+    this.error,
+    this.source = QuickQuoteActiveConfigSource.remote,
+  });
+
+  final QuickQuoteActiveConfiguration configuration;
+  final Object? error;
+  final QuickQuoteActiveConfigSource source;
+  int loadCalls = 0;
+
+  @override
+  Future<QuickQuoteActiveConfigLoadResult> loadActiveConfiguration() async {
+    loadCalls++;
+    if (error != null) throw error!;
+    return QuickQuoteActiveConfigLoadResult(
+      configuration: configuration,
+      source: source,
+    );
+  }
 }
 
 class FakeProductRepository implements ProductRepository {
@@ -350,6 +392,223 @@ List<QuickQuoteProductMapping> buildCompleteMappings() {
     );
   }
   return mappings;
+}
+
+QuickQuoteActiveConfiguration buildRuntimeConfiguration(
+  List<Product> products,
+  List<QuickQuoteProductMapping> mappings, {
+  double budgetMin = 100000,
+  double budgetMax = 500000,
+}) {
+  final productsById = {for (final product in products) product.id: product};
+  final allocations = <QuickQuoteConfigAllocation>[];
+  final roleMappings = <QuickQuoteConfigRoleMapping>[];
+  final strengthPriorities = <QuickQuoteConfigStrengthPriority>[];
+  var sectionOrder = 0;
+
+  void addAllocation({
+    required String profileId,
+    required Product product,
+    required String section,
+    required String role,
+    required String roleKey,
+    required int priority,
+    int quantity = 1,
+    bool review = false,
+  }) {
+    allocations.add(
+      QuickQuoteConfigAllocation(
+        profileId: profileId,
+        sectionOrder: ++sectionOrder,
+        section: section,
+        equipmentRole: role,
+        roleKey: roleKey,
+        productCode: product.normalizedProductCode,
+        productId: product.id,
+        quantity: quantity,
+        selectionMode: 'Fixed role',
+        priority: priority,
+        reviewFlag: review,
+        notes: review ? 'Confirm approved fallback.' : '',
+      ),
+    );
+    roleMappings.add(
+      QuickQuoteConfigRoleMapping(
+        productCode: product.normalizedProductCode,
+        productId: product.id,
+        productName: product.name,
+        catalogBrand: product.brand,
+        category: product.category,
+        automationSection: section,
+        automationRole: role,
+        roleKey: roleKey,
+        unitPriceAed: product.sellingPrice + 999,
+        autoEligible: review ? 'Review' : 'Yes',
+        notes: review ? 'Confirm approved fallback.' : '',
+      ),
+    );
+  }
+
+  void addSharedAllocations(String profileId) {
+    for (final role in QuickQuoteCardioRole.values) {
+      final product = productsById['cardio-${role.mappingValue}'];
+      if (product != null) {
+        addAllocation(
+          profileId: profileId,
+          product: product,
+          section: 'Cardio',
+          role: cardioTestLabel(role),
+          roleKey: 'cardio_${role.mappingValue}',
+          priority: role.index + 1,
+        );
+      }
+    }
+    final shared = <(String, String, String, String, int)>[
+      (
+        'smith',
+        'Functional / Multi',
+        'Smith Machine',
+        'functional_multi_smith_machine',
+        1,
+      ),
+      (
+        'functional',
+        'Functional / Multi',
+        'Functional Trainer',
+        'functional_multi_functional_trainer',
+        2,
+      ),
+      (
+        'multi',
+        'Functional / Multi',
+        '4 Station',
+        'functional_multi_4_station',
+        3,
+      ),
+      (
+        'dumbbell-full',
+        'Free Weights',
+        'Dumbbell Full Set 2.5–50kg',
+        'free_weights_dumbbell_full_set_2_5_50kg',
+        1,
+      ),
+      (
+        'dumbbell-rack',
+        'Free Weights',
+        'Dumbbell Rack',
+        'free_weights_dumbbell_rack',
+        2,
+      ),
+    ];
+    for (final row in shared) {
+      final product = productsById[row.$1];
+      if (product == null) continue;
+      addAllocation(
+        profileId: profileId,
+        product: product,
+        section: row.$2,
+        role: row.$3,
+        roleKey: row.$4,
+        priority: row.$5,
+        quantity: row.$1 == 'dumbbell-rack' ? 2 : 1,
+      );
+    }
+    for (final weight in quickQuoteRequiredPlateWeightsKg) {
+      final product = productsById['plate-$weight'];
+      if (product == null) continue;
+      final token = weight == 2.5 ? '2_5' : weight.toInt().toString();
+      addAllocation(
+        profileId: profileId,
+        product: product,
+        section: 'Free Weights',
+        role: '$weight kg Weight Plate',
+        roleKey: 'free_weights_tpu_weight_plate_${token}kg',
+        priority: weight.round(),
+        quantity: 8,
+      );
+    }
+  }
+
+  void addStrength(String profileId, String brand) {
+    final brandMappings = mappings.where(
+      (mapping) =>
+          mapping.section == QuickQuoteSection.strength &&
+          productsById[mapping.productId]?.brand == brand,
+    );
+    var priority = 0;
+    for (final mapping in brandMappings) {
+      final product = productsById[mapping.productId]!;
+      addAllocation(
+        profileId: profileId,
+        product: product,
+        section: 'Strength',
+        role: strengthTestLabel(mapping.strengthArea!),
+        roleKey: 'strength_${mapping.strengthArea!.databaseValue}',
+        priority: ++priority,
+      );
+      strengthPriorities.add(
+        QuickQuoteConfigStrengthPriority(
+          brand: brand,
+          strengthArea: strengthTestLabel(mapping.strengthArea!),
+          priority: priority,
+          productCode: product.normalizedProductCode,
+          productId: product.id,
+          seriesPrefix: deriveTestSeriesPrefix(product.productCode),
+          loadType: mapping.loadType == QuickQuoteLoadType.pinLoaded
+              ? 'Pin Loaded'
+              : 'Plate Loaded',
+          equipmentRole: strengthTestLabel(mapping.strengthArea!),
+          automationRule: 'Preserve movement.',
+          source: 'Runtime fixture',
+        ),
+      );
+    }
+  }
+
+  addSharedAllocations('PREMIER-TEST');
+  addStrength('PREMIER-TEST', 'Premier');
+  addSharedAllocations('MATRIX-TEST');
+  addStrength('MATRIX-TEST', 'Matrix');
+
+  final uniqueRoleMappings = <String, QuickQuoteConfigRoleMapping>{};
+  for (final mapping in roleMappings) {
+    uniqueRoleMappings['${mapping.productCode}|${mapping.roleKey}'] = mapping;
+  }
+  return QuickQuoteActiveConfiguration(
+    versionId: 'runtime-test-version',
+    profiles: [
+      QuickQuoteBudgetProfile(
+        profileId: 'PREMIER-TEST',
+        brand: 'Premier',
+        budgetRange: '100K–500K',
+        budgetMin: budgetMin,
+        budgetMax: budgetMax,
+      ),
+      QuickQuoteBudgetProfile(
+        profileId: 'MATRIX-TEST',
+        brand: 'Matrix',
+        budgetRange: '100K–500K',
+        budgetMin: budgetMin,
+        budgetMax: budgetMax,
+      ),
+    ],
+    allocations: allocations,
+    strengthPriorities: strengthPriorities,
+    roleMappings: uniqueRoleMappings.values.toList(),
+    rules: const [
+      QuickQuoteConfigRule(
+        rule: 'Runtime test rule',
+        premier: 'Configured',
+        burnsport: 'Configured',
+        automationNote: 'Use active profile allocations.',
+      ),
+    ],
+  );
+}
+
+String deriveTestSeriesPrefix(String productCode) {
+  final match = RegExp(r'^[A-Za-z]+').firstMatch(productCode.trim());
+  return match?.group(0)?.toUpperCase() ?? '';
 }
 
 Product testProduct({

@@ -105,21 +105,12 @@ void main() {
   );
 
   test(
-    'rejects insufficient-budget results and leaves revision flow intact',
+    'unsupported configured budget creates no draft and leaves revision flow intact',
     () async {
       final fixture = QuickQuoteFixture();
       await fixture.initialize();
-      expect(await fixture.controller.generate('1'), isTrue);
-      final result = fixture.controller.result!;
-      expect(result.status, QuickQuoteBudgetStatus.insufficientBudget);
-      expect(QuickQuoteDraftFactory.canCreateDraft(result), isFalse);
-      expect(
-        () => QuickQuoteDraftFactory.create(
-          result: result,
-          salespersonId: 'salesperson-current',
-        ),
-        throwsStateError,
-      );
+      expect(await fixture.controller.generate('1'), isFalse);
+      expect(fixture.controller.result, isNull);
 
       final source = QuickQuoteDraftFactory.create(
         result: await _validResult(),

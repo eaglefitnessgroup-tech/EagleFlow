@@ -26,6 +26,8 @@ void main() {
     services.mockProductRepository = fixture.productRepository;
     services.mockQuotationRepository = _EmptyQuotationRepository();
     services.mockQuickQuoteMappingRepository = fixture.mappingRepository;
+    services.mockQuickQuoteActiveConfigRepository =
+        fixture.activeConfigRepository;
     await services.init();
   });
 

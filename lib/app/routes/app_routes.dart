@@ -54,6 +54,8 @@ class AppRoutes {
         controller: QuickQuoteController(
           productController: ServiceLocator().productMasterController,
           mappingRepository: ServiceLocator().quickQuoteMappingRepository,
+          activeConfigRepository:
+              ServiceLocator().quickQuoteActiveConfigRepository,
         ),
       ),
       quickQuoteAutomationLogic: (context) =>

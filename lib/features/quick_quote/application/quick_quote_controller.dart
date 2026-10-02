@@ -4,14 +4,17 @@ import 'package:flutter/foundation.dart';
 
 import '../../products/application/product_master_controller.dart';
 import '../../products/domain/product.dart';
+import '../domain/quick_quote_active_configuration.dart';
+import '../domain/quick_quote_active_config_repository.dart';
 import '../domain/quick_quote_candidate_pool.dart';
+import '../domain/quick_quote_generation_issue.dart';
 import '../domain/quick_quote_mapping_repository.dart';
 import '../domain/quick_quote_product_mapping.dart';
 import '../domain/quick_quote_request.dart';
 import '../domain/quick_quote_result.dart';
 import '../domain/quick_quote_rules.dart';
 import 'quick_quote_candidate_preparer.dart';
-import 'quick_quote_optimizer.dart';
+import 'quick_quote_configured_planner.dart';
 
 enum QuickQuoteControllerStatus { loading, ready, generating, result, error }
 
@@ -19,19 +22,24 @@ class QuickQuoteController extends ChangeNotifier {
   QuickQuoteController({
     required this.productController,
     required this.mappingRepository,
+    required this.activeConfigRepository,
     QuickQuoteCandidatePreparer? candidatePreparer,
-    QuickQuoteOptimizer? optimizer,
+    QuickQuoteConfiguredPlanner? configuredPlanner,
   }) : _candidatePreparer = candidatePreparer ?? QuickQuoteCandidatePreparer(),
-       _optimizer = optimizer ?? const QuickQuoteOptimizer();
+       _configuredPlanner =
+           configuredPlanner ?? const QuickQuoteConfiguredPlanner();
 
   final ProductMasterController productController;
   final QuickQuoteMappingRepository mappingRepository;
+  final QuickQuoteActiveConfigRepository activeConfigRepository;
   final QuickQuoteCandidatePreparer _candidatePreparer;
-  final QuickQuoteOptimizer _optimizer;
+  final QuickQuoteConfiguredPlanner _configuredPlanner;
 
   QuickQuoteControllerStatus _status = QuickQuoteControllerStatus.loading;
+  List<Product> _products = const [];
   List<Product> _activeProducts = const [];
   List<QuickQuoteProductMapping> _mappings = const [];
+  QuickQuoteActiveConfiguration? _activeConfiguration;
   List<String> _strengthBrands = const [];
   Map<QuickQuoteCardioRole, List<Product>> _cardioCandidates = const {};
   final Map<QuickQuoteCardioRole, String?> _selectedCardioProductIds = {};
@@ -43,8 +51,11 @@ class QuickQuoteController extends ChangeNotifier {
   QuickQuoteRequest? _lastRequest;
   String? _errorMessage;
   String? _mappingNotice;
+  String? _configurationNotice;
   String? _generationError;
+  QuickQuoteGenerationIssue? _generationIssue;
   String? _budgetError;
+  int _initializationGeneration = 0;
 
   QuickQuoteControllerStatus get status => _status;
   bool get isLoading => _status == QuickQuoteControllerStatus.loading;
@@ -54,7 +65,9 @@ class QuickQuoteController extends ChangeNotifier {
       _status == QuickQuoteControllerStatus.result;
   String? get errorMessage => _errorMessage;
   String? get mappingNotice => _mappingNotice;
+  String? get configurationNotice => _configurationNotice;
   String? get generationError => _generationError;
+  QuickQuoteGenerationIssue? get generationIssue => _generationIssue;
   String? get budgetError => _budgetError;
   QuickQuoteResult? get result => _result;
   QuickQuoteRequest? get lastRequest => _lastRequest;
@@ -97,20 +110,26 @@ class QuickQuoteController extends ChangeNotifier {
       _availabilityPool?.weightPlateBundles.isNotEmpty ?? false;
 
   Future<void> initialize() async {
+    final generation = ++_initializationGeneration;
     _status = QuickQuoteControllerStatus.loading;
     _errorMessage = null;
     _mappingNotice = null;
+    _configurationNotice = null;
     _generationError = null;
+    _generationIssue = null;
     _budgetError = null;
     _result = null;
     _lastRequest = null;
+    _activeConfiguration = null;
     notifyListeners();
 
     try {
       if (productController.products.isEmpty) {
         await productController.loadProducts();
       }
-      _activeProducts = productController.products
+      if (generation != _initializationGeneration) return;
+      _products = productController.products.toList(growable: false);
+      _activeProducts = _products
           .where((product) => product.isActive)
           .toList(growable: false);
       if (_activeProducts.isEmpty) {
@@ -134,6 +153,7 @@ class QuickQuoteController extends ChangeNotifier {
         _mappingNotice =
             'Mapping refresh failed. Using the latest cached mappings.';
       }
+      if (generation != _initializationGeneration) return;
       if (_mappings.isEmpty) {
         _setFatalError(
           'Quick Quote mappings are unavailable. Refresh mappings and try again.',
@@ -143,6 +163,28 @@ class QuickQuoteController extends ChangeNotifier {
     } catch (_) {
       _setFatalError(
         'Quick Quote mappings are unavailable. Refresh mappings and try again.',
+      );
+      return;
+    }
+
+    try {
+      final loaded = await activeConfigRepository.loadActiveConfiguration();
+      if (generation != _initializationGeneration) return;
+      _activeConfiguration = loaded.configuration;
+      if (loaded.source == QuickQuoteActiveConfigSource.cache) {
+        _configurationNotice =
+            'Configuration refresh failed. Using the latest cached automation configuration.';
+      }
+    } on QuickQuoteActiveConfigStaleSessionException {
+      return;
+    } on QuickQuoteActiveConfigUnavailableException catch (error) {
+      if (generation != _initializationGeneration) return;
+      _setFatalError(error.message);
+      return;
+    } catch (_) {
+      if (generation != _initializationGeneration) return;
+      _setFatalError(
+        'Quick Quote automation configuration is not available. Please contact an administrator.',
       );
       return;
     }
@@ -216,12 +258,14 @@ class QuickQuoteController extends ChangeNotifier {
     if (validationMessage != null) {
       _budgetError = validationMessage;
       _generationError = null;
+      _generationIssue = null;
       notifyListeners();
       return false;
     }
 
     _budgetError = null;
     _generationError = null;
+    _generationIssue = null;
     _result = null;
     _status = QuickQuoteControllerStatus.generating;
     notifyListeners();
@@ -231,35 +275,39 @@ class QuickQuoteController extends ChangeNotifier {
       final request = _buildRequest(
         double.parse(rawBudget.trim().replaceAll(',', '')),
       );
-      final pool = _candidatePreparer.prepare(
+      final configuration = _activeConfiguration;
+      if (configuration == null) {
+        throw const QuickQuoteActiveConfigUnavailableException(
+          'Quick Quote automation configuration is not available. Please contact an administrator.',
+        );
+      }
+      final result = _configuredPlanner.plan(
         request: request,
-        products: _activeProducts,
+        configuration: configuration,
+        products: _products,
         mappings: _mappings,
       );
-      final coverageError = _minimumCoverageError(pool);
-      if (coverageError != null) {
-        _generationError = coverageError;
-        _status = QuickQuoteControllerStatus.ready;
-        notifyListeners();
-        return false;
-      }
-
       _lastRequest = request;
-      _result = _optimizer.optimize(request: request, candidatePool: pool);
-      if (!_result!.hasCompleteMinimumBalancedCoverage) {
-        _result = null;
-        _generationError =
-            'A balanced gym could not be generated from the current selections.';
-        _status = QuickQuoteControllerStatus.ready;
-        notifyListeners();
-        return false;
-      }
+      _result = result;
       _status = QuickQuoteControllerStatus.result;
       notifyListeners();
       return true;
+    } on QuickQuoteConfiguredPlanningException catch (error) {
+      _generationIssue = error.issue;
+      _generationError = error.issue.message;
+      _status = QuickQuoteControllerStatus.ready;
+      notifyListeners();
+      return false;
+    } on QuickQuoteActiveConfigUnavailableException catch (error) {
+      _generationIssue = null;
+      _generationError = error.message;
+      _status = QuickQuoteControllerStatus.ready;
+      notifyListeners();
+      return false;
     } catch (_) {
+      _generationIssue = null;
       _generationError =
-          'The optimizer could not generate a gym. Review the selections and try again.';
+          'The configured gym could not be generated. Review the selections and try again.';
       _status = QuickQuoteControllerStatus.ready;
       notifyListeners();
       return false;
@@ -275,14 +323,14 @@ class QuickQuoteController extends ChangeNotifier {
           mapping.isEligible && productsById.containsKey(mapping.productId),
     );
 
-    final brands = <String>{};
+    final mappedStrengthBrands = <String>{};
     final cardio = {
       for (final role in QuickQuoteCardioRole.values) role: <_RankedProduct>[],
     };
     for (final mapping in eligibleMappings) {
       final product = productsById[mapping.productId]!;
       if (mapping.section == QuickQuoteSection.strength) {
-        brands.add(product.brand.trim());
+        mappedStrengthBrands.add(product.brand.trim());
       }
       if (mapping.section == QuickQuoteSection.cardio &&
           !_isHomeUseCardio(product)) {
@@ -293,13 +341,24 @@ class QuickQuoteController extends ChangeNotifier {
       }
     }
 
-    _strengthBrands = brands.where((brand) => brand.isNotEmpty).toList()
-      ..sort((left, right) {
-        if (isPremierBrand(left) != isPremierBrand(right)) {
-          return isPremierBrand(left) ? -1 : 1;
-        }
-        return left.toLowerCase().compareTo(right.toLowerCase());
-      });
+    final configuredBrands = _activeConfiguration!.profiles
+        .map((profile) => profile.brand.trim())
+        .where((brand) => brand.isNotEmpty)
+        .toSet();
+    _strengthBrands =
+        configuredBrands
+            .where(
+              (brand) => mappedStrengthBrands.any(
+                (mappedBrand) => brandsMatch(mappedBrand, brand),
+              ),
+            )
+            .toList()
+          ..sort((left, right) {
+            if (isPremierBrand(left) != isPremierBrand(right)) {
+              return isPremierBrand(left) ? -1 : 1;
+            }
+            return left.toLowerCase().compareTo(right.toLowerCase());
+          });
     if (_strengthBrand == null || !_strengthBrands.contains(_strengthBrand)) {
       _strengthBrand = _strengthBrands.firstOrNull;
     }
@@ -323,6 +382,7 @@ class QuickQuoteController extends ChangeNotifier {
 
   void _selectionChanged() {
     _generationError = null;
+    _generationIssue = null;
     _result = null;
     _lastRequest = null;
     _status = QuickQuoteControllerStatus.ready;
@@ -365,40 +425,6 @@ class QuickQuoteController extends ChangeNotifier {
     );
   }
 
-  String? _minimumCoverageError(QuickQuoteCandidatePool pool) {
-    final missingCardio = QuickQuoteCardioRole.values
-        .where((role) => pool.cardioCandidates[role]!.isEmpty)
-        .map(_cardioRoleLabel)
-        .toList();
-    if (missingCardio.isNotEmpty) {
-      return 'Complete all five cardio selections. Missing: ${missingCardio.join(', ')}.';
-    }
-
-    final missingStrength = QuickQuoteStrengthArea.values
-        .where((area) {
-          return pool
-                  .strengthPool(area, QuickQuoteLoadType.pinLoaded)
-                  .candidates
-                  .isEmpty &&
-              pool
-                  .strengthPool(area, QuickQuoteLoadType.plateLoaded)
-                  .candidates
-                  .isEmpty;
-        })
-        .map(_strengthAreaLabel)
-        .toList();
-    if (missingStrength.isNotEmpty) {
-      return 'The selected brand and series have no candidates for: ${missingStrength.join(', ')}.';
-    }
-    if (pool.dumbbellFullSetBundles.isEmpty) {
-      return 'A compatible dumbbell full-set bundle is unavailable.';
-    }
-    if (!pool.weightPlateBundles.any((bundle) => bundle.quantityEach == 8)) {
-      return 'A complete weight plate family is unavailable.';
-    }
-    return null;
-  }
-
   bool _isHomeUseCardio(Product product) {
     final searchable =
         '${product.category} ${product.name} ${product.description}'
@@ -433,21 +459,3 @@ class _RankedProduct {
   final Product product;
   final QuickQuoteProductMapping mapping;
 }
-
-String _cardioRoleLabel(QuickQuoteCardioRole role) => switch (role) {
-  QuickQuoteCardioRole.treadmill => 'Treadmill',
-  QuickQuoteCardioRole.crossTrainer => 'Cross Trainer',
-  QuickQuoteCardioRole.recumbentBike => 'Recumbent Bike',
-  QuickQuoteCardioRole.uprightBike => 'Upright Bike',
-  QuickQuoteCardioRole.spinningBike => 'Spinning Bike',
-};
-
-String _strengthAreaLabel(QuickQuoteStrengthArea area) => switch (area) {
-  QuickQuoteStrengthArea.chest => 'Chest',
-  QuickQuoteStrengthArea.back => 'Back',
-  QuickQuoteStrengthArea.shoulder => 'Shoulder',
-  QuickQuoteStrengthArea.legs => 'Legs',
-  QuickQuoteStrengthArea.arms => 'Arms',
-  QuickQuoteStrengthArea.glutes => 'Glutes',
-  QuickQuoteStrengthArea.core => 'Core',
-};

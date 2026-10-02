@@ -12,6 +12,10 @@ enum QuickQuoteSelectionKind {
   dumbbellHalfSet,
   dumbbellRack,
   weightPlate,
+  bench,
+  barbellSet,
+  barbellRack,
+  configuredOther,
   additionalStrength,
 }
 
@@ -25,6 +29,9 @@ class QuickQuoteSelection {
     this.loadType,
     this.multifunctionRole,
     this.plateWeightKg,
+    this.configurationRoleKey,
+    this.sectionOrder,
+    this.configurationPriority,
   });
 
   final QuickQuoteCandidate candidate;
@@ -35,6 +42,9 @@ class QuickQuoteSelection {
   final QuickQuoteLoadType? loadType;
   final QuickQuoteMultifunctionRole? multifunctionRole;
   final double? plateWeightKg;
+  final String? configurationRoleKey;
+  final int? sectionOrder;
+  final int? configurationPriority;
 
   String get productId => candidate.productId;
   double get lineSubtotal => candidate.sellingPrice * quantity;
@@ -48,5 +58,8 @@ class QuickQuoteSelection {
     loadType: loadType,
     multifunctionRole: multifunctionRole,
     plateWeightKg: plateWeightKg,
+    configurationRoleKey: configurationRoleKey,
+    sectionOrder: sectionOrder,
+    configurationPriority: configurationPriority,
   );
 }

@@ -141,6 +141,16 @@ class _QuickGymQuotationScreenState extends State<QuickGymQuotationScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
+                  if (_controller.configurationNotice != null) ...[
+                    _MessageBand(
+                      key: const Key('configuration-cache-notice'),
+                      icon: Icons.info_outline,
+                      message: _controller.configurationNotice!,
+                      background: AppColors.statusPendingBg,
+                      foreground: AppColors.statusPendingText,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   if (mobile)
                     Column(
                       children: [
@@ -200,6 +210,20 @@ class _QuickGymQuotationScreenState extends State<QuickGymQuotationScreen> {
                   ),
                   if (_controller.result case final result?) ...[
                     const SizedBox(height: 24),
+                    for (
+                      var index = 0;
+                      index < result.warnings.length;
+                      index++
+                    ) ...[
+                      _MessageBand(
+                        key: Key('quick-quote-review-warning-$index'),
+                        icon: Icons.warning_amber_rounded,
+                        message: result.warnings[index].message,
+                        background: AppColors.statusPendingBg,
+                        foreground: AppColors.statusPendingText,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     _resultSummary(result, mobile),
                     const SizedBox(height: 16),
                     _equipment(result.selections, mobile),
@@ -481,6 +505,9 @@ class _QuickGymQuotationScreenState extends State<QuickGymQuotationScreen> {
         .join(', ');
     final dumbbell = result.dumbbellConfiguration;
     final plates = result.plateConfiguration;
+    final cardioCount = result.selections
+        .where((selection) => selection.kind == QuickQuoteSelectionKind.cardio)
+        .length;
     final totals = Column(
       children: [
         _SummaryRow(label: 'Target Budget', value: _money(result.targetBudget)),
@@ -490,12 +517,12 @@ class _QuickGymQuotationScreenState extends State<QuickGymQuotationScreen> {
         ),
         _SummaryRow(label: 'VAT', value: _money(result.vat)),
         _SummaryRow(
-          label: 'Generated Total',
+          label: 'Final Total',
           value: _money(result.grandTotal),
           emphasized: true,
         ),
         _SummaryRow(
-          label: 'Difference from Target',
+          label: result.signedDifference > 0 ? 'Over Target' : 'Remaining',
           value: _money(result.absoluteDifference),
         ),
         if (result.status == QuickQuoteBudgetStatus.insufficientBudget) ...[
@@ -521,7 +548,7 @@ class _QuickGymQuotationScreenState extends State<QuickGymQuotationScreen> {
         ),
         _SummaryRow(
           label: 'Cardio coverage',
-          value: '${result.selectedCardioRoles.length}/5 selected',
+          value: '$cardioCount configured role${cardioCount == 1 ? '' : 's'}',
         ),
         _SummaryRow(label: 'Strength area coverage', value: '$covered/7 areas'),
         _SummaryRow(
@@ -577,7 +604,7 @@ class _QuickGymQuotationScreenState extends State<QuickGymQuotationScreen> {
       _Section(
         key: const Key('selected-equipment-preview'),
         title: 'Selected Equipment',
-        subtitle: 'Read-only preview in optimizer order.',
+        subtitle: 'Read-only preview in configured order.',
         child: mobile
             ? Column(
                 children: [

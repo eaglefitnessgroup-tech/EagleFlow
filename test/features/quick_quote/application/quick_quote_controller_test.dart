@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:eagleflow/features/products/domain/product.dart';
 import 'package:eagleflow/features/quick_quote/application/quick_quote_controller.dart';
+import 'package:eagleflow/features/quick_quote/domain/quick_quote_active_configuration.dart';
+import 'package:eagleflow/features/quick_quote/domain/quick_quote_active_config_repository.dart';
+import 'package:eagleflow/features/quick_quote/domain/quick_quote_generation_issue.dart';
 import 'package:eagleflow/features/quick_quote/domain/quick_quote_product_mapping.dart';
-import 'package:eagleflow/features/quick_quote/domain/quick_quote_result.dart';
 import 'package:eagleflow/features/quick_quote/domain/quick_quote_rules.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -50,6 +52,36 @@ void main() {
       expect(fixture.controller.mappingNotice, contains('cached mappings'));
       expect(fixture.mappingRepository.refreshCalls, 1);
       expect(fixture.mappingRepository.cachedCalls, 1);
+    });
+
+    test('reports unavailable active automation configuration', () async {
+      final fixture = QuickQuoteFixture(
+        activeConfigurationError: const QuickQuoteActiveConfigUnavailableException(
+          'Quick Quote automation configuration is not available. Please contact an administrator.',
+        ),
+      );
+
+      await fixture.initialize();
+
+      expect(fixture.controller.status, QuickQuoteControllerStatus.error);
+      expect(
+        fixture.controller.errorMessage,
+        contains('contact an administrator'),
+      );
+    });
+
+    test('surfaces last-known-good configuration cache fallback', () async {
+      final fixture = QuickQuoteFixture(
+        activeConfigurationSource: QuickQuoteActiveConfigSource.cache,
+      );
+
+      await fixture.initialize();
+
+      expect(fixture.controller.status, QuickQuoteControllerStatus.ready);
+      expect(
+        fixture.controller.configurationNotice,
+        contains('cached automation configuration'),
+      );
     });
   });
 
@@ -173,7 +205,10 @@ void main() {
       // controller must block an under-covered result while retaining selections.
       expect(generated, isFalse);
       expect(fixture.controller.lastRequest, isNull);
-      expect(fixture.controller.generationError, contains('no candidates'));
+      expect(
+        fixture.controller.generationError,
+        contains('cannot be resolved'),
+      );
 
       fixture.controller
         ..selectPremierPinSeries('APN')
@@ -191,39 +226,47 @@ void main() {
     },
   );
 
-  test('incomplete cardio blocks generation with a clear error', () async {
-    final mappings = buildCompleteMappings()
-      ..removeWhere(
-        (mapping) =>
-            mapping.section == QuickQuoteSection.cardio &&
-            mapping.roleKey == QuickQuoteCardioRole.spinningBike.mappingValue,
+  test(
+    'inactive configured cardio blocks generation with a clear error',
+    () async {
+      final products = buildCompleteProducts();
+      products.removeWhere((product) => product.id == 'cardio-spinning_bike');
+      products.add(
+        testProduct(
+          id: 'cardio-spinning_bike',
+          name: 'Commercial Spinning Bike',
+          code: 'C-4',
+          brand: 'Cardio Pro',
+          category: 'Commercial Cardio',
+          isActive: false,
+        ),
       );
-    final fixture = QuickQuoteFixture(mappings: mappings);
-    await fixture.initialize();
+      final fixture = QuickQuoteFixture(products: products);
+      await fixture.initialize();
 
-    expect(await fixture.controller.generate('100000'), isFalse);
-    expect(fixture.controller.generationError, contains('Spinning Bike'));
-    expect(fixture.controller.result, isNull);
-  });
+      expect(await fixture.controller.generate('100000'), isFalse);
+      expect(fixture.controller.generationError, contains('inactive'));
+      expect(
+        fixture.controller.generationIssue?.type,
+        QuickQuoteGenerationIssueType.inactiveConfiguredProduct,
+      );
+      expect(fixture.controller.result, isNull);
+    },
+  );
 
   test(
-    'insufficient budget is returned without under-covered output',
+    'unsupported budget is rejected without guessing another profile',
     () async {
       final fixture = QuickQuoteFixture();
       await fixture.initialize();
 
-      expect(await fixture.controller.generate('1'), isTrue);
+      expect(await fixture.controller.generate('1'), isFalse);
+      expect(fixture.controller.result, isNull);
+      expect(fixture.controller.generationError, contains('not supported'));
+      expect(fixture.controller.generationError, contains('100K–500K'));
       expect(
-        fixture.controller.result!.status,
-        QuickQuoteBudgetStatus.insufficientBudget,
-      );
-      expect(
-        fixture.controller.result!.hasCompleteMinimumBalancedCoverage,
-        isTrue,
-      );
-      expect(
-        fixture.controller.result!.minimumBalancedShortfall,
-        greaterThan(0),
+        fixture.controller.generationIssue?.type,
+        QuickQuoteGenerationIssueType.unsupportedBudget,
       );
     },
   );

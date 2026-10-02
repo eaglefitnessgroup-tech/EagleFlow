@@ -18,7 +18,9 @@ enum QuickQuoteSection {
   multifunction('multifunction'),
   dumbbell('dumbbell'),
   dumbbellRack('dumbbell_rack'),
-  weightPlate('weight_plate');
+  weightPlate('weight_plate'),
+  bench('bench'),
+  freeWeight('free_weight');
 
   const QuickQuoteSection(this.databaseValue);
   final String databaseValue;
@@ -32,6 +34,8 @@ enum QuickQuoteSection {
       'dumbbell' => QuickQuoteSection.dumbbell,
       'dumbbell_rack' => QuickQuoteSection.dumbbellRack,
       'weight_plate' => QuickQuoteSection.weightPlate,
+      'bench' => QuickQuoteSection.bench,
+      'free_weight' => QuickQuoteSection.freeWeight,
       _ => throw FormatException('Invalid Quick Quote section: $value'),
     };
   }

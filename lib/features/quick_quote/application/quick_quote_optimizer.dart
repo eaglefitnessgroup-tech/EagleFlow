@@ -804,6 +804,10 @@ class QuickQuoteOptimizer {
       case QuickQuoteSelectionKind.functionalTrainer:
       case QuickQuoteSelectionKind.multiStation:
       case QuickQuoteSelectionKind.dumbbellRack:
+      case QuickQuoteSelectionKind.bench:
+      case QuickQuoteSelectionKind.barbellSet:
+      case QuickQuoteSelectionKind.barbellRack:
+      case QuickQuoteSelectionKind.configuredOther:
         result = 0;
     }
     if (result != 0) return result;
@@ -821,7 +825,11 @@ class QuickQuoteOptimizer {
         QuickQuoteSelectionKind.dumbbellHalfSet => 5,
         QuickQuoteSelectionKind.dumbbellRack => 6,
         QuickQuoteSelectionKind.weightPlate => 7,
-        QuickQuoteSelectionKind.additionalStrength => 8,
+        QuickQuoteSelectionKind.bench => 8,
+        QuickQuoteSelectionKind.barbellSet => 9,
+        QuickQuoteSelectionKind.barbellRack => 10,
+        QuickQuoteSelectionKind.configuredOther => 11,
+        QuickQuoteSelectionKind.additionalStrength => 12,
       };
 
   QuickQuoteSelectionKind _selectionKindForMultifunction(

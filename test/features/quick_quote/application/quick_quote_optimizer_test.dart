@@ -651,7 +651,11 @@ int _outputGroup(QuickQuoteSelection selection) => switch (selection.kind) {
   QuickQuoteSelectionKind.dumbbellHalfSet => 5,
   QuickQuoteSelectionKind.dumbbellRack => 6,
   QuickQuoteSelectionKind.weightPlate => 7,
-  QuickQuoteSelectionKind.additionalStrength => 8,
+  QuickQuoteSelectionKind.bench => 8,
+  QuickQuoteSelectionKind.barbellSet => 9,
+  QuickQuoteSelectionKind.barbellRack => 10,
+  QuickQuoteSelectionKind.configuredOther => 11,
+  QuickQuoteSelectionKind.additionalStrength => 12,
 };
 
 QuickQuoteCandidatePool _reversedPool(QuickQuoteCandidatePool source) {

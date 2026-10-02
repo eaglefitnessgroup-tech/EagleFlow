@@ -69,6 +69,8 @@ class QuickQuoteCandidatePreparer {
           _addDumbbellCandidate(dumbbellsByFamily, candidate);
         case QuickQuoteSection.weightPlate:
           _addWeightPlateCandidate(platesByFamily, candidate);
+        case QuickQuoteSection.bench:
+        case QuickQuoteSection.freeWeight:
         case null:
           break;
       }
