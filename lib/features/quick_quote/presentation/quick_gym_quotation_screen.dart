@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../core/di/service_locator.dart';
 import '../application/quick_quote_controller.dart';
+import '../application/quick_quote_draft_factory.dart';
 import '../domain/quick_quote_product_mapping.dart';
 import '../domain/quick_quote_result.dart';
 import '../domain/quick_quote_rules.dart';
@@ -200,6 +203,21 @@ class _QuickGymQuotationScreenState extends State<QuickGymQuotationScreen> {
                     _resultSummary(result, mobile),
                     const SizedBox(height: 16),
                     _equipment(result.selections, mobile),
+                    if (QuickQuoteDraftFactory.canCreateDraft(result)) ...[
+                      const SizedBox(height: 20),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: mobile ? double.infinity : 240,
+                          child: ElevatedButton.icon(
+                            key: const Key('continue-to-quotation-button'),
+                            onPressed: () => _continueToQuotation(result),
+                            icon: const Icon(Icons.arrow_forward),
+                            label: const Text('Continue to Quotation'),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -435,6 +453,17 @@ class _QuickGymQuotationScreenState extends State<QuickGymQuotationScreen> {
       return;
     }
     await _controller.generate(_budgetController.text);
+  }
+
+  void _continueToQuotation(QuickQuoteResult result) {
+    if (!QuickQuoteDraftFactory.canCreateDraft(result)) return;
+    final draft = QuickQuoteDraftFactory.create(
+      result: result,
+      salespersonId: ServiceLocator().authController.currentUser?.id ?? '',
+    );
+    Navigator.of(
+      context,
+    ).pushNamed(AppRoutes.createQuotation, arguments: draft);
   }
 
   Widget _resultSummary(QuickQuoteResult result, bool mobile) {
