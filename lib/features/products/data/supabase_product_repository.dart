@@ -302,8 +302,9 @@ class SupabaseProductRepository implements ProductRepository {
       throw Exception('Product code must be unique');
     }
 
-    if (!isConnectedToServer)
+    if (!isConnectedToServer) {
       throw Exception('Offline: Cannot update product.');
+    }
     await updateProductOnServer(updatedProduct.id, _toSupabase(updatedProduct));
 
     // 2. Save locally
@@ -383,8 +384,9 @@ class SupabaseProductRepository implements ProductRepository {
   Future<void> toggleProductStatus(String id, bool isActive) async {
     _checkAdmin();
 
-    if (!isConnectedToServer)
+    if (!isConnectedToServer) {
       throw Exception('Offline: Cannot toggle product status.');
+    }
     await updateProductOnServer(id, {
       'is_active': isActive,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
@@ -404,8 +406,9 @@ class SupabaseProductRepository implements ProductRepository {
       );
     }
 
-    if (!isConnectedToServer)
+    if (!isConnectedToServer) {
       throw Exception('Offline: Cannot delete product.');
+    }
 
     final product = await getProductById(id);
 

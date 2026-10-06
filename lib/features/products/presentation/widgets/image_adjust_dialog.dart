@@ -1,4 +1,3 @@
-// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -97,8 +96,8 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
     final dy = (vSize - scaledH) / 2;
 
     _transformationController.value = Matrix4.identity()
-      ..translate(dx, dy)
-      ..scale(_fitScale);
+      ..translateByDouble(dx, dy, 0, 1)
+      ..scaleByDouble(_fitScale, _fitScale, _fitScale, 1);
 
     _currentScale = _fitScale;
   }
@@ -154,9 +153,9 @@ class _ImageAdjustDialogState extends State<ImageAdjustDialog> {
     final center = Offset(vSize / 2, vSize / 2);
 
     final matrix = _transformationController.value.clone();
-    matrix.translate(center.dx, center.dy);
-    matrix.scale(scaleFactor);
-    matrix.translate(-center.dx, -center.dy);
+    matrix.translateByDouble(center.dx, center.dy, 0, 1);
+    matrix.scaleByDouble(scaleFactor, scaleFactor, scaleFactor, 1);
+    matrix.translateByDouble(-center.dx, -center.dy, 0, 1);
 
     _transformationController.value = matrix;
   }

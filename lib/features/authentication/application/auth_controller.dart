@@ -22,11 +22,20 @@ class AuthController extends ChangeNotifier {
   String? _errorMessage;
 
   AuthController(
-    this._repository, {
+    AuthRepository repository, {
     Future<void> Function(AppUser user)? onAuthenticated,
     Future<void> Function()? onSignedOut,
-  }) : _onAuthenticated = onAuthenticated,
-       _onSignedOut = onSignedOut;
+  }) : this._(
+         repository,
+         onAuthenticated: onAuthenticated,
+         onSignedOut: onSignedOut,
+       );
+
+  AuthController._(
+    this._repository, {
+    this._onAuthenticated,
+    this._onSignedOut,
+  });
 
   AppUser? get currentUser => _currentUser;
   AuthBootstrapState get bootstrapState => _bootstrapState;

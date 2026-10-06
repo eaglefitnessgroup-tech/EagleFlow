@@ -16,12 +16,10 @@ enum WorkspaceState {
 
 class WorkspaceController extends ChangeNotifier {
   WorkspaceController({
-    required ProductRepository productRepository,
-    required ProductMasterController productController,
-    required QuotationRepository quotationRepository,
-  }) : _productRepository = productRepository,
-       _productController = productController,
-       _quotationRepository = quotationRepository;
+    required this._productRepository,
+    required this._productController,
+    required this._quotationRepository,
+  });
 
   final ProductRepository _productRepository;
   final ProductMasterController _productController;

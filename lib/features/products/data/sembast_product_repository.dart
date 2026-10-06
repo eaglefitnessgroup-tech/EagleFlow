@@ -35,21 +35,6 @@ class SembastProductRepository implements ProductRepository {
         await _metadataStore.record('products_seeded').get(db) ?? false;
     if (!seeded) {
       await db.transaction((txn) async {
-        // Temporarily disabled for development QA
-        // // Also check if products are actually empty
-        // final count = await _productsStore.count(txn);
-        // if (count == 0) {
-        //   for (var p in sampleProducts) {
-        //     final newId = _uuid.v4();
-        //     final now = DateTime.now();
-        //     final productToSave = p.copyWith(
-        //       id: newId,
-        //       createdAt: now,
-        //       updatedAt: now,
-        //     );
-        //     await _productsStore.record(newId).put(txn, productToSave.toJson());
-        //   }
-        // }
         await _metadataStore.record('products_seeded').put(txn, true);
       });
     }
