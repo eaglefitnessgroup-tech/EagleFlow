@@ -83,10 +83,6 @@ void main() {
 
     // Admin specific card
     expect(find.textContaining('Stock Management'), findsWidgets);
-    expect(
-      find.byKey(const Key('dashboard-quick-quote-automation-logic')),
-      findsOneWidget,
-    );
 
     // Shared actions (Products appears in Grid and BottomNav so findsWidgets is correct)
     expect(find.text('Products'), findsWidgets);
@@ -116,10 +112,6 @@ void main() {
 
     // Admin specific card
     expect(find.textContaining('Stock Management'), findsNothing);
-    expect(
-      find.byKey(const Key('dashboard-quick-quote-automation-logic')),
-      findsNothing,
-    );
 
     // Shared actions
     expect(find.text('Products'), findsWidgets);

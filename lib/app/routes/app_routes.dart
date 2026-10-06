@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../core/di/service_locator.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/area_estimator/presentation/area_estimator_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/products/presentation/products_screen.dart';
 import '../../features/products/presentation/product_details_screen.dart';
-import '../../features/quick_quote/application/quick_quote_controller.dart';
-import '../../features/quick_quote/presentation/quick_gym_quotation_screen.dart';
-import '../../features/quick_quote/presentation/quick_quote_automation_logic_screen.dart';
 import '../../features/quotations/presentation/create_quotation_screen.dart';
 import '../../features/quotations/presentation/quotation_preview_screen.dart';
 import '../../features/quotations/presentation/previous_quotations_screen.dart';
@@ -29,9 +25,6 @@ class AppRoutes {
   static const String products = '/products';
   static const String productDetails = '/product-details';
   static const String createQuotation = '/create-quotation';
-  static const String quickGymQuotation = '/quick-gym-quotation';
-  static const String quickQuoteAutomationLogic =
-      '/admin/quick-quote-automation-logic';
   static const String quotationPreview = '/quotation-preview';
   static const String previousQuotations = '/previous-quotations';
   static const String profile = '/profile';
@@ -50,16 +43,6 @@ class AppRoutes {
       products: (context) => const ProductsScreen(),
       productDetails: (context) => const ProductDetailsScreen(),
       createQuotation: (context) => const CreateQuotationScreen(),
-      quickGymQuotation: (context) => QuickGymQuotationScreen(
-        controller: QuickQuoteController(
-          productController: ServiceLocator().productMasterController,
-          mappingRepository: ServiceLocator().quickQuoteMappingRepository,
-          activeConfigRepository:
-              ServiceLocator().quickQuoteActiveConfigRepository,
-        ),
-      ),
-      quickQuoteAutomationLogic: (context) =>
-          const QuickQuoteAutomationLogicScreen(),
       quotationPreview: (context) => const QuotationPreviewScreen(),
       previousQuotations: (context) => const PreviousQuotationsScreen(),
       profile: (context) => const ProfileScreen(),

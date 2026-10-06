@@ -377,8 +377,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildOverviewSection(),
                       const SizedBox(height: 24),
                       _buildPrimaryActionCard(context),
-                      const SizedBox(height: 12),
-                      _buildQuickGymQuotationAction(context),
                       const SizedBox(height: 24),
                       _buildQuickActionsGrid(context),
                       const SizedBox(height: 24),
@@ -892,15 +890,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onTap: () =>
               Navigator.of(context).pushNamed(AppRoutes.stockManagement),
         ),
-      if (ServiceLocator().authController.isAdmin)
-        _buildActionCard(
-          key: const Key('dashboard-quick-quote-automation-logic'),
-          title: 'Automation Logic',
-          icon: Icons.rule_folder_outlined,
-          onTap: () => Navigator.of(
-            context,
-          ).pushNamed(AppRoutes.quickQuoteAutomationLogic),
-        ),
     ];
 
     return LayoutBuilder(
@@ -962,62 +951,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildQuickGymQuotationAction(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: const Key('dashboard-quick-gym-quotation'),
-        onTap: () =>
-            Navigator.of(context).pushNamed(AppRoutes.quickGymQuotation),
-        borderRadius: BorderRadius.circular(12),
-        hoverColor: AppColors.surface.withValues(alpha: 0.8),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Row(
-            children: [
-              Icon(
-                Icons.fitness_center_outlined,
-                color: AppColors.primaryBlue,
-                size: 24,
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quick Gym Quotation',
-                      style: TextStyle(
-                        color: AppColors.charcoal,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Build a full gym quotation from a target budget.',
-                      style: TextStyle(
-                        color: AppColors.mutedText,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 12),
-              Icon(Icons.arrow_forward, color: AppColors.primaryBlue, size: 18),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

@@ -23,14 +23,6 @@ import '../../features/reservations/domain/reservation_repository.dart';
 import '../../features/reservations/data/sembast_reservation_repository.dart';
 import '../../features/reservations/data/supabase_reservation_repository.dart';
 import '../../features/reservations/application/reservation_completion_service.dart';
-import '../../features/quick_quote/domain/quick_quote_mapping_repository.dart';
-import '../../features/quick_quote/data/sembast_quick_quote_mapping_cache.dart';
-import '../../features/quick_quote/data/supabase_quick_quote_mapping_repository.dart';
-import '../../features/quick_quote/domain/quick_quote_config_repository.dart';
-import '../../features/quick_quote/data/supabase_quick_quote_config_repository.dart';
-import '../../features/quick_quote/domain/quick_quote_active_config_repository.dart';
-import '../../features/quick_quote/data/sembast_quick_quote_active_config_cache.dart';
-import '../../features/quick_quote/data/supabase_quick_quote_active_config_repository.dart';
 
 class ServiceLocator {
   static ServiceLocator _instance = ServiceLocator._internal();
@@ -89,40 +81,6 @@ class ServiceLocator {
       SupabaseProductRepository(
         localCache: _sembastProductRepository,
         supabase: supabaseService,
-      );
-
-  late final SembastQuickQuoteMappingCache _quickQuoteMappingCache =
-      SembastQuickQuoteMappingCache();
-
-  @visibleForTesting
-  QuickQuoteMappingRepository? mockQuickQuoteMappingRepository;
-
-  late final QuickQuoteMappingRepository quickQuoteMappingRepository =
-      mockQuickQuoteMappingRepository ??
-      SupabaseQuickQuoteMappingRepository(
-        localCache: _quickQuoteMappingCache,
-        supabase: supabaseService,
-      );
-
-  @visibleForTesting
-  QuickQuoteConfigRepository? mockQuickQuoteConfigRepository;
-
-  late final QuickQuoteConfigRepository quickQuoteConfigRepository =
-      mockQuickQuoteConfigRepository ??
-      SupabaseQuickQuoteConfigRepository(supabaseService);
-
-  late final SembastQuickQuoteActiveConfigCache _quickQuoteActiveConfigCache =
-      SembastQuickQuoteActiveConfigCache();
-
-  @visibleForTesting
-  QuickQuoteActiveConfigRepository? mockQuickQuoteActiveConfigRepository;
-
-  late final QuickQuoteActiveConfigRepository quickQuoteActiveConfigRepository =
-      mockQuickQuoteActiveConfigRepository ??
-      SupabaseQuickQuoteActiveConfigRepository(
-        supabase: supabaseService,
-        localCache: _quickQuoteActiveConfigCache,
-        sessionIdProvider: () => authController.currentUser?.id,
       );
 
   late final ProductMasterController productMasterController =
