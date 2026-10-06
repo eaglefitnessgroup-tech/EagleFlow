@@ -151,10 +151,24 @@ class SupabaseProductRepository implements ProductRepository {
 
   @override
   Future<List<Product>> getAllProducts() async {
-    if (isConnectedToServer) {
+    final hasRemoteClient = hasSupabaseClient;
+    final canReachServer =
+        isConnectedToServer ||
+        (hasRemoteClient && await refreshServerConnection());
+
+    if (canReachServer) {
       await _syncProductsDown();
+      return localCache.getAllProducts();
     }
-    return localCache.getAllProducts();
+
+    final cachedProducts = await localCache.getAllProducts();
+    if (hasRemoteClient && cachedProducts.isEmpty) {
+      throw StateError(
+        'The product catalog could not be loaded from Supabase and no cached products are available.',
+      );
+    }
+
+    return cachedProducts;
   }
 
   Future<void> handleRealtimeEvent(PostgresChangePayload payload) async {
@@ -491,6 +505,12 @@ class SupabaseProductRepository implements ProductRepository {
 
   @visibleForTesting
   bool get isConnectedToServer => supabase.isConnected;
+
+  @visibleForTesting
+  bool get hasSupabaseClient => supabase.client != null;
+
+  @visibleForTesting
+  Future<bool> refreshServerConnection() => supabase.healthCheck();
 
   @visibleForTesting
   Future<List<dynamic>> fetchProductsFromServer() async {

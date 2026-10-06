@@ -42,10 +42,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     try {
-      final productRepo = ServiceLocator().productRepository;
-      final quotationRepo = ServiceLocator().quotationRepository;
+      final services = ServiceLocator();
+      final productController = services.productMasterController;
+      final quotationRepo = services.quotationRepository;
 
-      final products = await productRepo.getAllProducts();
+      await productController.loadProducts();
+      final products = productController.products;
       final quotations = await quotationRepo.getAllQuotations();
 
       final now = DateTime.now();

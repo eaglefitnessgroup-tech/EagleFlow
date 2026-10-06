@@ -4,6 +4,8 @@ import 'package:eagleflow/core/database/database_service.dart';
 import 'package:eagleflow/core/di/service_locator.dart';
 
 import 'package:eagleflow/features/authentication/domain/app_user.dart';
+import 'package:eagleflow/features/authentication/domain/auth_repository.dart';
+import 'package:eagleflow/features/authentication/domain/auth_result.dart';
 import 'package:eagleflow/features/products/data/sembast_product_repository.dart';
 import 'package:eagleflow/features/products/data/supabase_product_repository.dart';
 import 'package:eagleflow/features/products/domain/bulk_update_models.dart';
@@ -14,6 +16,9 @@ import 'package:eagleflow/features/products/domain/product_condition.dart';
 class FakeSupabaseProductRepository extends SupabaseProductRepository {
   List<Map<String, dynamic>> serverProducts = [];
   bool overrideIsConnected = true;
+  bool overrideHasSupabaseClient = false;
+  bool reconnectResult = false;
+  int reconnectCalls = 0;
   String? lastPartialUpdateId;
   Map<String, dynamic>? lastPartialUpdatePayload;
 
@@ -24,6 +29,16 @@ class FakeSupabaseProductRepository extends SupabaseProductRepository {
 
   @override
   bool get isConnectedToServer => overrideIsConnected;
+
+  @override
+  bool get hasSupabaseClient => overrideHasSupabaseClient;
+
+  @override
+  Future<bool> refreshServerConnection() async {
+    reconnectCalls++;
+    overrideIsConnected = reconnectResult;
+    return reconnectResult;
+  }
 
   @override
   Future<List<dynamic>> fetchProductsFromServer() async {
@@ -73,6 +88,7 @@ void main() {
   late FakeSupabaseProductRepository repo;
 
   setUp(() async {
+    ServiceLocator.resetForTesting();
     final dbName =
         'test_supa_products_${DateTime.now().millisecondsSinceEpoch}.db';
     db = await databaseFactoryMemory.openDatabase(dbName);
@@ -81,7 +97,8 @@ void main() {
     localCache = SembastProductRepository();
 
     // Reset AuthController for tests
-    final locator = ServiceLocator();
+    final locator = ServiceLocator()
+      ..mockAuthRepository = _NoOpAuthRepository();
     // Simulate Admin login by default
     locator.authController.setCurrentUserForTesting(
       AppUser(
@@ -106,9 +123,104 @@ void main() {
 
   tearDown(() async {
     await db.close();
+    ServiceLocator.resetForTesting();
   });
 
   group('SupabaseProductRepository Tests', () {
+    test('returns an empty list for a reachable genuinely empty catalog', () async {
+      repo
+        ..overrideIsConnected = true
+        ..serverProducts = [];
+
+      final products = await repo.getAllProducts();
+
+      expect(products, isEmpty);
+      expect(repo.reconnectCalls, 0);
+    });
+
+    test('rechecks Supabase before treating an empty cache as empty', () async {
+      repo
+        ..overrideIsConnected = false
+        ..overrideHasSupabaseClient = true
+        ..reconnectResult = true
+        ..serverProducts = [
+          {
+            'id': 'reconnected-product',
+            'product_code': 'RECONNECTED-1',
+            'normalized_product_code': 'RECONNECTED-1',
+            'name': 'Reconnected Product',
+            'category': 'Cat',
+            'brand': 'Brand',
+            'selling_price': 100,
+            'is_vat_applicable': true,
+            'is_active': true,
+            'min_stock_level': 0,
+            'opening_stock': 0,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          },
+        ];
+
+      final products = await repo.getAllProducts();
+
+      expect(repo.reconnectCalls, 1);
+      expect(products.map((product) => product.id), ['reconnected-product']);
+    });
+
+    test(
+      'configured Supabase failure is not reported as a valid empty catalog',
+      () async {
+        repo
+          ..overrideIsConnected = false
+          ..overrideHasSupabaseClient = true
+          ..reconnectResult = false;
+
+        await expectLater(
+          repo.getAllProducts(),
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              contains('could not be loaded from Supabase'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test('uses cached products when Supabase remains unavailable', () async {
+      repo
+        ..overrideIsConnected = true
+        ..serverProducts = [
+          {
+            'id': 'cached-product',
+            'product_code': 'CACHED-1',
+            'normalized_product_code': 'CACHED-1',
+            'name': 'Cached Product',
+            'category': 'Cat',
+            'brand': 'Brand',
+            'selling_price': 100,
+            'is_vat_applicable': true,
+            'is_active': true,
+            'min_stock_level': 0,
+            'opening_stock': 0,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          },
+        ];
+      await repo.getAllProducts();
+
+      repo
+        ..overrideIsConnected = false
+        ..overrideHasSupabaseClient = true
+        ..reconnectResult = false;
+
+      final products = await repo.getAllProducts();
+
+      expect(repo.reconnectCalls, 1);
+      expect(products.map((product) => product.id), ['cached-product']);
+    });
+
     test('1. Online Sync down to local cache on init', () async {
       repo.overrideIsConnected = true;
       repo.serverProducts = [
@@ -137,8 +249,6 @@ void main() {
       final syncedProduct = products.firstWhere((p) => p.id == 'remote-1');
       expect(syncedProduct.productCode, 'PROD-R1');
     });
-
-
 
     test('3. Duplicate product protection', () async {
       repo.overrideIsConnected = true;
@@ -401,10 +511,7 @@ void main() {
       expect(updated.openingStock, 19);
       expect(updated.imageId, 'existing-image');
       expect(updated.condition, ProductCondition.used);
-      expect(
-        repo.lastPartialUpdatePayload!.containsKey('condition'),
-        isFalse,
-      );
+      expect(repo.lastPartialUpdatePayload!.containsKey('condition'), isFalse);
     });
 
     test(
@@ -468,4 +575,26 @@ void main() {
       expect(repo.lastPartialUpdatePayload, isNull);
     });
   });
+}
+
+class _NoOpAuthRepository implements AuthRepository {
+  @override
+  Future<void> clearRememberedSession() async {}
+
+  @override
+  Future<AppUser?> getCurrentUser() async => null;
+
+  @override
+  Future<List<AppUser>> getUsers() async => const [];
+
+  @override
+  Future<bool> hasRememberedSession() async => false;
+
+  @override
+  Future<AuthResult> login({required String email, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> logout() async {}
 }
