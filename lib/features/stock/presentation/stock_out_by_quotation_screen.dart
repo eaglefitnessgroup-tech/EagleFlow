@@ -83,6 +83,7 @@ class _StockOutByQuotationScreenState extends State<StockOutByQuotationScreen> {
     try {
       final repo = ServiceLocator().quotationRepository;
       final result = await repo.getQuotationByNumber(query);
+      if (!mounted) return;
       setState(() {
         if (result == null) {
           _error = 'Quotation not found.';
@@ -94,6 +95,7 @@ class _StockOutByQuotationScreenState extends State<StockOutByQuotationScreen> {
         await _loadStockData();
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Error looking up quotation: $e';
       });
@@ -173,7 +175,7 @@ class _StockOutByQuotationScreenState extends State<StockOutByQuotationScreen> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (!mounted || confirmed != true) return;
 
     setState(() {
       _isProcessing = true;

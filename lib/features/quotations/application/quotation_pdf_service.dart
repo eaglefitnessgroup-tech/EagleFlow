@@ -18,6 +18,32 @@ import '../../../../core/di/service_locator.dart';
 import 'salesperson_name_resolver.dart';
 import '../presentation/preview/components/quotation_numeric_fit_helper.dart';
 
+class QuotationPdfRenderTrace {
+  final List<String> exportedItemIds = [];
+  final List<int> productPageItemCounts = [];
+  final List<int> totalsPageNumbers = [];
+  final List<double> productPageUsedHeights = [];
+  final List<double> measuredRowHeights = [];
+  int pageCount = 0;
+  double measuredCoverHeight = 0;
+  double measuredHeaderHeight = 0;
+  double measuredTotalsHeight = 0;
+  double availablePageHeight = 0;
+
+  void reset() {
+    exportedItemIds.clear();
+    productPageItemCounts.clear();
+    totalsPageNumbers.clear();
+    productPageUsedHeights.clear();
+    measuredRowHeights.clear();
+    pageCount = 0;
+    measuredCoverHeight = 0;
+    measuredHeaderHeight = 0;
+    measuredTotalsHeight = 0;
+    availablePageHeight = 0;
+  }
+}
+
 class QuotationPdfService {
   late pw.Font _fontRegular;
   late pw.Font _fontMedium;
@@ -32,7 +58,11 @@ class QuotationPdfService {
   final PdfColor _red = const PdfColor.fromInt(0xFFF44336);
   static const double _dividerThickness = 1;
 
-  Future<Uint8List> generatePdf(Quotation quotation) async {
+  Future<Uint8List> generatePdf(
+    Quotation quotation, {
+    @visibleForTesting QuotationPdfRenderTrace? renderTrace,
+  }) async {
+    renderTrace?.reset();
     // 1. Pre-cache all product images securely
     for (final item in quotation.lineItems) {
       await PdfImageLoader.loadProductImage(
@@ -94,8 +124,97 @@ class QuotationPdfService {
       ),
     );
 
-    // 3. Paginate
-    final pages = QuotationPaginator.paginate(quotation);
+    // 3. Measure with the same PDF widgets and fonts that will be exported,
+    // then paginate from those rendered dimensions.
+    final tableLayout = QuotationLayoutSpec.tableLayoutForItems(
+      quotation.lineItems,
+    );
+    final measurementDocument = pw.Document();
+    final measurementPage = PdfPage(
+      measurementDocument.document,
+      pageFormat: PdfPageFormat.a4,
+    );
+    final measurementCanvas = measurementPage.getGraphics();
+    final pdfContentWidth =
+        PdfPageFormat.a4.width - QuotationLayoutSpec.pageMargin.horizontal;
+    final availablePdfHeight =
+        PdfPageFormat.a4.height -
+        QuotationLayoutSpec.pageMargin.vertical -
+        QuotationLayoutSpec.footerHeight -
+        QuotationLayoutSpec.paginationSafetySpacing;
+
+    double measureWidget(pw.Widget widget) {
+      return pw.Widget.measure(
+        widget,
+        page: measurementPage,
+        canvas: measurementCanvas,
+        constraints: pw.BoxConstraints(
+          maxWidth: pdfContentWidth,
+          maxHeight: double.infinity,
+        ),
+      ).y;
+    }
+
+    final measuredCoverHeight = measureWidget(
+      _buildCoverSection(quotation, resolvedSalesmanName),
+    );
+    final measuredHeaderHeight = measureWidget(_buildTableHeader(tableLayout));
+    final measuredTotalsHeight = measureWidget(_buildTotalsBlock(quotation));
+    final measuredRowHeights = Map<QuotationLineItem, double>.identity();
+    for (int i = 0; i < quotation.lineItems.length; i++) {
+      final item = quotation.lineItems[i];
+      measuredRowHeights[item] = measureWidget(
+        _buildProductRow(i + 1, item, tableLayout),
+      );
+    }
+
+    final pages = QuotationPaginator.paginate(
+      quotation,
+      salespersonName: resolvedSalesmanName,
+      measuredCoverSectionHeight: measuredCoverHeight,
+      measuredTableHeaderHeight: measuredHeaderHeight,
+      measuredTotalsHeight: measuredTotalsHeight,
+      measuredAvailablePageHeight: availablePdfHeight,
+      measuredRowHeight: (item, _) => measuredRowHeights[item]!,
+    );
+
+    final exportedItems = pages
+        .whereType<QuotationProductsPageModel>()
+        .expand((page) => page.items)
+        .toList();
+    final preservesEveryItem =
+        exportedItems.length == quotation.lineItems.length &&
+        List.generate(
+          exportedItems.length,
+          (index) =>
+              identical(exportedItems[index], quotation.lineItems[index]),
+        ).every((matches) => matches);
+    if (!preservesEveryItem) {
+      throw StateError(
+        'Quotation PDF pagination must preserve every line item exactly once.',
+      );
+    }
+
+    final productPageUsedHeights = <double>[];
+    for (final page in pages.whereType<QuotationProductsPageModel>()) {
+      final usedHeight =
+          (page.hasCover ? measuredCoverHeight : 0) +
+          (page.items.isNotEmpty ? measuredHeaderHeight : 0) +
+          page.items.fold<double>(
+            0,
+            (height, item) => height + measuredRowHeights[item]!,
+          ) +
+          (page.hasTotals ? measuredTotalsHeight : 0);
+      if (usedHeight > availablePdfHeight + 0.1) {
+        throw StateError(
+          'Quotation PDF page content exceeds the printable height '
+          '(${usedHeight.toStringAsFixed(2)} > '
+          '${availablePdfHeight.toStringAsFixed(2)}).',
+        );
+      }
+      productPageUsedHeights.add(usedHeight);
+    }
+
     for (int i = 0; i < pages.length; i++) {
       final pageModel = pages[i];
 
@@ -124,15 +243,17 @@ class QuotationPdfService {
                       if (pageModel is QuotationProductsPageModel) ...[
                         if (pageModel.hasCover)
                           _buildCoverSection(quotation, resolvedSalesmanName),
-                        if (pageModel.items.isNotEmpty) _buildTableHeader(),
+                        if (pageModel.items.isNotEmpty)
+                          _buildTableHeader(tableLayout),
                         ...pageModel.items.asMap().entries.map((entry) {
                           final itemIndex = pageStartIndex + entry.key + 1;
-                          return _buildProductRow(itemIndex, entry.value);
+                          return _buildProductRow(
+                            itemIndex,
+                            entry.value,
+                            tableLayout,
+                          );
                         }),
-                        if (pageModel.hasTotals) ...[
-                          pw.Spacer(),
-                          _buildTotalsBlock(quotation),
-                        ],
+                        if (pageModel.hasTotals) _buildTotalsBlock(quotation),
                       ] else if (pageModel is QuotationInfoPageModel) ...[
                         _buildHeader(),
                         _buildInfoPageContent(quotation),
@@ -148,7 +269,31 @@ class QuotationPdfService {
       );
     }
 
-    return await pdf.save();
+    final bytes = await pdf.save();
+    if (renderTrace != null) {
+      renderTrace.pageCount = pages.length;
+      renderTrace.exportedItemIds.addAll(exportedItems.map((item) => item.id));
+      renderTrace.productPageItemCounts.addAll(
+        pages.whereType<QuotationProductsPageModel>().map(
+          (page) => page.items.length,
+        ),
+      );
+      for (int i = 0; i < pages.length; i++) {
+        final page = pages[i];
+        if (page is QuotationProductsPageModel && page.hasTotals) {
+          renderTrace.totalsPageNumbers.add(i + 1);
+        }
+      }
+      renderTrace.productPageUsedHeights.addAll(productPageUsedHeights);
+      renderTrace.measuredRowHeights.addAll(
+        quotation.lineItems.map((item) => measuredRowHeights[item]!),
+      );
+      renderTrace.measuredCoverHeight = measuredCoverHeight;
+      renderTrace.measuredHeaderHeight = measuredHeaderHeight;
+      renderTrace.measuredTotalsHeight = measuredTotalsHeight;
+      renderTrace.availablePageHeight = availablePdfHeight;
+    }
+    return bytes;
   }
 
   pw.Widget _buildHeader() {
@@ -170,15 +315,20 @@ class QuotationPdfService {
             if (logoBytes != null)
               pw.Image(
                 pw.MemoryImage(logoBytes),
-                width: 180,
-                height: 42,
+                width: QuotationLayoutSpec.documentHeaderLogoWidth,
+                height: QuotationLayoutSpec.documentHeaderLogoHeight,
                 fit: pw.BoxFit.contain,
                 alignment: pw.Alignment.centerLeft,
               )
             else
-              pw.SizedBox(width: 180, height: 42),
+              pw.SizedBox(
+                width: QuotationLayoutSpec.documentHeaderLogoWidth,
+                height: QuotationLayoutSpec.documentHeaderLogoHeight,
+              ),
 
-            pw.SizedBox(width: 16),
+            pw.SizedBox(
+              width: QuotationLayoutSpec.documentHeaderHorizontalSpacing,
+            ),
             pw.Text(
               profile.website,
               style: pw.TextStyle(
@@ -190,9 +340,9 @@ class QuotationPdfService {
             ),
           ],
         ),
-        pw.SizedBox(height: 8),
+        pw.SizedBox(height: QuotationLayoutSpec.documentHeaderVerticalSpacing),
         _buildDocumentDivider(),
-        pw.SizedBox(height: 8),
+        pw.SizedBox(height: QuotationLayoutSpec.documentHeaderVerticalSpacing),
       ],
     );
   }
@@ -274,7 +424,7 @@ class QuotationPdfService {
             ),
           ],
         ),
-        pw.SizedBox(height: 32),
+        pw.SizedBox(height: QuotationLayoutSpec.coverCompanyToCustomerSpacing),
         pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -283,12 +433,16 @@ class QuotationPdfService {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.SizedBox(
-                    height: 15,
+                    height: QuotationLayoutSpec.coverCustomerHeadingHeight,
                     child: pw.Text('QUOTATION TO', style: _smallBoldStyle()),
                   ),
-                  pw.SizedBox(height: 4),
+                  pw.SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerHeadingSpacing,
+                  ),
                   _buildFixedWidthDocumentDivider(130),
-                  pw.SizedBox(height: 8),
+                  pw.SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerDividerSpacing,
+                  ),
                   _buildCustomerRow(
                     'CUSTOMER',
                     quotation.customerInfo.name.isNotEmpty
@@ -310,16 +464,24 @@ class QuotationPdfService {
                 ],
               ),
             ),
-            pw.SizedBox(width: 32),
+            pw.SizedBox(width: QuotationLayoutSpec.coverCustomerColumnSpacing),
             pw.SizedBox(
-              width: 170,
+              width: QuotationLayoutSpec.coverDocumentColumnWidth,
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(height: 15),
-                  pw.SizedBox(height: 4),
-                  pw.SizedBox(height: 1.5),
-                  pw.SizedBox(height: 8),
+                  pw.SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerHeadingHeight,
+                  ),
+                  pw.SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerHeadingSpacing,
+                  ),
+                  pw.SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerDividerHeight,
+                  ),
+                  pw.SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerDividerSpacing,
+                  ),
                   _buildCustomerRow(
                     'DATE',
                     QuotationDocumentFormatters.formatDate(
@@ -347,26 +509,41 @@ class QuotationPdfService {
             ),
           ],
         ),
-        pw.SizedBox(height: 16),
+        pw.SizedBox(height: QuotationLayoutSpec.coverBottomSpacing),
       ],
     );
   }
 
   pw.Widget _buildCompanyRow(String label, String value, {int maxLines = 1}) {
     return pw.SizedBox(
-      height: 12.0 * maxLines,
+      height:
+          QuotationLayoutSpec.coverCompanyFontSize *
+          QuotationLayoutSpec.coverCompanyLineHeight *
+          maxLines,
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.SizedBox(
-            width: 100,
-            child: pw.Text(label, style: _smallStyle(fontSize: 8)),
+            width: QuotationLayoutSpec.coverCompanyLabelWidth,
+            child: pw.Text(
+              label,
+              style: _smallStyle(
+                fontSize: QuotationLayoutSpec.coverCompanyFontSize,
+              ),
+            ),
           ),
-          pw.Text(' : ', style: _smallStyle(fontSize: 8)),
+          pw.Text(
+            ' : ',
+            style: _smallStyle(
+              fontSize: QuotationLayoutSpec.coverCompanyFontSize,
+            ),
+          ),
           pw.Expanded(
             child: pw.Text(
               value,
-              style: _smallStyle(fontSize: 8),
+              style: _smallStyle(
+                fontSize: QuotationLayoutSpec.coverCompanyFontSize,
+              ),
               maxLines: maxLines,
             ),
           ),
@@ -379,11 +556,16 @@ class QuotationPdfService {
     return pw.ConstrainedBox(
       constraints: const pw.BoxConstraints(minHeight: 17),
       child: pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 2.0),
+        padding: const pw.EdgeInsets.only(
+          bottom: QuotationLayoutSpec.coverCustomerRowBottomPadding,
+        ),
         child: pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.SizedBox(width: 70, child: pw.Text(label, style: _smallStyle())),
+            pw.SizedBox(
+              width: QuotationLayoutSpec.coverCustomerLabelWidth,
+              child: pw.Text(label, style: _smallStyle()),
+            ),
             pw.Text(' : ', style: _smallStyle()),
             pw.Expanded(
               child: pw.Text(value, style: _smallBoldStyle(), maxLines: 2),
@@ -394,7 +576,7 @@ class QuotationPdfService {
     );
   }
 
-  pw.Widget _buildTableHeader() {
+  pw.Widget _buildTableHeader(QuotationTableLayout tableLayout) {
     return pw.SizedBox(
       height: QuotationLayoutSpec.tableHeaderHeight,
       child: pw.Container(
@@ -404,57 +586,47 @@ class QuotationPdfService {
             bottom: _documentDividerBorderSide(),
           ),
         ),
-        padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-        child: _buildTableHeaderRow(),
+        padding: const pw.EdgeInsets.symmetric(
+          vertical: QuotationLayoutSpec.tableHeaderVerticalPadding,
+          horizontal: QuotationLayoutSpec.tableHorizontalPadding,
+        ),
+        child: _buildTableHeaderRow(tableLayout),
       ),
     );
   }
 
-  pw.Row _buildTableHeaderRow() {
+  pw.Row _buildTableHeaderRow(QuotationTableLayout tableLayout) {
     return pw.Row(
       children: [
         _buildTableCell(
           'S No.',
-          QuotationLayoutSpec.columnFlex['sno']!,
+          tableLayout.flexFor('sno'),
           center: true,
+          scaleDown: false,
         ),
-        _buildTableCell(
-          'Photo',
-          QuotationLayoutSpec.columnFlex['photo']!,
-          center: true,
-        ),
+        _buildTableCell('Photo', tableLayout.flexFor('photo'), center: true),
         _buildTableCell(
           'Product',
-          QuotationLayoutSpec.columnFlex['product']!,
-          horizontalPadding: 12,
+          tableLayout.flexFor('product'),
+          horizontalPadding: QuotationLayoutSpec.productCellHorizontalPadding,
         ),
-        _buildTableCell(
-          'Qty',
-          QuotationLayoutSpec.columnFlex['qty']!,
-          center: true,
-        ),
+        _buildTableCell('Qty', tableLayout.flexFor('qty'), center: true),
         _buildTableCell(
           'Price',
-          QuotationLayoutSpec.columnFlex['unitPrice']!,
+          tableLayout.flexFor('unitPrice'),
           center: true,
         ),
-        _buildTableCell(
-          'Disc.',
-          QuotationLayoutSpec.columnFlex['discount']!,
-          center: true,
-        ),
-        _buildTableCell(
-          'Amount',
-          QuotationLayoutSpec.columnFlex['amount']!,
-          center: true,
-        ),
+        _buildTableCell('Disc.', tableLayout.flexFor('discount'), center: true),
+        _buildTableCell('Amount', tableLayout.flexFor('amount'), center: true),
       ],
     );
   }
 
   @visibleForTesting
-  pw.Widget buildTableHeaderForTesting() {
-    return _buildTableHeaderRow();
+  pw.Widget buildTableHeaderForTesting({
+    QuotationTableLayout tableLayout = QuotationLayoutSpec.productTableLayout,
+  }) {
+    return _buildTableHeader(tableLayout);
   }
 
   pw.Widget _buildTableCell(
@@ -462,8 +634,8 @@ class QuotationPdfService {
     int flex, {
     bool center = false,
     bool right = false,
-    bool scaleDown = false,
-    double horizontalPadding = 4,
+    bool scaleDown = true,
+    double horizontalPadding = QuotationLayoutSpec.tableCellHorizontalPadding,
   }) {
     final alignment = center
         ? pw.Alignment.center
@@ -488,7 +660,11 @@ class QuotationPdfService {
     );
   }
 
-  pw.Widget _buildProductRow(int index, QuotationLineItem item) {
+  pw.Widget _buildProductRow(
+    int index,
+    QuotationLineItem item,
+    QuotationTableLayout tableLayout,
+  ) {
     final lineTotal = QuotationCalculator.calculateLineTotal(
       item.unitPrice,
       item.quantity,
@@ -510,21 +686,32 @@ class QuotationPdfService {
     );
 
     return pw.Container(
-      decoration: pw.BoxDecoration(
-        border: pw.Border(bottom: pw.BorderSide(color: _border, width: 0.5)),
+      constraints: pw.BoxConstraints(
+        minHeight: QuotationLayoutSpec.productRowMinimumHeightFor(tableLayout),
       ),
-      padding: const pw.EdgeInsets.symmetric(vertical: 6.5, horizontal: 2),
+      decoration: pw.BoxDecoration(
+        border: pw.Border(
+          bottom: pw.BorderSide(
+            color: _border,
+            width: QuotationLayoutSpec.productRowBorderWidth,
+          ),
+        ),
+      ),
+      padding: const pw.EdgeInsets.symmetric(
+        vertical: QuotationLayoutSpec.productRowVerticalPadding,
+        horizontal: QuotationLayoutSpec.tableHorizontalPadding,
+      ),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           _buildCell(
             index.toString(),
-            QuotationLayoutSpec.columnFlex['sno']!,
+            tableLayout.flexFor('sno'),
             center: true,
           ),
 
           pw.Expanded(
-            flex: QuotationLayoutSpec.columnFlex['photo']!,
+            flex: tableLayout.flexFor('photo'),
             child: pw.Center(
               child: imageBytes != null
                   ? pw.ClipRRect(
@@ -545,27 +732,34 @@ class QuotationPdfService {
           ),
 
           pw.Expanded(
-            flex: QuotationLayoutSpec.columnFlex['product']!,
+            flex: tableLayout.flexFor('product'),
             child: pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 12),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: QuotationLayoutSpec.productCellHorizontalPadding,
+              ),
               child: pw.Column(
+                mainAxisSize: pw.MainAxisSize.min,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
                     item.name,
-                    style: _bodyStyle(bold: true).copyWith(fontSize: 11.5),
-                    maxLines: 2,
+                    style: _bodyStyle(bold: true).copyWith(
+                      fontSize: QuotationLayoutSpec.productNameFontSize,
+                      height: QuotationLayoutSpec.productNameLineHeight,
+                    ),
                   ),
-                  pw.SizedBox(height: 2),
+                  pw.SizedBox(
+                    height: QuotationLayoutSpec.productNameMetadataSpacing,
+                  ),
                   pw.Text(
-                    QuotationDocumentFormatters.formatProductMetadata(
+                    QuotationDocumentFormatters.formatCompactProductMetadata(
                       item.productCode,
                       item.brand,
                     ),
                     style: _smallStyle(
                       fontSize: QuotationLayoutSpec.productDetailFontSize,
+                      height: QuotationLayoutSpec.productDetailLineHeight,
                     ),
-                    maxLines: 1,
                   ),
                   if (item.condition != null)
                     pw.Text(
@@ -574,21 +768,25 @@ class QuotationPdfService {
                       )!,
                       style: _smallStyle(
                         fontSize: QuotationLayoutSpec.productDetailFontSize,
+                        height: QuotationLayoutSpec.productDetailLineHeight,
                       ),
                       maxLines: 1,
+                      overflow: pw.TextOverflow.clip,
                     ),
                   if (item.description != null && item.description!.isNotEmpty)
                     pw.Padding(
-                      padding: const pw.EdgeInsets.only(top: 2),
+                      padding: const pw.EdgeInsets.only(
+                        top: QuotationLayoutSpec.productDescriptionTopPadding,
+                      ),
                       child: pw.Text(
-                        QuotationDocumentFormatters.formatSpecification(
+                        QuotationDocumentFormatters.formatCompactSpecification(
                               item.description,
                             ) ??
                             '',
                         style: _smallStyle(
                           fontSize: QuotationLayoutSpec.productDetailFontSize,
                           color: _textMain,
-                          height: 1.3,
+                          height: QuotationLayoutSpec.productDetailLineHeight,
                         ),
                         softWrap: true,
                         maxLines: null,
@@ -602,28 +800,28 @@ class QuotationPdfService {
 
           QuotationNumericFitHelper.buildPdfCell(
             item.quantity.toString(),
-            QuotationLayoutSpec.columnFlex['qty']!,
+            tableLayout.flexFor('qty'),
             _fontRegular,
             _fontSemiBold,
             center: true,
           ),
           QuotationNumericFitHelper.buildPdfCell(
             QuotationDocumentFormatters.formatCurrency(item.unitPrice),
-            QuotationLayoutSpec.columnFlex['unitPrice']!,
+            tableLayout.flexFor('unitPrice'),
             _fontRegular,
             _fontSemiBold,
             center: true,
           ),
           QuotationNumericFitHelper.buildPdfCell(
-            item.discount > 0 ? '${item.discount}%' : '—',
-            QuotationLayoutSpec.columnFlex['discount']!,
+            QuotationDocumentFormatters.formatDiscount(item.discount),
+            tableLayout.flexFor('discount'),
             _fontRegular,
             _fontSemiBold,
             center: true,
           ),
           QuotationNumericFitHelper.buildPdfCell(
             QuotationDocumentFormatters.formatCurrency(lineTotal),
-            QuotationLayoutSpec.columnFlex['amount']!,
+            tableLayout.flexFor('amount'),
             _fontRegular,
             _fontSemiBold,
             center: true,
@@ -635,8 +833,12 @@ class QuotationPdfService {
   }
 
   @visibleForTesting
-  pw.Widget buildProductRowForTesting(int index, QuotationLineItem item) {
-    return _buildProductRow(index, item);
+  pw.Widget buildProductRowForTesting(
+    int index,
+    QuotationLineItem item, {
+    QuotationTableLayout tableLayout = QuotationLayoutSpec.productTableLayout,
+  }) {
+    return _buildProductRow(index, item, tableLayout);
   }
 
   pw.Widget _buildCell(
@@ -649,7 +851,9 @@ class QuotationPdfService {
     return pw.Expanded(
       flex: flex,
       child: pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(horizontal: 4),
+        padding: const pw.EdgeInsets.symmetric(
+          horizontal: QuotationLayoutSpec.tableCellHorizontalPadding,
+        ),
         child: pw.Align(
           alignment: center
               ? pw.Alignment.center

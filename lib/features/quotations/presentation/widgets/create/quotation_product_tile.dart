@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../../core/config/app_features.dart';
 import '../../../../../../app/theme/app_colors.dart';
 import '../../../../products/domain/product.dart';
 import '../../../../products/presentation/widgets/product_image.dart';
@@ -175,25 +176,27 @@ class _QuotationProductTileState extends State<QuotationProductTile> {
                         color: AppColors.mutedText,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.statusApprovedBg,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'In Stock',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.statusApprovedText,
+                    if (AppFeatures.inventoryEnabled) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.statusApprovedBg,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'In Stock',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.statusApprovedText,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

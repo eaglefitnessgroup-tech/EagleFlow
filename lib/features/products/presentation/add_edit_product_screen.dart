@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/config/app_features.dart';
 import 'package:flutter/services.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
@@ -484,20 +485,21 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               isMobile,
             ),
 
-            _buildFormRow(
-              _buildTextField(
-                'Opening Stock',
-                _openingStockController,
-                isNumber: true,
-                readOnly: widget.product != null,
+            if (AppFeatures.inventoryEnabled)
+              _buildFormRow(
+                _buildTextField(
+                  'Opening Stock',
+                  _openingStockController,
+                  isNumber: true,
+                  readOnly: widget.product != null,
+                ),
+                _buildTextField(
+                  'Min Stock Level',
+                  _minStockController,
+                  isNumber: true,
+                ),
+                isMobile,
               ),
-              _buildTextField(
-                'Min Stock Level',
-                _minStockController,
-                isNumber: true,
-              ),
-              isMobile,
-            ),
 
             Shortcuts(
               shortcuts: <ShortcutActivator, Intent>{

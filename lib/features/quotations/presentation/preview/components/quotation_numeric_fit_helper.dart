@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../quotation_document_theme.dart';
+import '../quotation_layout_spec.dart';
 
-/// Isolated helper for fitting numeric amounts (Qty, Price, Disc, Amount) up to 100,000.00
+/// Isolated helper for fitting numeric amounts (Qty, Price, Amount) up to 100,000.00
 /// on a single line in both Quotation Preview and PDF export.
 class QuotationNumericFitHelper {
   QuotationNumericFitHelper._();
@@ -30,7 +31,9 @@ class QuotationNumericFitHelper {
     return Expanded(
       flex: flex,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(
+          horizontal: QuotationLayoutSpec.tableCellHorizontalPadding,
+        ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: center
@@ -69,7 +72,9 @@ class QuotationNumericFitHelper {
     return pw.Expanded(
       flex: flex,
       child: pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(horizontal: 4),
+        padding: const pw.EdgeInsets.symmetric(
+          horizontal: QuotationLayoutSpec.tableCellHorizontalPadding,
+        ),
         child: pw.Align(
           alignment: center
               ? pw.Alignment.center

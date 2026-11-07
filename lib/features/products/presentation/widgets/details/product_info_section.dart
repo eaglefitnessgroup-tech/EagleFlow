@@ -7,6 +7,7 @@ class ProductInfoSection extends StatelessWidget {
   final int currentStock;
   final bool isLoading;
   final bool hasError;
+  final bool showStock;
 
   const ProductInfoSection({
     super.key,
@@ -14,6 +15,7 @@ class ProductInfoSection extends StatelessWidget {
     required this.currentStock,
     required this.isLoading,
     required this.hasError,
+    this.showStock = true,
   });
 
   String _formatPrice(double price) {
@@ -77,8 +79,7 @@ class ProductInfoSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        _buildStockIndicator(),
+        if (showStock) ...[const SizedBox(height: 16), _buildStockIndicator()],
       ],
     );
   }

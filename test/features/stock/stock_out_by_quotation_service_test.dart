@@ -302,5 +302,119 @@ void main() {
       expect(emptyResult.success, isFalse);
       expect(emptyResult.message, contains('cannot be empty'));
     });
+
+    test(
+      '8. Remote duplicate response never creates a second local movement',
+      () async {
+        final product = await seedProduct(name: 'Prod A', openingStock: 10);
+        final quotation = await seedQuotation([
+          QuotationLineItem(
+            id: '1',
+            productId: product.id,
+            name: product.name,
+            brand: '',
+            unitPrice: 10,
+            quantity: 2,
+          ),
+        ]);
+        var callCount = 0;
+        service = StockOutByQuotationService(
+          quotationRepository: quotationRepo,
+          remoteProcessor: (number) async {
+            callCount++;
+            if (callCount > 1) {
+              return {
+                'success': true,
+                'already_processed': true,
+                'quotation_id': quotation.id,
+                'quotation_number': number,
+                'deducted_count': 0,
+                'movements': <Map<String, dynamic>>[],
+              };
+            }
+            return {
+              'success': true,
+              'already_processed': false,
+              'quotation_id': quotation.id,
+              'quotation_number': number,
+              'deducted_count': 1,
+              'processed_at': '2026-11-06T08:00:00Z',
+              'movements': [
+                {
+                  'id': '11111111-1111-4111-8111-111111111111',
+                  'product_id': product.id,
+                  'type': 'stockOut',
+                  'quantity': 2,
+                  'reference':
+                      'Reason: Quotation Stock Out | Quotation: $number',
+                  'movement_date': '2026-11-06T08:00:00Z',
+                  'created_at': '2026-11-06T08:00:00Z',
+                  'created_by': 'ADMIN-001',
+                },
+              ],
+            };
+          },
+        );
+
+        final first = await service.processStockOut(quotation.quotationNumber);
+        expect(first.success, isTrue);
+        expect(first.deductedCount, 1);
+
+        // Simulate a stale client cache retry after the server already
+        // committed the first request.
+        await quotationRepo.saveQuotation(
+          quotation.copyWith(isStockOutProcessed: false),
+        );
+        final duplicate = await service.processStockOut(
+          quotation.quotationNumber,
+        );
+
+        expect(duplicate.success, isFalse);
+        expect(duplicate.message, contains('already been processed'));
+        expect(callCount, 2);
+        final movements = await stockRepo.getMovementsForProduct(product.id);
+        expect(movements, hasLength(1));
+        expect(movements.single.id, '11111111-1111-4111-8111-111111111111');
+        final cachedQuotation = await quotationRepo.getQuotationByNumber(
+          quotation.quotationNumber,
+        );
+        expect(cachedQuotation?.isStockOutProcessed, isTrue);
+      },
+    );
+
+    test(
+      '9. Remote transaction failure is returned without local writes',
+      () async {
+        final product = await seedProduct(name: 'Prod A', openingStock: 10);
+        final quotation = await seedQuotation([
+          QuotationLineItem(
+            id: '1',
+            productId: product.id,
+            name: product.name,
+            brand: '',
+            unitPrice: 10,
+            quantity: 2,
+          ),
+        ]);
+        service = StockOutByQuotationService(
+          quotationRepository: quotationRepo,
+          remoteProcessor: (_) async {
+            throw Exception(
+              'Insufficient stock for "Prod A". Available: 1, Required: 2.',
+            );
+          },
+        );
+
+        final result = await service.processStockOut(quotation.quotationNumber);
+
+        expect(result.success, isFalse);
+        expect(result.message, contains('Insufficient stock for "Prod A"'));
+        expect(await stockRepo.getMovementsForProduct(product.id), isEmpty);
+        final cachedQuotation = await quotationRepo.getQuotationByNumber(
+          quotation.quotationNumber,
+        );
+        expect(cachedQuotation?.isStockOutProcessed, isFalse);
+      },
+    );
   });
 }

@@ -13,11 +13,13 @@ import 'quotation_numeric_fit_helper.dart';
 class QuotationProductRow extends StatelessWidget {
   final int index;
   final QuotationLineItem item;
+  final QuotationTableLayout tableLayout;
 
   const QuotationProductRow({
     super.key,
     required this.index,
     required this.item,
+    this.tableLayout = QuotationLayoutSpec.productTableLayout,
   });
 
   @override
@@ -29,53 +31,68 @@ class QuotationProductRow extends StatelessWidget {
     );
 
     return Container(
+      constraints: BoxConstraints(
+        minHeight: QuotationLayoutSpec.productRowMinimumHeightFor(tableLayout),
+      ),
       decoration: const BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: QuotationDocumentTheme.border, width: 0.5),
+          bottom: BorderSide(
+            color: QuotationDocumentTheme.border,
+            width: QuotationLayoutSpec.productRowBorderWidth,
+          ),
         ),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+      padding: QuotationLayoutSpec.productRowPadding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildCell(
             index.toString(),
-            QuotationLayoutSpec.columnFlex['sno']!,
+            tableLayout.flexFor('sno'),
             center: true,
           ),
 
           Expanded(
-            flex: QuotationLayoutSpec.columnFlex['photo']!,
+            flex: tableLayout.flexFor('photo'),
             child: Center(child: _buildProductImage(item)),
           ),
 
           Expanded(
-            flex: QuotationLayoutSpec.columnFlex['product']!,
+            flex: tableLayout.flexFor('product'),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: QuotationLayoutSpec.productCellHorizontalPadding,
+              ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     item.name,
                     style: QuotationDocumentTheme.bodyBold.copyWith(
-                      fontSize: 11.5,
+                      fontSize: QuotationLayoutSpec.productNameFontSize,
                       fontWeight: FontWeight.w600,
+                      height: QuotationLayoutSpec.productNameLineHeight,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
+                    maxLines: null,
+                    overflow: TextOverflow.visible,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(
+                    height: QuotationLayoutSpec.productNameMetadataSpacing,
+                  ),
                   Text(
-                    QuotationDocumentFormatters.formatProductMetadata(
+                    QuotationDocumentFormatters.formatCompactProductMetadata(
                       item.productCode,
                       item.brand,
                     ),
                     style: QuotationDocumentTheme.small.copyWith(
                       fontSize: QuotationLayoutSpec.productDetailFontSize,
+                      height: QuotationLayoutSpec.productDetailLineHeight,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
+                    maxLines: null,
+                    overflow: TextOverflow.visible,
                   ),
                   if (item.condition != null)
                     Text(
@@ -84,22 +101,25 @@ class QuotationProductRow extends StatelessWidget {
                       )!,
                       style: QuotationDocumentTheme.small.copyWith(
                         fontSize: QuotationLayoutSpec.productDetailFontSize,
+                        height: QuotationLayoutSpec.productDetailLineHeight,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   if (item.description != null && item.description!.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.only(
+                        top: QuotationLayoutSpec.productDescriptionTopPadding,
+                      ),
                       child: Text(
-                        QuotationDocumentFormatters.formatSpecification(
+                        QuotationDocumentFormatters.formatCompactSpecification(
                               item.description,
                             ) ??
                             '',
                         style: QuotationDocumentTheme.small.copyWith(
                           fontSize: QuotationLayoutSpec.productDetailFontSize,
                           color: QuotationDocumentTheme.textMain,
-                          height: 1.3,
+                          height: QuotationLayoutSpec.productDetailLineHeight,
                         ),
                         softWrap: true,
                         maxLines: null,
@@ -113,22 +133,22 @@ class QuotationProductRow extends StatelessWidget {
 
           QuotationNumericFitHelper.buildPreviewCell(
             item.quantity.toString(),
-            QuotationLayoutSpec.columnFlex['qty']!,
+            tableLayout.flexFor('qty'),
             center: true,
           ),
           QuotationNumericFitHelper.buildPreviewCell(
             QuotationDocumentFormatters.formatCurrency(item.unitPrice),
-            QuotationLayoutSpec.columnFlex['unitPrice']!,
+            tableLayout.flexFor('unitPrice'),
             center: true,
           ),
           QuotationNumericFitHelper.buildPreviewCell(
-            item.discount > 0 ? '${item.discount}%' : '—',
-            QuotationLayoutSpec.columnFlex['discount']!,
+            QuotationDocumentFormatters.formatDiscount(item.discount),
+            tableLayout.flexFor('discount'),
             center: true,
           ),
           QuotationNumericFitHelper.buildPreviewCell(
             QuotationDocumentFormatters.formatCurrency(lineTotal),
-            QuotationLayoutSpec.columnFlex['amount']!,
+            tableLayout.flexFor('amount'),
             center: true,
             bold: true,
           ),
@@ -147,7 +167,9 @@ class QuotationProductRow extends StatelessWidget {
     return Expanded(
       flex: flex,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(
+          horizontal: QuotationLayoutSpec.tableCellHorizontalPadding,
+        ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: center
@@ -205,6 +227,9 @@ class QuotationProductRow extends StatelessWidget {
         ),
       );
     }
-    return const SizedBox.shrink();
+    return const SizedBox(
+      width: QuotationLayoutSpec.productImageSize,
+      height: QuotationLayoutSpec.productImageSize,
+    );
   }
 }

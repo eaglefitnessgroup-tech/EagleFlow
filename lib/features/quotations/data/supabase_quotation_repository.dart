@@ -60,6 +60,26 @@ class SupabaseQuotationRepository implements QuotationRepository {
     return response as List<dynamic>;
   }
 
+  @visibleForTesting
+  Future<Map<String, dynamic>?> fetchQuotationByNumberFromServer(
+    String quotationNumber,
+  ) async {
+    final client = supabase.client;
+    if (client == null) {
+      throw StateError('Supabase client is not ready.');
+    }
+
+    final response = await client
+        .from('quotations')
+        .select('*, quotation_items(*)')
+        .eq('quotation_number', quotationNumber)
+        .order('revision_no', ascending: false)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return response == null ? null : Map<String, dynamic>.from(response);
+  }
+
   Future<void> _syncQuotationsDown() async {
     final owner = _currentBusinessUserId;
     if (owner != null &&
@@ -270,8 +290,28 @@ class SupabaseQuotationRepository implements QuotationRepository {
   @override
   Future<Quotation?> getQuotationByNumber(String quotationNumber) async {
     final user = ServiceLocator().authController.currentUser;
+    if (user == null) return null;
+
+    final cleanNumber = quotationNumber.trim();
+    if (cleanNumber.isEmpty) return null;
+
+    // The stock-out screen is admin-only. Fetch this single quotation through
+    // Supabase so RLS remains the authority for cross-salesperson access; do
+    // not broaden the normal previous-quotations listing or editing rules.
+    if (user.isAdmin && isConnectedToServer) {
+      final row = await fetchQuotationByNumberFromServer(cleanNumber);
+      if (row == null) return null;
+
+      final serverQuotation = _fromSupabase(row);
+      final db = await _db;
+      await _quotationsStore
+          .record(serverQuotation.id)
+          .put(db, serverQuotation.toJson());
+      return serverQuotation;
+    }
+
     final q = await localCache.getQuotationByNumber(quotationNumber);
-    if (user == null || q == null || q.salespersonId != user.id) return null;
+    if (q == null || q.salespersonId != user.id) return null;
     return q;
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../domain/product.dart';
 import '../../../../../app/theme/app_colors.dart';
 import '../../../../../core/di/service_locator.dart';
+import '../../../../../core/config/app_features.dart';
 import '../add_edit_product_screen.dart';
 import '../product_details_screen.dart';
 import 'product_image.dart';
@@ -16,14 +17,14 @@ class ProductCard extends StatefulWidget {
 }
 
 class _ProductCardState extends State<ProductCard> {
-  bool _isLoadingStock = true;
+  bool _isLoadingStock = AppFeatures.inventoryEnabled;
   bool _hasStockError = false;
   int _currentStock = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetchStock();
+    if (AppFeatures.inventoryEnabled) _fetchStock();
   }
 
   @override
@@ -35,6 +36,7 @@ class _ProductCardState extends State<ProductCard> {
   }
 
   Future<void> _fetchStock() async {
+    if (!AppFeatures.inventoryEnabled) return;
     setState(() {
       _isLoadingStock = true;
       _hasStockError = false;
@@ -178,8 +180,10 @@ class _ProductCardState extends State<ProductCard> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      _buildStockIndicator(),
+                      if (AppFeatures.inventoryEnabled) ...[
+                        const SizedBox(width: 8),
+                        _buildStockIndicator(),
+                      ],
                     ],
                   ),
                   if (ServiceLocator().authController.isAdmin) ...[

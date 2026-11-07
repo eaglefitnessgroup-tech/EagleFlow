@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/app_features.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/area_estimator/presentation/area_estimator_screen.dart';
@@ -46,11 +47,21 @@ class AppRoutes {
       quotationPreview: (context) => const QuotationPreviewScreen(),
       previousQuotations: (context) => const PreviousQuotationsScreen(),
       profile: (context) => const ProfileScreen(),
-      stockManagement: (context) => const StockManagementScreen(),
-      stockIn: (context) => const StockInScreen(),
-      stockOut: (context) => const StockOutScreen(),
-      stockOutByQuotation: (context) => const StockOutByQuotationScreen(),
-      itemReservation: (context) => const ItemReservationScreen(),
+      stockManagement: (context) => AppFeatures.inventoryEnabled
+          ? const StockManagementScreen()
+          : const DashboardScreen(),
+      stockIn: (context) => AppFeatures.inventoryEnabled
+          ? const StockInScreen()
+          : const DashboardScreen(),
+      stockOut: (context) => AppFeatures.inventoryEnabled
+          ? const StockOutScreen()
+          : const DashboardScreen(),
+      stockOutByQuotation: (context) => AppFeatures.inventoryEnabled
+          ? const StockOutByQuotationScreen()
+          : const DashboardScreen(),
+      itemReservation: (context) => AppFeatures.inventoryEnabled
+          ? const ItemReservationScreen()
+          : const DashboardScreen(),
     };
   }
 }

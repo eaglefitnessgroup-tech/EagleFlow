@@ -3,6 +3,7 @@ import '../../../../../../app/theme/app_colors.dart';
 import '../../../../products/domain/product.dart';
 import '../../../../products/presentation/widgets/product_image.dart';
 import '../../../../../../core/di/service_locator.dart';
+import '../../../../../../core/config/app_features.dart';
 
 class DesktopProductCatalogue extends StatefulWidget {
   final Function(List<Product>) onProductsAdded;
@@ -15,19 +16,20 @@ class DesktopProductCatalogue extends StatefulWidget {
   });
 
   @override
-  State<DesktopProductCatalogue> createState() => _DesktopProductCatalogueState();
+  State<DesktopProductCatalogue> createState() =>
+      _DesktopProductCatalogueState();
 }
 
 class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
   final TextEditingController _searchController = TextEditingController();
-  
+
   String _searchQuery = '';
   String? _selectedCategory;
-  
+
   List<Product> _allActiveProducts = [];
   List<Product> _filteredProducts = [];
   Map<String, int> _stockMap = {};
-  
+
   bool _isLoading = true;
 
   @override
@@ -47,19 +49,19 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
   Future<void> _loadData() async {
     // Ensure products are loaded
     await ServiceLocator().productMasterController.loadProducts();
-    
+
     _allActiveProducts = ServiceLocator().productMasterController.products
         .where((p) => p.isActive)
         .toList();
 
-    // Preload stock for fast filtering
-    final stockFutures = _allActiveProducts.map((p) async {
-      final stock = await ServiceLocator().stockController.getCurrentStock(p);
-      return MapEntry(p.id, stock);
-    });
-    
-    final stockEntries = await Future.wait(stockFutures);
-    final stockMap = Map.fromEntries(stockEntries);
+    final stockMap = <String, int>{};
+    if (AppFeatures.inventoryEnabled) {
+      final stockFutures = _allActiveProducts.map((p) async {
+        final stock = await ServiceLocator().stockController.getCurrentStock(p);
+        return MapEntry(p.id, stock);
+      });
+      stockMap.addEntries(await Future.wait(stockFutures));
+    }
 
     if (mounted) {
       setState(() {
@@ -87,7 +89,9 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
 
     // Apply category filter
     if (_selectedCategory != null) {
-      filtered = filtered.where((p) => p.category == _selectedCategory).toList();
+      filtered = filtered
+          .where((p) => p.category == _selectedCategory)
+          .toList();
     }
 
     // Apply search filter (if 2+ chars)
@@ -96,16 +100,24 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
         final nameMatches = p.name.toLowerCase().contains(_searchQuery);
         final codeMatches = p.productCode.toLowerCase().contains(_searchQuery);
         final brandMatches = p.brand.toLowerCase().contains(_searchQuery);
-        final modelMatches = (p.modelNumber ?? '').toLowerCase().contains(_searchQuery);
+        final modelMatches = (p.modelNumber ?? '').toLowerCase().contains(
+          _searchQuery,
+        );
         return nameMatches || codeMatches || brandMatches || modelMatches;
       }).toList();
+    }
+
+    if (!AppFeatures.inventoryEnabled) {
+      filtered.sort((a, b) => a.name.compareTo(b.name));
+      _filteredProducts = filtered;
+      return;
     }
 
     // Sort: In stock first, then alphabetically
     filtered.sort((a, b) {
       final aStock = _stockMap[a.id] ?? 0;
       final bStock = _stockMap[b.id] ?? 0;
-      
+
       final aInStock = aStock > 0;
       final bInStock = bStock > 0;
 
@@ -137,7 +149,8 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
     }
 
     // Extract unique categories from actual data
-    final categories = _allActiveProducts.map((p) => p.category).toSet().toList()..sort();
+    final categories =
+        _allActiveProducts.map((p) => p.category).toSet().toList()..sort();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,7 +160,11 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildCategoryCard('All Products', isSelected: _selectedCategory == null, onTap: () => _selectCategory(null)),
+              _buildCategoryCard(
+                'All Products',
+                isSelected: _selectedCategory == null,
+                onTap: () => _selectCategory(null),
+              ),
               const SizedBox(width: 8),
               ...categories.map((cat) {
                 return Padding(
@@ -163,100 +180,118 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
           ),
         ),
         const SizedBox(height: 24),
-        
+
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // LEFT: Search and Results (42%)
-              Expanded(
-                flex: 42,
-                child: Column(
-                  children: [
-                    // 2. Smart Search
-        TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Search by product name, model, SKU or brand...',
-            hintStyle: const TextStyle(color: AppColors.mutedText),
-            prefixIcon: const Icon(Icons.search, color: AppColors.mutedText),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear, size: 18),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                        _applyFilters();
-                      });
-                    },
-                  )
-                : null,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primaryBlue),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        
-        // 3. Search Results
-        SizedBox(
-          height: 600,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: _filteredProducts.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No products found.',
-                      style: TextStyle(color: AppColors.mutedText),
+            Expanded(
+              flex: 42,
+              child: Column(
+                children: [
+                  // 2. Smart Search
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Search by product name, model, SKU or brand...',
+                      hintStyle: const TextStyle(color: AppColors.mutedText),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: AppColors.mutedText,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                  _applyFilters();
+                                });
+                              },
+                            )
+                          : null,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
                     ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: _filteredProducts.length,
-                    separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
-                    itemBuilder: (context, index) {
-                      final product = _filteredProducts[index];
-                      final stock = _stockMap[product.id] ?? 0;
-                      final bool inStock = stock > 0;
-                      
-                      return _buildProductRow(product, stock, inStock);
-                    },
                   ),
-          ),
+                  const SizedBox(height: 16),
+
+                  // 3. Search Results
+                  SizedBox(
+                    height: 600,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: _filteredProducts.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No products found.',
+                                style: TextStyle(color: AppColors.mutedText),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.all(8),
+                              itemCount: _filteredProducts.length,
+                              separatorBuilder: (context, index) =>
+                                  const Divider(
+                                    height: 1,
+                                    color: AppColors.border,
+                                  ),
+                              itemBuilder: (context, index) {
+                                final product = _filteredProducts[index];
+                                final stock = _stockMap[product.id] ?? 0;
+                                final bool inStock = stock > 0;
+
+                                return _buildProductRow(
+                                  product,
+                                  stock,
+                                  inStock,
+                                );
+                              },
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 24),
+            // RIGHT: Quotation Items (58%)
+            Expanded(flex: 58, child: widget.rightPanel),
+          ],
         ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              // RIGHT: Quotation Items (58%)
-              Expanded(
-                flex: 58,
-                child: widget.rightPanel,
-              ),
-            ],
-          ),
       ],
     );
   }
 
-  Widget _buildCategoryCard(String label, {required bool isSelected, required VoidCallback onTap}) {
+  Widget _buildCategoryCard(
+    String label, {
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -295,14 +330,11 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
             child: SizedBox(
               width: 40,
               height: 40,
-              child: ProductImage(
-                product: product,
-                fit: BoxFit.cover,
-              ),
+              child: ProductImage(product: product, fit: BoxFit.cover),
             ),
           ),
           const SizedBox(width: 12),
-          
+
           // Details
           Expanded(
             child: Column(
@@ -323,15 +355,29 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
                   children: [
                     Text(
                       product.productCode,
-                      style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.mutedText,
+                      ),
                     ),
-                    if (product.brand.isNotEmpty && product.brand != 'Unknown') ...[
+                    if (product.brand.isNotEmpty &&
+                        product.brand != 'Unknown') ...[
                       const SizedBox(width: 8),
-                      Container(width: 4, height: 4, decoration: const BoxDecoration(color: AppColors.border, shape: BoxShape.circle)),
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: AppColors.border,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         product.brand,
-                        style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.mutedText,
+                        ),
                       ),
                     ],
                   ],
@@ -339,9 +385,9 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
               ],
             ),
           ),
-          
+
           const SizedBox(width: 12),
-          
+
           // Price and Stock
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -356,9 +402,9 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
               ),
             ],
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // Add Action
           Material(
             color: Colors.transparent,
@@ -366,7 +412,10 @@ class _DesktopProductCatalogueState extends State<DesktopProductCatalogue> {
               onTap: () => widget.onProductsAdded([product]),
               borderRadius: BorderRadius.circular(6),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primarySoft.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(6),

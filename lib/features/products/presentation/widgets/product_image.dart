@@ -69,6 +69,7 @@ class _ProductImageState extends State<ProductImage> {
   bool _isLoading = false;
   bool _hasError = false;
   Uint8List? _downloadedBytes;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -87,9 +88,11 @@ class _ProductImageState extends State<ProductImage> {
   }
 
   Future<void> _loadImage() async {
+    final loadGeneration = ++_loadGeneration;
+    final product = widget.product;
+
     // 1. Memory bytes take precedence
-    if (widget.product.imageBytes != null &&
-        widget.product.imageBytes!.isNotEmpty) {
+    if (product.imageBytes != null && product.imageBytes!.isNotEmpty) {
       setState(() {
         _isLoading = false;
         _hasError = false;
@@ -99,7 +102,7 @@ class _ProductImageState extends State<ProductImage> {
     }
 
     // 2. No image ID -> Show placeholder
-    if (widget.product.imageId == null || widget.product.imageId!.isEmpty) {
+    if (product.imageId == null || product.imageId!.isEmpty) {
       setState(() {
         _isLoading = false;
         _hasError = false;
@@ -109,7 +112,7 @@ class _ProductImageState extends State<ProductImage> {
     }
 
     // 3. Check memory cache
-    final imageId = widget.product.imageId!;
+    final imageId = product.imageId!;
     if (ProductImage._imageCache.containsKey(imageId)) {
       setState(() {
         _isLoading = false;
@@ -129,21 +132,21 @@ class _ProductImageState extends State<ProductImage> {
     try {
       final localProduct = await ServiceLocator()
           .productRepository
-          .getProductWithImage(widget.product);
+          .getProductWithImage(product);
+      if (!mounted || loadGeneration != _loadGeneration) return;
       if (localProduct.imageBytes != null && localProduct.imageBytes!.isNotEmpty) {
-        if (mounted) {
-          ProductImage._imageCache[imageId] = localProduct.imageBytes!;
-          setState(() {
-            _isLoading = false;
-            _hasError = false;
-            _downloadedBytes = localProduct.imageBytes;
-          });
-        }
+        ProductImage._imageCache[imageId] = localProduct.imageBytes!;
+        setState(() {
+          _isLoading = false;
+          _hasError = false;
+          _downloadedBytes = localProduct.imageBytes;
+        });
         return;
       }
     } catch (_) {
       // Ignore local cache read errors and proceed to remote download
     }
+    if (!mounted || loadGeneration != _loadGeneration) return;
 
     // 5. Download from Supabase
     try {
@@ -159,20 +162,18 @@ class _ProductImageState extends State<ProductImage> {
           .from('product-images')
           .download(downloadPath);
 
-      if (mounted) {
-        ProductImage._imageCache[imageId] = bytes;
-        setState(() {
-          _downloadedBytes = bytes;
-          _isLoading = false;
-        });
-      }
+      if (!mounted || loadGeneration != _loadGeneration) return;
+      ProductImage._imageCache[imageId] = bytes;
+      setState(() {
+        _downloadedBytes = bytes;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-        });
-      }
+      if (!mounted || loadGeneration != _loadGeneration) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
     }
   }
 

@@ -26,6 +26,26 @@ class FakeSupabaseQuotationRepository extends SupabaseQuotationRepository {
     if (!overrideIsConnected) throw Exception('Offline');
     return serverQuotations;
   }
+
+  @override
+  Future<Map<String, dynamic>?> fetchQuotationByNumberFromServer(
+    String quotationNumber,
+  ) async {
+    if (!overrideIsConnected) throw Exception('Offline');
+    final matches =
+        serverQuotations
+            .where((row) => row['quotation_number'] == quotationNumber)
+            .toList()
+          ..sort((a, b) {
+            final revisionCompare = ((b['revision_no'] as num?)?.toInt() ?? 0)
+                .compareTo((a['revision_no'] as num?)?.toInt() ?? 0);
+            if (revisionCompare != 0) return revisionCompare;
+            return (b['created_at'] as String).compareTo(
+              a['created_at'] as String,
+            );
+          });
+    return matches.isEmpty ? null : Map<String, dynamic>.from(matches.first);
+  }
 }
 
 class TrackingSembastQuotationRepository extends SembastQuotationRepository {
@@ -270,6 +290,7 @@ void main() {
       final list = await repo.getAllQuotations();
       expect(list.length, 1);
       expect(list.first.salespersonId, 'SALES-001');
+      expect(await repo.getQuotationByNumber('QT-A'), isNull);
 
       // Attempt to save someone else's quotation
       expect(
@@ -286,41 +307,68 @@ void main() {
       );
     });
 
-    test('6. Admin only reads own quotations', () async {
-      final qAdmin = createTestQuotation(
-        salespersonId: 'ADMIN-001',
-      ).copyWith(id: 'Q-ADMIN', quotationNumber: 'QT-A');
-      final qSales = createTestQuotation(
-        salespersonId: 'SALES-001',
-      ).copyWith(id: 'Q-SALES', quotationNumber: 'QT-S');
-      await localCache.saveQuotation(qAdmin);
-      await localCache.saveQuotation(qSales);
+    test(
+      '6. Admin can look up a salesperson quotation without broadening lists or edits',
+      () async {
+        final qAdmin = createTestQuotation(
+          salespersonId: 'ADMIN-001',
+        ).copyWith(id: 'Q-ADMIN', quotationNumber: 'QT-A');
+        final qSales = createTestQuotation(
+          salespersonId: 'SALES-001',
+        ).copyWith(id: 'Q-SALES', quotationNumber: 'QT-S');
+        await localCache.saveQuotation(qAdmin);
+        await localCache.saveQuotation(qSales);
 
-      final list = await repo.getAllQuotations();
-      expect(list, hasLength(1));
-      expect(list.single.salespersonId, 'ADMIN-001');
-      expect(await repo.getQuotationByNumber('QT-S'), isNull);
-      expect(
-        () => repo.getQuotationWithImages(qSales),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'msg',
-            contains('Cannot access quotations belonging to others'),
+        repo.serverQuotations = [
+          {
+            'id': qSales.id,
+            'quotation_number': qSales.quotationNumber,
+            'revision_no': 0,
+            'salesperson_id': qSales.salespersonId,
+            'customer_name': qSales.customerInfo.name,
+            'customer_company': qSales.customerInfo.company,
+            'customer_phone': qSales.customerInfo.phone,
+            'customer_email': qSales.customerInfo.email,
+            'project_location': qSales.customerInfo.projectLocation,
+            'status': qSales.status.name,
+            'created_at': qSales.createdDate.toUtc().toIso8601String(),
+            'updated_at': qSales.modifiedDate.toUtc().toIso8601String(),
+            'valid_until': qSales.validUntil.toUtc().toIso8601String(),
+            'expected_delivery': qSales.expectedDelivery
+                .toUtc()
+                .toIso8601String(),
+            'quotation_items': <Map<String, dynamic>>[],
+          },
+        ];
+
+        final list = await repo.getAllQuotations();
+        expect(list, hasLength(1));
+        expect(list.single.salespersonId, 'ADMIN-001');
+        final salespersonQuotation = await repo.getQuotationByNumber('QT-S');
+        expect(salespersonQuotation, isNotNull);
+        expect(salespersonQuotation!.salespersonId, 'SALES-001');
+        expect(
+          () => repo.getQuotationWithImages(qSales),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'msg',
+              contains('Cannot access quotations belonging to others'),
+            ),
           ),
-        ),
-      );
-      expect(
-        () => repo.saveQuotation(qSales),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'msg',
-            contains('Cannot modify quotations belonging to others'),
+        );
+        expect(
+          () => repo.saveQuotation(qSales),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'msg',
+              contains('Cannot modify quotations belonging to others'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test(
       '7. Duplicate rejects a foreign owner before cached images are read',

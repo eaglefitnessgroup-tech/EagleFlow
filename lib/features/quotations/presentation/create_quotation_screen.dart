@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/routes/app_routes.dart';
+import '../../../../core/config/app_features.dart';
 import '../domain/quotation_defaults.dart';
 
 import '../application/quotation_calculator.dart';
@@ -305,7 +306,8 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
             route: AppRoutes.areaEstimator,
             isSelected: false,
           ),
-          if (ServiceLocator().authController.canManageStock)
+          if (AppFeatures.inventoryEnabled &&
+              ServiceLocator().authController.canManageStock)
             _buildSidebarItem(
               context,
               icon: Icons.admin_panel_settings_outlined,

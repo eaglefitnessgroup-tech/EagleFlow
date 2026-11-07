@@ -9,7 +9,16 @@ import 'quotation_cover_section_measurer.dart';
 import '../../../domain/quotation_line_item.dart';
 
 class QuotationPaginator {
-  static List<QuotationPreviewPage> paginate(Quotation quotation) {
+  static List<QuotationPreviewPage> paginate(
+    Quotation quotation, {
+    String? salespersonName,
+    double? measuredCoverSectionHeight,
+    double? measuredTableHeaderHeight,
+    double? measuredTotalsHeight,
+    double? measuredAvailablePageHeight,
+    double Function(QuotationLineItem item, QuotationTableLayout tableLayout)?
+    measuredRowHeight,
+  }) {
     final List<QuotationPreviewPage> pages = [];
 
     // Defensive check
@@ -26,26 +35,24 @@ class QuotationPaginator {
     }
 
     // A4 Logical Height Constraints
-    final double pageMarginTotal = QuotationLayoutSpec.pageMargin.vertical;
     final double availablePageHeight =
-        QuotationLayoutSpec.a4LogicalHeight -
-        pageMarginTotal -
-        QuotationLayoutSpec.footerHeight -
-        4.0; // Safety tolerance above footer
+        measuredAvailablePageHeight ??
+        QuotationLayoutSpec.productPageAvailableHeight;
 
-    // Calculate Product Column width to measure text wrapping
-    final double contentWidth =
-        QuotationLayoutSpec.a4LogicalWidth -
-        QuotationLayoutSpec.pageMargin.horizontal * 2;
-    const double tablePadding = 4.0;
-    final double flexSpace = contentWidth - tablePadding;
-    final double productColWidth =
-        flexSpace * (QuotationLayoutSpec.columnFlex['product']! / 100.0);
-    final double productTextWidth = productColWidth - 24;
-
-    const double headerHeight = 42.0;
-    final double coverSectionHeight =
-        QuotationCoverSectionMeasurer.measureHeight(quotation);
+    final tableLayout = QuotationLayoutSpec.tableLayoutForItems(
+      quotation.lineItems,
+    );
+    final productTextWidth = QuotationLayoutSpec.productTextWidthFor(
+      tableLayout,
+    );
+    final headerHeight =
+        measuredTableHeaderHeight ?? QuotationLayoutSpec.tableHeaderHeight;
+    final coverSectionHeight =
+        measuredCoverSectionHeight ??
+        QuotationCoverSectionMeasurer.measureHeight(
+          quotation,
+          salespersonName: salespersonName,
+        );
 
     int chargeRows = 2; // Subtotal + VAT
     if (quotation.charges.deliveryCharges > 0) chargeRows++;
@@ -54,11 +61,12 @@ class QuotationPaginator {
     if (quotation.charges.overallDiscount > 0) chargeRows++;
     // Explicit totals height: padding + rows + Grand Total + Amount in Words.
     final double totalsHeight =
+        measuredTotalsHeight ??
         16.0 +
-        (chargeRows * 20.0) +
-        40.0 +
-        2.0 +
-        QuotationLayoutSpec.amountInWordsHeight;
+            (chargeRows * 20.0) +
+            40.0 +
+            2.0 +
+            QuotationLayoutSpec.amountInWordsHeight;
 
     List<QuotationProductsPageModel> productPages = [];
     List<QuotationLineItem> currentChunk = [];
@@ -69,71 +77,13 @@ class QuotationPaginator {
     for (int i = 0; i < quotation.lineItems.length; i++) {
       final item = quotation.lineItems[i];
 
-      final TextPainter namePainter = TextPainter(
-        text: TextSpan(text: item.name, style: QuotationDocumentTheme.bodyBold),
-        textDirection: TextDirection.ltr,
-        maxLines: 2,
-      )..layout(maxWidth: productTextWidth);
-
-      final TextPainter codeBrandPainter = TextPainter(
-        text: TextSpan(
-          text:
-              'Code: ${item.productCode ?? "—"} | Brand: ${item.brand.isNotEmpty ? item.brand : "—"}',
-          style: QuotationDocumentTheme.small.copyWith(
-            fontSize: QuotationLayoutSpec.productDetailFontSize,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-        maxLines: 1,
-      )..layout(maxWidth: productTextWidth);
-
-      double conditionHeight = 0;
-      final conditionText = QuotationDocumentFormatters.formatProductCondition(
-        item.condition,
-      );
-      if (conditionText != null) {
-        final TextPainter conditionPainter = TextPainter(
-          text: TextSpan(
-            text: conditionText,
-            style: QuotationDocumentTheme.small.copyWith(
-              fontSize: QuotationLayoutSpec.productDetailFontSize,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-          maxLines: 1,
-        )..layout(maxWidth: productTextWidth);
-        conditionHeight = conditionPainter.height;
-      }
-
-      double descHeight = 0;
-      if (item.description != null && item.description!.isNotEmpty) {
-        final TextPainter descPainter = TextPainter(
-          text: TextSpan(
-            text:
-                QuotationDocumentFormatters.formatSpecification(
-                  item.description,
-                ) ??
-                '',
-            style: QuotationDocumentTheme.small.copyWith(
-              fontSize: 8.0,
-              color: QuotationDocumentTheme.textMain,
-              height: 1.3,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout(maxWidth: productTextWidth);
-        descHeight = 2.0 + descPainter.height;
-      }
-
-      final double contentH =
-          namePainter.height +
-          2.0 +
-          codeBrandPainter.height +
-          conditionHeight +
-          descHeight;
-      // 8px vertical padding + 0.5px border
-      final double rowHeight =
-          math.max(QuotationLayoutSpec.productImageSize, contentH) + 8.5;
+      final rowHeight =
+          measuredRowHeight?.call(item, tableLayout) ??
+          estimateProductRowHeight(
+            item,
+            productTextWidth: productTextWidth,
+            tableLayout: tableLayout,
+          );
 
       final double remainingHeight = availablePageHeight - currentHeight;
 
@@ -168,27 +118,147 @@ class QuotationPaginator {
         ),
       );
     } else {
-      productPages.add(
-        QuotationProductsPageModel(
-          items: List.from(currentChunk),
-          hasCover: isFirstPage,
-          hasTotals: false,
-          isLastPage: false,
-        ),
-      );
-      productPages.add(
-        const QuotationProductsPageModel(
-          items: [],
-          hasCover: false,
-          hasTotals: true,
-          isLastPage: true,
-        ),
-      );
+      final lastRowCanShareTotals =
+          currentChunk.isNotEmpty &&
+          headerHeight + currentChunkHeights.last + totalsHeight <=
+              availablePageHeight + 0.1;
+
+      if (lastRowCanShareTotals) {
+        final lastItem = currentChunk.removeLast();
+        currentChunkHeights.removeLast();
+
+        if (currentChunk.isNotEmpty || isFirstPage) {
+          productPages.add(
+            QuotationProductsPageModel(
+              items: List.from(currentChunk),
+              hasCover: isFirstPage,
+              hasTotals: false,
+              isLastPage: false,
+            ),
+          );
+        }
+        productPages.add(
+          QuotationProductsPageModel(
+            items: [lastItem],
+            hasCover: false,
+            hasTotals: true,
+            isLastPage: true,
+          ),
+        );
+      } else {
+        productPages.add(
+          QuotationProductsPageModel(
+            items: List.from(currentChunk),
+            hasCover: isFirstPage,
+            hasTotals: false,
+            isLastPage: false,
+          ),
+        );
+        productPages.add(
+          const QuotationProductsPageModel(
+            items: [],
+            hasCover: false,
+            hasTotals: true,
+            isLastPage: true,
+          ),
+        );
+      }
     }
 
     pages.addAll(productPages);
 
     pages.add(const QuotationInfoPageModel());
     return pages;
+  }
+
+  static double estimateProductRowHeight(
+    QuotationLineItem item, {
+    double? productTextWidth,
+    QuotationTableLayout? tableLayout,
+  }) {
+    final layout = tableLayout ?? QuotationLayoutSpec.productTableLayout;
+    final measuredTextWidth =
+        productTextWidth ?? QuotationLayoutSpec.productTextWidthFor(layout);
+
+    final namePainter = TextPainter(
+      text: TextSpan(
+        text: item.name,
+        style: QuotationDocumentTheme.bodyBold.copyWith(
+          fontSize: QuotationLayoutSpec.productNameFontSize,
+          fontWeight: FontWeight.w600,
+          height: QuotationLayoutSpec.productNameLineHeight,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: measuredTextWidth);
+
+    final codeBrandPainter = TextPainter(
+      text: TextSpan(
+        text: QuotationDocumentFormatters.formatCompactProductMetadata(
+          item.productCode,
+          item.brand,
+        ),
+        style: QuotationDocumentTheme.small.copyWith(
+          fontSize: QuotationLayoutSpec.productDetailFontSize,
+          height: QuotationLayoutSpec.productDetailLineHeight,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: measuredTextWidth);
+
+    double conditionHeight = 0;
+    if (item.condition != null) {
+      final conditionPainter = TextPainter(
+        text: TextSpan(
+          text: QuotationDocumentFormatters.formatProductCondition(
+            item.condition,
+          )!,
+          style: QuotationDocumentTheme.small.copyWith(
+            fontSize: QuotationLayoutSpec.productDetailFontSize,
+            height: QuotationLayoutSpec.productDetailLineHeight,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: measuredTextWidth);
+      conditionHeight = conditionPainter.height;
+    }
+
+    double descriptionHeight = 0;
+    if (item.description != null && item.description!.isNotEmpty) {
+      final descriptionPainter = TextPainter(
+        text: TextSpan(
+          text:
+              QuotationDocumentFormatters.formatCompactSpecification(
+                item.description,
+              ) ??
+              '',
+          style: QuotationDocumentTheme.small.copyWith(
+            fontSize: QuotationLayoutSpec.productDetailFontSize,
+            color: QuotationDocumentTheme.textMain,
+            height: QuotationLayoutSpec.productDetailLineHeight,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: measuredTextWidth);
+      descriptionHeight =
+          QuotationLayoutSpec.productDescriptionTopPadding +
+          descriptionPainter.height;
+    }
+
+    final contentHeight =
+        namePainter.height +
+        QuotationLayoutSpec.productNameMetadataSpacing +
+        codeBrandPainter.height +
+        conditionHeight +
+        descriptionHeight;
+
+    final contentTotalHeight =
+        contentHeight +
+        (QuotationLayoutSpec.productRowVerticalPadding * 2) +
+        QuotationLayoutSpec.productRowBorderWidth;
+
+    final minRowHeight = QuotationLayoutSpec.productRowMinimumHeightFor(layout);
+
+    return math.max(minRowHeight, contentTotalHeight);
   }
 }

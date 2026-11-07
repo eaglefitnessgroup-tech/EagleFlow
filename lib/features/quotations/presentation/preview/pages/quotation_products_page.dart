@@ -4,6 +4,7 @@ import '../models/quotation_preview_page.dart';
 import '../components/quotation_product_table_header.dart';
 import '../components/quotation_product_row.dart';
 import '../components/quotation_totals_block.dart';
+import '../quotation_layout_spec.dart';
 import 'quotation_cover_section.dart';
 
 class QuotationProductsPage extends StatelessWidget {
@@ -22,23 +23,30 @@ class QuotationProductsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tableLayout = QuotationLayoutSpec.tableLayoutForItems(
+      quotation.lineItems,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (model.hasCover) QuotationCoverSection(quotation: quotation, salespersonName: salespersonName),
-        if (model.items.isNotEmpty) const QuotationProductTableHeader(),
+        if (model.hasCover)
+          QuotationCoverSection(
+            quotation: quotation,
+            salespersonName: salespersonName,
+          ),
+        if (model.items.isNotEmpty)
+          QuotationProductTableHeader(tableLayout: tableLayout),
         ...model.items.asMap().entries.map((entry) {
           final itemIndex = startIndex + entry.key + 1;
           return QuotationProductRow(
             key: ValueKey(entry.value.id),
             index: itemIndex,
             item: entry.value,
+            tableLayout: tableLayout,
           );
         }),
-        if (model.hasTotals) ...[
-          const Spacer(),
-          QuotationTotalsBlock(quotation: quotation),
-        ],
+        if (model.hasTotals) QuotationTotalsBlock(quotation: quotation),
       ],
     );
   }

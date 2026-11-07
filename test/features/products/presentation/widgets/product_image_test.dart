@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -309,6 +311,58 @@ void main() {
 
     expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
     expect(fakeStorageFileApi.downloadCallCount, 1);
+  });
+
+  testWidgets('stale download cannot replace a newer product image', (
+    tester,
+  ) async {
+    final firstDownload = Completer<Uint8List>();
+    final firstBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final secondBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNgAAIAAAUAAeImBZsAAAAASUVORK5CYII=',
+    );
+
+    fakeStorageFileApi.onDownload = (path) {
+      if (path == 'race-first/main.jpg') return firstDownload.future;
+      if (path == 'race-second/main.jpg') return Future.value(secondBytes);
+      throw StateError('Unexpected path: $path');
+    };
+
+    final firstProduct = dummyProduct.copyWith(
+      id: 'race-first-product',
+      imageId: 'race-first',
+      imageBytes: null,
+    );
+    final secondProduct = dummyProduct.copyWith(
+      id: 'race-second-product',
+      imageId: 'race-second',
+      imageBytes: null,
+    );
+
+    await tester.pumpWidget(
+      buildTestableWidget(
+        ProductImage(product: firstProduct, testClient: fakeSupabaseClient),
+      ),
+    );
+    await tester.pump();
+    expect(fakeStorageFileApi.downloadCallCount, 1);
+
+    await tester.pumpWidget(
+      buildTestableWidget(
+        ProductImage(product: secondProduct, testClient: fakeSupabaseClient),
+      ),
+    );
+    await tester.pump();
+    expect(fakeStorageFileApi.downloadCallCount, 2);
+
+    firstDownload.complete(firstBytes);
+    await tester.pumpAndSettle();
+
+    final image = tester.widget<Image>(find.byType(Image));
+    final provider = image.image as MemoryImage;
+    expect(provider.bytes, orderedEquals(secondBytes));
   });
 }
 

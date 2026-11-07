@@ -21,7 +21,9 @@ void main() {
 
   Iterable<pw.Widget> pdfDescendants(pw.Widget widget) sync* {
     yield widget;
-    if (widget is pw.Container && widget.child != null) {
+    if (widget is pw.SizedBox && widget.child != null) {
+      yield* pdfDescendants(widget.child!);
+    } else if (widget is pw.Container && widget.child != null) {
       yield* pdfDescendants(widget.child!);
     } else if (widget is pw.SingleChildWidget && widget.child != null) {
       yield* pdfDescendants(widget.child!);
@@ -53,27 +55,18 @@ void main() {
   }
 
   group('Quotation Fit & Pagination Tests', () {
-    test(
-      'shared column geometry redistributes only the first three columns',
-      () {
-        expect(QuotationLayoutSpec.columnFlex, {
-          'sno': 8,
-          'photo': 13,
-          'product': 43,
-          'qty': 6,
-          'unitPrice': 10,
-          'discount': 8,
-          'amount': 12,
-        });
-        expect(
-          QuotationLayoutSpec.columnFlex['sno']! +
-              QuotationLayoutSpec.columnFlex['photo']! +
-              QuotationLayoutSpec.columnFlex['product']!,
-          64,
-        );
-        expect(QuotationLayoutSpec.productImageSize, 52);
-      },
-    );
+    test('shared column geometry defines the seven-column product table', () {
+      expect(QuotationLayoutSpec.columnFlex, {
+        'sno': 8,
+        'photo': 13,
+        'product': 43,
+        'qty': 6,
+        'unitPrice': 10,
+        'discount': 8,
+        'amount': 12,
+      });
+      expect(QuotationLayoutSpec.productImageSize, 48);
+    });
 
     testWidgets('Preview header and row use identical shared column geometry', (
       tester,
@@ -113,6 +106,51 @@ void main() {
 
       expect(directFlexes(headerRow), expectedFlexes);
       expect(directFlexes(productRow), expectedFlexes);
+      expect(productRow.crossAxisAlignment, CrossAxisAlignment.start);
+      expect(find.text('S No.'), findsOneWidget);
+      expect(find.text('Photo'), findsOneWidget);
+      expect(find.text('Product'), findsOneWidget);
+      expect(find.text('Qty'), findsOneWidget);
+      expect(find.text('Price'), findsOneWidget);
+      expect(find.text('Disc.'), findsOneWidget);
+      expect(find.text('Amount'), findsOneWidget);
+      expect(find.text('CONDITION'), findsNothing);
+
+      final unitPriceCell = productRow.children[4] as Expanded;
+      final unitPriceFit = (unitPriceCell.child as Padding).child as FittedBox;
+      final amountCell = productRow.children[6] as Expanded;
+      final amountFit = (amountCell.child as Padding).child as FittedBox;
+      final amountText = amountFit.child as Text;
+      expect(unitPriceFit.alignment, Alignment.center);
+      expect(amountFit.alignment, Alignment.center);
+      expect(amountText.style?.fontWeight, FontWeight.w600);
+    });
+
+    testWidgets('Preview displays the production discount column', (
+      tester,
+    ) async {
+      final item = createItem(idNum: 1, discount: 7.5);
+      final tableLayout = QuotationLayoutSpec.tableLayoutForItems([item]);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                QuotationProductTableHeader(tableLayout: tableLayout),
+                QuotationProductRow(
+                  index: 1,
+                  item: item,
+                  tableLayout: tableLayout,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Disc.'), findsOneWidget);
+      expect(find.text('7.5%'), findsOneWidget);
+      expect(find.text('92,500.00'), findsOneWidget);
     });
 
     test('PDF header and row use identical shared column geometry', () async {
@@ -127,13 +165,165 @@ void main() {
       ).whereType<pw.Expanded>().map((expanded) => expanded.flex).toList();
 
       const expectedFlexes = [8, 13, 43, 6, 10, 8, 12];
-      expect(flexes(pdfService.buildTableHeaderForTesting()), expectedFlexes);
-      expect(
-        flexes(pdfService.buildProductRowForTesting(1, item)),
-        expectedFlexes,
-      );
-      expect(QuotationLayoutSpec.productImageSize, 52);
+      final header = pdfService.buildTableHeaderForTesting();
+      final row = pdfService.buildProductRowForTesting(1, item);
+      final headerText = pdfDescendants(header)
+          .whereType<pw.Text>()
+          .map((text) => (text.text as pw.TextSpan).text)
+          .toList();
+      expect(flexes(header), expectedFlexes);
+      expect(flexes(row), expectedFlexes);
+      expect(headerText, [
+        'S No.',
+        'Photo',
+        'Product',
+        'Qty',
+        'Price',
+        'Disc.',
+        'Amount',
+      ]);
+      final pdfRow = (row as pw.Container).child! as pw.Row;
+      expect(pdfRow.crossAxisAlignment, pw.CrossAxisAlignment.start);
+      expect(QuotationLayoutSpec.productImageSize, 48);
     });
+
+    test(
+      'PDF displays Discount and retains the discounted line amount',
+      () async {
+        final item = createItem(idNum: 1, discount: 7.5);
+        final tableLayout = QuotationLayoutSpec.tableLayoutForItems([item]);
+        final pdfService = QuotationPdfService();
+        await pdfService.generatePdf(
+          QuotationDefaults.createEmptyDraft().copyWith(lineItems: [item]),
+        );
+
+        List<String> textValues(pw.Widget widget) => pdfDescendants(widget)
+            .whereType<pw.Text>()
+            .map((text) => (text.text as pw.TextSpan).text ?? '')
+            .toList();
+        final header = pdfService.buildTableHeaderForTesting(
+          tableLayout: tableLayout,
+        );
+        final row = pdfService.buildProductRowForTesting(
+          1,
+          item,
+          tableLayout: tableLayout,
+        );
+
+        expect(textValues(header), contains('Disc.'));
+        expect(textValues(row), contains('7.5%'));
+        expect(textValues(row), contains('92,500.00'));
+        expect(QuotationLayoutSpec.productImageSize, 48);
+      },
+    );
+
+    testWidgets('production columns remain fixed for mixed discounts', (
+      tester,
+    ) async {
+      final zeroDiscountItem = createItem(idNum: 1);
+      final discountedItem = createItem(idNum: 2, discount: 7.5);
+      final tableLayout = QuotationLayoutSpec.tableLayoutForItems([
+        zeroDiscountItem,
+        discountedItem,
+      ]);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                QuotationProductTableHeader(tableLayout: tableLayout),
+                QuotationProductRow(
+                  index: 1,
+                  item: zeroDiscountItem,
+                  tableLayout: tableLayout,
+                ),
+                QuotationProductRow(
+                  index: 2,
+                  item: discountedItem,
+                  tableLayout: tableLayout,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final allZeroLayout = QuotationLayoutSpec.tableLayoutForItems([
+        zeroDiscountItem,
+        zeroDiscountItem,
+      ]);
+      expect(tableLayout.hasColumn('discount'), isTrue);
+      expect(allZeroLayout.hasColumn('discount'), isTrue);
+
+      final fullLayout = QuotationLayoutSpec.tableLayoutForItems([
+        zeroDiscountItem.copyWith(
+          imagePath: 'sample.png',
+          condition: ProductCondition.newProduct,
+        ),
+        discountedItem.copyWith(
+          imagePath: 'sample.png',
+          condition: ProductCondition.newProduct,
+        ),
+      ]);
+      expect(fullLayout.hasColumn('photo'), isTrue);
+      expect(fullLayout.hasColumn('condition'), isFalse);
+      expect(fullLayout.hasColumn('discount'), isTrue);
+      expect(find.text('Disc.'), findsOneWidget);
+      expect(find.text('7.5%'), findsOneWidget);
+      expect(find.text('100,000.00'), findsNWidgets(3));
+      expect(find.text('92,500.00'), findsOneWidget);
+    });
+
+    test(
+      'PDF mixed discounts keep calculations and display the shared column',
+      () async {
+        final zeroDiscountItem = createItem(idNum: 1);
+        final discountedItem = createItem(idNum: 2, discount: 7.5);
+        final tableLayout = QuotationLayoutSpec.tableLayoutForItems([
+          zeroDiscountItem,
+          discountedItem,
+        ]);
+        final pdfService = QuotationPdfService();
+        await pdfService.generatePdf(
+          QuotationDefaults.createEmptyDraft().copyWith(
+            lineItems: [zeroDiscountItem, discountedItem],
+          ),
+        );
+
+        List<String> textValues(pw.Widget widget) => pdfDescendants(widget)
+            .whereType<pw.Text>()
+            .map((text) => (text.text as pw.TextSpan).text ?? '')
+            .toList();
+
+        expect(
+          textValues(
+            pdfService.buildTableHeaderForTesting(tableLayout: tableLayout),
+          ),
+          contains('Disc.'),
+        );
+        expect(
+          textValues(
+            pdfService.buildProductRowForTesting(
+              1,
+              zeroDiscountItem,
+              tableLayout: tableLayout,
+            ),
+          ),
+          contains('100,000.00'),
+        );
+        expect(
+          textValues(
+            pdfService.buildProductRowForTesting(
+              2,
+              discountedItem,
+              tableLayout: tableLayout,
+            ),
+          ),
+          allOf(contains('92,500.00'), contains('7.5%')),
+        );
+      },
+    );
 
     test(
       '1. 100,000.00 numeric amount fits on one line without wrapping or truncation',
@@ -153,7 +343,7 @@ void main() {
       },
     );
 
-    test('2. 5+ products remain on page 1 when space allows', () {
+    test('2. Production photo columns paginate six products safely', () {
       final lineItems = List.generate(
         6,
         (index) => createItem(idNum: index + 1, unitPrice: 10000.0),
@@ -167,8 +357,14 @@ void main() {
           .whereType<QuotationProductsPageModel>()
           .toList();
 
-      // Page 1 should contain all 6 items and NOT be artificially forced to split at item 5
-      expect(productPages.first.items.length, 6);
+      expect(productPages.first.items, hasLength(5));
+      expect(productPages.first.hasTotals, isFalse);
+      expect(productPages.last.items, hasLength(1));
+      expect(productPages.last.hasTotals, isTrue);
+      expect(
+        productPages.expand((page) => page.items),
+        orderedEquals(lineItems),
+      );
     });
 
     test('3. Only overflow items move to page 2', () {
@@ -288,8 +484,14 @@ void main() {
           ),
         );
 
-        final descriptionText = tester.widget<Text>(find.text(description));
-        expect(descriptionText.data, description);
+        final compactDescription =
+            QuotationDocumentFormatters.formatCompactSpecification(
+              description,
+            )!;
+        final descriptionText = tester.widget<Text>(
+          find.text(compactDescription),
+        );
+        expect(descriptionText.data, compactDescription);
         expect(descriptionText.maxLines, isNull);
         expect(descriptionText.overflow, TextOverflow.visible);
         expect(tester.takeException(), isNull);
@@ -315,13 +517,14 @@ void main() {
           ),
         );
 
-        final metadata = tester.widget<Text>(
-          find.text('CODE: FXR01W | BRAND: FLOORX'),
-        );
+        final metadata = tester.widget<Text>(find.text('FXR01W • FLOORX'));
+        final name = tester.widget<Text>(find.text('Floor tile'));
         final description = tester.widget<Text>(
           find.text('Existing description'),
         );
 
+        expect(name.style?.fontWeight, FontWeight.w600);
+        expect(name.textAlign, isNull);
         expect(metadata.style?.fontSize, description.style?.fontSize);
         expect(
           metadata.style?.fontSize,
@@ -332,44 +535,42 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Preview shows uppercase Condition between metadata and description at 8pt',
-      (tester) async {
-        final item = createItem(
-          idNum: 1,
-          condition: ProductCondition.used,
-          description: 'Existing description',
-        );
+    testWidgets('Preview keeps Condition inside the Product cell at 8pt', (
+      tester,
+    ) async {
+      final item = createItem(
+        idNum: 1,
+        condition: ProductCondition.used,
+        description: 'Existing description',
+      );
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: QuotationProductRow(index: 1, item: item)),
-          ),
-        );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: QuotationProductRow(index: 1, item: item)),
+        ),
+      );
 
-        final metadataFinder = find.text('CODE: — | BRAND: EAGLEBRAND');
-        final conditionFinder = find.text('CONDITION: USED');
-        final descriptionFinder = find.text('Existing description');
-        final condition = tester.widget<Text>(conditionFinder);
-        final description = tester.widget<Text>(descriptionFinder);
+      final conditionFinder = find.text('CONDITION: USED');
+      final descriptionFinder = find.text('Existing description');
+      final condition = tester.widget<Text>(conditionFinder);
+      final description = tester.widget<Text>(descriptionFinder);
+      final productRow = tester.widget<Row>(
+        find.descendant(
+          of: find.byType(QuotationProductRow),
+          matching: find.byType(Row),
+        ),
+      );
 
-        expect(
-          condition.style?.fontSize,
-          QuotationLayoutSpec.productDetailFontSize,
-        );
-        expect(condition.style?.fontSize, description.style?.fontSize);
-        expect(
-          tester.getTopLeft(metadataFinder).dy,
-          lessThan(tester.getTopLeft(conditionFinder).dy),
-        );
-        expect(
-          tester.getTopLeft(conditionFinder).dy,
-          lessThan(tester.getTopLeft(descriptionFinder).dy),
-        );
-      },
-    );
+      expect(
+        condition.style?.fontSize,
+        QuotationLayoutSpec.productDetailFontSize,
+      );
+      expect(condition.style?.fontSize, description.style?.fontSize);
+      expect(condition.textAlign, isNull);
+      expect(productRow.crossAxisAlignment, CrossAxisAlignment.start);
+    });
 
-    testWidgets('Preview hides the Condition line when the snapshot is null', (
+    testWidgets('Preview omits Condition when the product has none', (
       tester,
     ) async {
       final item = createItem(idNum: 1, description: 'Existing description');
@@ -399,14 +600,17 @@ void main() {
         ),
       );
 
-      final descriptionText = tester.widget<Text>(find.text(description));
+      final compactDescription =
+          QuotationDocumentFormatters.formatCompactSpecification(description)!;
+      final descriptionText = tester.widget<Text>(
+        find.text(compactDescription),
+      );
       expect(descriptionText.maxLines, isNull);
       expect(descriptionText.overflow, TextOverflow.visible);
-      expect(tester.getSize(find.text(description)).height, greaterThan(40));
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Preview uses a centered 52px contained product image', (
+    testWidgets('Preview uses a centered 48px contained product image', (
       tester,
     ) async {
       const description = 'Line 1\nLine 2\nLine 3';
@@ -425,9 +629,9 @@ void main() {
       final productImage = tester.widget<ProductImage>(
         find.byType(ProductImage),
       );
-      expect(QuotationLayoutSpec.productImageSize, 52);
-      expect(productImage.width, 52);
-      expect(productImage.height, 52);
+      expect(QuotationLayoutSpec.productImageSize, 48);
+      expect(productImage.width, 48);
+      expect(productImage.height, 48);
       expect(productImage.fit, BoxFit.contain);
       expect(
         find.ancestor(
@@ -437,7 +641,11 @@ void main() {
         findsWidgets,
       );
 
-      final descriptionText = tester.widget<Text>(find.text(description));
+      final compactDescription =
+          QuotationDocumentFormatters.formatCompactSpecification(description)!;
+      final descriptionText = tester.widget<Text>(
+        find.text(compactDescription),
+      );
       expect(descriptionText.maxLines, isNull);
       expect(descriptionText.overflow, TextOverflow.visible);
       expect(tester.takeException(), isNull);
@@ -460,14 +668,16 @@ void main() {
 
       final pdfBytes = await pdfService.generatePdf(quotation);
       final row = pdfService.buildProductRowForTesting(1, item);
+      final compactDescription =
+          QuotationDocumentFormatters.formatCompactSpecification(description)!;
       final descriptionText = pdfDescendants(row)
           .whereType<pw.Text>()
           .singleWhere(
-            (text) => (text.text as pw.TextSpan).text == description,
+            (text) => (text.text as pw.TextSpan).text == compactDescription,
           );
 
       expect(pdfBytes, isNotEmpty);
-      expect((descriptionText.text as pw.TextSpan).text, description);
+      expect((descriptionText.text as pw.TextSpan).text, compactDescription);
       expect(descriptionText.maxLines, isNull);
       expect(descriptionText.overflow, pw.TextOverflow.visible);
     });
@@ -493,7 +703,7 @@ void main() {
         final metadata = texts.singleWhere(
           (text) =>
               (text.text as pw.TextSpan).text ==
-              QuotationDocumentFormatters.formatProductMetadata(
+              QuotationDocumentFormatters.formatCompactProductMetadata(
                 item.productCode,
                 item.brand,
               ),
@@ -502,10 +712,7 @@ void main() {
           (text) => (text.text as pw.TextSpan).text == item.description,
         );
 
-        expect(
-          (metadata.text as pw.TextSpan).text,
-          'CODE: FXR01W | BRAND: FLOORX',
-        );
+        expect((metadata.text as pw.TextSpan).text, 'FXR01W • FLOORX');
         expect(
           (metadata.text as pw.TextSpan).style?.fontSize,
           (description.text as pw.TextSpan).style?.fontSize,
@@ -519,51 +726,38 @@ void main() {
       },
     );
 
-    test(
-      'PDF shows uppercase Condition between metadata and description at 8pt',
-      () async {
-        final item = createItem(
-          idNum: 1,
-          condition: ProductCondition.used,
-          description: 'Existing description',
-        );
-        final pdfService = QuotationPdfService();
-        await pdfService.generatePdf(
-          QuotationDefaults.createEmptyDraft().copyWith(lineItems: [item]),
-        );
-        final texts = pdfDescendants(
-          pdfService.buildProductRowForTesting(1, item),
-        ).whereType<pw.Text>().toList();
-        final values = texts
-            .map((text) => (text.text as pw.TextSpan).text)
-            .toList();
-        final condition = texts.singleWhere(
-          (text) => (text.text as pw.TextSpan).text == 'CONDITION: USED',
-        );
-        final description = texts.singleWhere(
-          (text) => (text.text as pw.TextSpan).text == 'Existing description',
-        );
+    test('PDF keeps Condition inside the Product cell at 8pt', () async {
+      final item = createItem(
+        idNum: 1,
+        condition: ProductCondition.used,
+        description: 'Existing description',
+      );
+      final pdfService = QuotationPdfService();
+      await pdfService.generatePdf(
+        QuotationDefaults.createEmptyDraft().copyWith(lineItems: [item]),
+      );
+      final texts = pdfDescendants(
+        pdfService.buildProductRowForTesting(1, item),
+      ).whereType<pw.Text>().toList();
+      final condition = texts.singleWhere(
+        (text) => (text.text as pw.TextSpan).text == 'CONDITION: USED',
+      );
+      final description = texts.singleWhere(
+        (text) => (text.text as pw.TextSpan).text == 'Existing description',
+      );
 
-        expect(
-          (condition.text as pw.TextSpan).style?.fontSize,
-          QuotationLayoutSpec.productDetailFontSize,
-        );
-        expect(
-          (condition.text as pw.TextSpan).style?.fontSize,
-          (description.text as pw.TextSpan).style?.fontSize,
-        );
-        expect(
-          values.indexOf('CODE: — | BRAND: EAGLEBRAND'),
-          lessThan(values.indexOf('CONDITION: USED')),
-        );
-        expect(
-          values.indexOf('CONDITION: USED'),
-          lessThan(values.indexOf('Existing description')),
-        );
-      },
-    );
+      expect(
+        (condition.text as pw.TextSpan).style?.fontSize,
+        QuotationLayoutSpec.productDetailFontSize,
+      );
+      expect(
+        (condition.text as pw.TextSpan).style?.fontSize,
+        (description.text as pw.TextSpan).style?.fontSize,
+      );
+      expect(condition.textAlign, isNull);
+    });
 
-    test('PDF hides the Condition line when the snapshot is null', () async {
+    test('PDF omits Condition when the product has none', () async {
       final item = createItem(idNum: 1, description: 'Existing description');
       final pdfService = QuotationPdfService();
       await pdfService.generatePdf(
@@ -573,13 +767,10 @@ void main() {
         pdfService.buildProductRowForTesting(1, item),
       ).whereType<pw.Text>().map((text) => (text.text as pw.TextSpan).text);
 
-      expect(
-        values.where((value) => value?.startsWith('CONDITION:') ?? false),
-        isEmpty,
-      );
+      expect(values.whereType<String>(), isNot(contains('CONDITION: —')));
     });
 
-    test('PDF uses the matching 52pt contained product image', () async {
+    test('PDF uses the matching 48pt contained product image', () async {
       const description = 'Line 1\nLine 2\nLine 3';
       final item = createItem(idNum: 1, description: description).copyWith(
         imageBytes: base64Decode(
@@ -592,14 +783,16 @@ void main() {
       );
       final row = pdfService.buildProductRowForTesting(1, item);
       final image = pdfDescendants(row).whereType<pw.Image>().single;
+      final compactDescription =
+          QuotationDocumentFormatters.formatCompactSpecification(description)!;
       final descriptionText = pdfDescendants(row)
           .whereType<pw.Text>()
           .singleWhere(
-            (text) => (text.text as pw.TextSpan).text == description,
+            (text) => (text.text as pw.TextSpan).text == compactDescription,
           );
 
-      expect(image.width, 52);
-      expect(image.height, 52);
+      expect(image.width, 48);
+      expect(image.height, 48);
       expect(image.fit, pw.BoxFit.contain);
       expect(descriptionText.maxLines, isNull);
       expect(descriptionText.overflow, pw.TextOverflow.visible);
@@ -608,7 +801,12 @@ void main() {
     test('Paginator accounts for expanded multiline product rows', () {
       const shortDescription = 'Line 1\nLine 2';
       const longDescription =
-          'Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8';
+          'Commercial heavy-duty structural steel frame with electrostatic powder coating\n'
+          'Dual 100 kg precision-machined steel weight stacks with sound dampening\n'
+          'Ergonomic multi-position adjustable contoured upholstery with high-density foam\n'
+          'Precision sealed aircraft-grade pulleys and nylon-coated military cables\n'
+          'Integrated chin-up bar, foot rests, and instructional exercise chart\n'
+          'Warranty: 10 years structural frame, 3 years bearings and moving parts';
       final shortQuotation = QuotationDefaults.createEmptyDraft().copyWith(
         lineItems: List.generate(
           20,
@@ -630,12 +828,15 @@ void main() {
       ).whereType<QuotationProductsPageModel>().toList();
 
       expect(longPages.length, greaterThan(shortPages.length));
-      expect(longPages.every((page) => page.items.isNotEmpty), isTrue);
+      expect(
+        longPages.first.items.length,
+        lessThan(shortPages.first.items.length),
+      );
       expect(longPages.expand((page) => page.items), hasLength(20));
     });
 
     test(
-      'Paginator counts the optional Condition line without losing items',
+      'Paginator measures inline Condition details without losing items',
       () {
         const description = 'One description line';
         final legacyQuotation = QuotationDefaults.createEmptyDraft().copyWith(
@@ -671,6 +872,95 @@ void main() {
         );
       },
     );
+
+    test('compact pagination fits eight short products on page 1', () {
+      final items = List.generate(
+        16,
+        (index) => QuotationLineItem(
+          id: 'SHORT-${index + 1}',
+          name: 'Bench ${index + 1}',
+          brand: 'Eagle',
+          unitPrice: 1250,
+          quantity: 1,
+        ),
+      );
+      final quotation = QuotationDefaults.createEmptyDraft().copyWith(
+        lineItems: items,
+      );
+      final productPages = QuotationPaginator.paginate(
+        quotation,
+        salespersonName: 'Shijo',
+      ).whereType<QuotationProductsPageModel>().toList();
+
+      expect(productPages.first.items, hasLength(8));
+      expect(productPages.expand((page) => page.items), orderedEquals(items));
+    });
+
+    test('normal specifications fit at least eight products on page 1', () {
+      final items = List.generate(
+        18,
+        (index) => QuotationLineItem(
+          id: 'NORMAL-${index + 1}',
+          name: 'Treadmill ${index + 1}',
+          brand: 'Eagle',
+          unitPrice: 7250,
+          quantity: 1,
+          description: 'Motor 7 HP AC\nMaximum user weight 180 kg',
+        ),
+      );
+      final quotation = QuotationDefaults.createEmptyDraft().copyWith(
+        lineItems: items,
+      );
+      final productPages = QuotationPaginator.paginate(
+        quotation,
+        salespersonName: 'Shijo',
+      ).whereType<QuotationProductsPageModel>().toList();
+      final nonEmptyPages = productPages
+          .where((page) => page.items.isNotEmpty)
+          .toList();
+
+      expect(nonEmptyPages.map((page) => page.items.length), [8, 10]);
+      expect(nonEmptyPages.last.hasTotals, isTrue);
+      expect(productPages.expand((page) => page.items), orderedEquals(items));
+    });
+
+    test('long specifications reduce capacity without losing items', () {
+      final items = List.generate(
+        12,
+        (index) => QuotationLineItem(
+          id: 'LONG-${index + 1}',
+          name: 'Strength station ${index + 1}',
+          brand: 'Eagle',
+          unitPrice: 9850,
+          quantity: 1,
+          discount: index == 0 ? 5 : 0,
+          description:
+              'Frame: commercial-grade steel\n'
+              'Stack: 100 kg precision plates\n'
+              'Upholstery: high-density foam\n'
+              'Warranty: 5 years structural',
+        ),
+      );
+      final quotation = QuotationDefaults.createEmptyDraft().copyWith(
+        lineItems: items,
+      );
+      final productPages = QuotationPaginator.paginate(
+        quotation,
+        salespersonName: 'Shijo',
+      ).whereType<QuotationProductsPageModel>().toList();
+
+      expect(productPages.first.items.length, lessThan(8));
+      expect(productPages.every((page) => page.items.isNotEmpty), isTrue);
+      expect(productPages.last.hasTotals, isTrue);
+      expect(productPages.expand((page) => page.items), orderedEquals(items));
+      expect(
+        productPages
+            .expand((page) => page.items)
+            .map((item) => item.id)
+            .toSet(),
+        hasLength(items.length),
+      );
+    });
 
     test(
       '7. QuotationPdfService generates PDF successfully with numeric fit and dynamic pagination',

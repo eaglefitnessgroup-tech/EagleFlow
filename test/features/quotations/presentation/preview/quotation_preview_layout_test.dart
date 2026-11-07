@@ -154,64 +154,62 @@ void main() {
       expect(productPages.first.hasTotals, isTrue);
     });
 
-    testWidgets(
-      '5 products paginate safely with a dedicated totals page',
-      (WidgetTester tester) async {
-        final List<QuotationLineItem> items = List.generate(
-          5,
-          (i) => QuotationLineItem(
-            id: 'id_$i',
-            productId: 'p_$i',
-            name: 'Item $i',
-            brand: 'Generic',
-            quantity: 1,
-            unitPrice: 100,
-          ),
-        );
-        final quotation = filledQuotation.copyWith(lineItems: items);
-        final pages = QuotationPaginator.paginate(quotation);
+    testWidgets('5 compact products and totals fit on Page 1', (
+      WidgetTester tester,
+    ) async {
+      final List<QuotationLineItem> items = List.generate(
+        5,
+        (i) => QuotationLineItem(
+          id: 'id_$i',
+          productId: 'p_$i',
+          name: 'Item $i',
+          brand: 'Generic',
+          quantity: 1,
+          unitPrice: 100,
+        ),
+      );
+      final quotation = filledQuotation.copyWith(lineItems: items);
+      final pages = QuotationPaginator.paginate(quotation);
 
-        final productPages = pages
-            .whereType<QuotationProductsPageModel>()
-            .toList();
-        expect(productPages.length, 2);
-        expect(productPages.first.items, hasLength(5));
-        expect(productPages.first.hasTotals, isFalse);
-        expect(productPages.last.items, isEmpty);
-        expect(productPages.last.hasTotals, isTrue);
-      },
-    );
+      final productPages = pages
+          .whereType<QuotationProductsPageModel>()
+          .toList();
+      expect(productPages.length, 1);
+      expect(productPages.first.items, hasLength(5));
+      expect(productPages.first.hasTotals, isTrue);
+    });
 
-    testWidgets(
-      '6 products paginate safely with the larger product image',
-      (WidgetTester tester) async {
-        final List<QuotationLineItem> items = List.generate(
-          6,
-          (i) => QuotationLineItem(
-            id: 'id_$i',
-            productId: 'p_$i',
-            name: 'Item $i',
-            brand: 'Generic',
-            quantity: 1,
-            unitPrice: 100,
-          ),
-        );
-        final quotation = filledQuotation.copyWith(lineItems: items);
-        final pages = QuotationPaginator.paginate(quotation);
+    testWidgets('6 products keep the final row with totals on page 2', (
+      WidgetTester tester,
+    ) async {
+      final List<QuotationLineItem> items = List.generate(
+        6,
+        (i) => QuotationLineItem(
+          id: 'id_$i',
+          productId: 'p_$i',
+          imageId: 'img_$i',
+          name: 'Item $i',
+          brand: 'Generic',
+          quantity: 1,
+          unitPrice: 100,
+        ),
+      );
+      final quotation = filledQuotation.copyWith(lineItems: items);
+      final pages = QuotationPaginator.paginate(quotation);
 
-        final productPages = pages
-            .whereType<QuotationProductsPageModel>()
-            .toList();
-        expect(productPages.length, 2);
-        expect(productPages.first.items, hasLength(6));
-        expect(productPages.first.hasTotals, isFalse);
-        expect(productPages.last.items, isEmpty);
-        expect(productPages.last.hasTotals, isTrue);
-      },
-    );
+      final productPages = pages
+          .whereType<QuotationProductsPageModel>()
+          .toList();
+      expect(productPages.length, 2);
+      expect(productPages.first.items, hasLength(5));
+      expect(productPages.first.hasTotals, isFalse);
+      expect(productPages.last.items, hasLength(1));
+      expect(productPages.last.hasTotals, isTrue);
+      expect(productPages.expand((page) => page.items), orderedEquals(items));
+    });
 
     testWidgets(
-      '9 products: Page 1 contains 6 products, Page 2 contains 3 + totals',
+      '9 compact products: Page 1 contains 8, Page 2 contains 1 + totals',
       (WidgetTester tester) async {
         final List<QuotationLineItem> items = List.generate(
           9,
@@ -231,9 +229,9 @@ void main() {
             .whereType<QuotationProductsPageModel>()
             .toList();
         expect(productPages.length, 2);
-        expect(productPages[0].items.length, 6);
+        expect(productPages[0].items.length, 8);
         expect(productPages[0].hasTotals, isFalse);
-        expect(productPages[1].items.length, 3);
+        expect(productPages[1].items.length, 1);
         expect(productPages[1].hasTotals, isTrue);
       },
     );
@@ -260,9 +258,12 @@ void main() {
       final productPages = pages
           .whereType<QuotationProductsPageModel>()
           .toList();
-      expect(productPages.length, 1);
-      expect(productPages.first.items.length, 3);
-      expect(productPages.first.hasTotals, isTrue);
+      expect(productPages, hasLength(2));
+      expect(productPages.first.items, hasLength(2));
+      expect(productPages.first.hasTotals, isFalse);
+      expect(productPages.last.items, hasLength(1));
+      expect(productPages.last.hasTotals, isTrue);
+      expect(productPages.expand((page) => page.items), orderedEquals(items));
     });
 
     testWidgets('12 products produce predictable pagination', (

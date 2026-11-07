@@ -110,7 +110,10 @@ class ServiceLocator {
       ReservationCompletionService();
 
   late final StockOutByQuotationService stockOutByQuotationService =
-      StockOutByQuotationService(quotationRepository: quotationRepository);
+      StockOutByQuotationService(
+        quotationRepository: quotationRepository,
+        supabaseService: supabaseService,
+      );
 
   @visibleForTesting
   SupabaseService? mockSupabaseService;

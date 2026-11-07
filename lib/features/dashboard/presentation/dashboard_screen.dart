@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/widgets/eagle_bottom_nav.dart';
+import '../../../core/config/app_features.dart';
 import '../../../core/di/service_locator.dart';
 import '../../quotations/domain/quotation.dart';
 import '../../quotations/domain/quotation_status.dart';
@@ -276,7 +277,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             route: AppRoutes.areaEstimator,
             isSelected: false,
           ),
-          if (ServiceLocator().authController.canManageStock)
+          if (AppFeatures.inventoryEnabled &&
+              ServiceLocator().authController.canManageStock)
             _buildSidebarItem(
               context,
               icon: Icons.admin_panel_settings_outlined,
@@ -868,24 +870,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: () =>
             Navigator.of(context).pushNamed(AppRoutes.previousQuotations),
       ),
-      _buildActionCard(
-        title: 'Stock',
-        icon: Icons.warehouse_outlined,
-        onTap: () => showDialog<void>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Stock'),
-            content: const Text('Stock module coming soon.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('OK'),
-              ),
-            ],
+      if (AppFeatures.inventoryEnabled)
+        _buildActionCard(
+          title: 'Stock',
+          icon: Icons.warehouse_outlined,
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Stock'),
+              content: const Text('Stock module coming soon.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      if (ServiceLocator().authController.canManageStock)
+      if (AppFeatures.inventoryEnabled &&
+          ServiceLocator().authController.canManageStock)
         _buildActionCard(
           title: 'Stock Management',
           icon: Icons.admin_panel_settings_outlined,

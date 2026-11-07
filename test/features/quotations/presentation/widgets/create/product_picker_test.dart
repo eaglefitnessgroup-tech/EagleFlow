@@ -542,7 +542,14 @@ void main() {
         );
         await tester.tap(find.byKey(const Key('product-picker-category-more')));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Yoga'));
+        await tester.tap(
+          find.ancestor(
+            of: find.text('Yoga'),
+            matching: find.byWidgetPredicate(
+              (widget) => widget is PopupMenuItem,
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
 
         expect(find.text('Yoga Mat'), findsOneWidget);

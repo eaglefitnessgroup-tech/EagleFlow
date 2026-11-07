@@ -136,7 +136,7 @@ void main() {
   });
 
   group('Product Details Permissions', () {
-    testWidgets('Admin sees Edit Product and Stock Actions', (
+    testWidgets('Admin sees Edit Product without inactive Stock Actions', (
       WidgetTester tester,
     ) async {
       await tester.runAsync(() async {
@@ -161,9 +161,9 @@ void main() {
       await tester.pumpWidget(buildProductDetailsScreen());
       await tester.pumpAndSettle(); // For async stock fetch
 
-      // Stock Actions in details
-      expect(find.text('Stock In'), findsOneWidget);
-      expect(find.text('Stock Out'), findsOneWidget);
+      expect(find.text('Stock In'), findsNothing);
+      expect(find.text('Stock Out'), findsNothing);
+      expect(find.text('Live Stock'), findsNothing);
     });
 
     testWidgets('Salesperson does not see Edit Product or Stock Actions', (

@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/app_features.dart';
 import '../di/service_locator.dart';
 import '../../features/products/data/supabase_product_repository.dart';
 import '../../features/stock/data/supabase_stock_repository.dart';
 import '../../features/quotations/data/supabase_quotation_repository.dart';
 import '../../features/reservations/data/supabase_reservation_repository.dart';
+
 class SyncCoordinator {
   final SupabaseClient? client;
 
@@ -56,8 +58,6 @@ class SyncCoordinator {
     }
   }
 
-
-
   void _setupRealtime() {
     if (_subscription != null) {
       client?.removeChannel(_subscription!);
@@ -73,16 +73,26 @@ class SyncCoordinator {
             final table = payload.table;
             if (table == 'products') {
               final repo = ServiceLocator().productRepository;
-              if (repo is SupabaseProductRepository) await repo.handleRealtimeEvent(payload);
-            } else if (table == 'stock_movements') {
+              if (repo is SupabaseProductRepository) {
+                await repo.handleRealtimeEvent(payload);
+              }
+            } else if (AppFeatures.inventoryEnabled &&
+                table == 'stock_movements') {
               final repo = ServiceLocator().stockRepository;
-              if (repo is SupabaseStockRepository) await repo.handleRealtimeEvent(payload);
+              if (repo is SupabaseStockRepository) {
+                await repo.handleRealtimeEvent(payload);
+              }
             } else if (table == 'quotations' || table == 'quotation_items') {
               final repo = ServiceLocator().quotationRepository;
-              if (repo is SupabaseQuotationRepository) await repo.handleRealtimeEvent(payload);
-            } else if (table == 'reservations') {
+              if (repo is SupabaseQuotationRepository) {
+                await repo.handleRealtimeEvent(payload);
+              }
+            } else if (AppFeatures.inventoryEnabled &&
+                table == 'reservations') {
               final repo = ServiceLocator().reservationRepository;
-              if (repo is SupabaseReservationRepository) await repo.handleRealtimeEvent(payload);
+              if (repo is SupabaseReservationRepository) {
+                await repo.handleRealtimeEvent(payload);
+              }
             }
           },
         )
@@ -98,5 +108,4 @@ class SyncCoordinator {
     }
     _isStarted = false;
   }
-
 }

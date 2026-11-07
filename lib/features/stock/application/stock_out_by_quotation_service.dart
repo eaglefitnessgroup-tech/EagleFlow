@@ -1,11 +1,17 @@
+import 'package:flutter/foundation.dart';
 import 'package:sembast/sembast.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../../core/database/database_service.dart';
-import '../../quotations/domain/quotation.dart';
-import '../../quotations/data/quotation_repository.dart';
-import '../domain/stock_movement.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/supabase/supabase_service.dart';
+import '../../quotations/data/quotation_repository.dart';
+import '../../quotations/domain/quotation.dart';
+import '../domain/stock_movement.dart';
+
+typedef StockOutByQuotationRemoteProcessor =
+    Future<Object?> Function(String quotationNumber);
 
 class StockOutByQuotationResult {
   final bool success;
@@ -23,15 +29,23 @@ class StockOutByQuotationResult {
 
 class StockOutByQuotationService {
   final QuotationRepository quotationRepository;
+  final SupabaseService _supabase;
+  final StockOutByQuotationRemoteProcessor? _remoteProcessor;
   final StoreRef<String, Map<String, dynamic>> _movementsStore =
       stringMapStoreFactory.store('stock_movements_store');
   final StoreRef<String, Map<String, dynamic>> _productsStore =
       stringMapStoreFactory.store('products');
   final StoreRef<String, Map<String, dynamic>> _quotationsStore =
       stringMapStoreFactory.store('quotations');
+  final StoreRef<String, Map<String, dynamic>> _reservationsStore =
+      stringMapStoreFactory.store('reservations');
   final Uuid _uuid = const Uuid();
 
-  StockOutByQuotationService({required this.quotationRepository});
+  StockOutByQuotationService({
+    required this.quotationRepository,
+    SupabaseService? supabaseService,
+    @visibleForTesting this._remoteProcessor,
+  }) : _supabase = supabaseService ?? SupabaseService();
 
   Future<StockOutByQuotationResult> processStockOut(
     String quotationNumber,
@@ -44,14 +58,13 @@ class StockOutByQuotationService {
       );
     }
 
-    if (SupabaseService().isInitialized && !SupabaseService().isConnected) {
+    if (_supabase.isInitialized && !_supabase.isConnected) {
       return StockOutByQuotationResult(
         success: false,
         message: 'Cannot process stock out while offline.',
       );
     }
 
-    // 1. Load quotation
     final quotation = await quotationRepository.getQuotationByNumber(
       cleanNumber,
     );
@@ -70,7 +83,6 @@ class StockOutByQuotationService {
       );
     }
 
-    // 2. Identify eligible items
     final eligibleItems = quotation.lineItems
         .where(
           (item) =>
@@ -89,13 +101,154 @@ class StockOutByQuotationService {
       );
     }
 
+    if (_remoteProcessor != null || _supabase.client != null) {
+      return _processRemotely(cleanNumber, quotation);
+    }
+
+    return _processLocally(cleanNumber, quotation);
+  }
+
+  Future<StockOutByQuotationResult> _processRemotely(
+    String quotationNumber,
+    Quotation quotation,
+  ) async {
+    try {
+      final rawResponse = _remoteProcessor != null
+          ? await _remoteProcessor(quotationNumber)
+          : await _supabase.client!.rpc(
+              'process_quotation_stock_out',
+              params: {'p_quotation_number': quotationNumber},
+            );
+
+      if (rawResponse is! Map) {
+        throw Exception('Stock-out RPC returned an invalid response.');
+      }
+      final response = Map<String, dynamic>.from(rawResponse);
+      if (response['error'] != null) {
+        throw Exception(response['error']);
+      }
+      if (response['success'] != true) {
+        throw Exception('Stock-out RPC did not confirm success.');
+      }
+
+      final processedAt = _parseDateTime(response['processed_at']);
+      final updatedQuotation = quotation.copyWith(
+        isStockOutProcessed: true,
+        modifiedDate: processedAt ?? DateTime.now(),
+      );
+
+      try {
+        await _applyRemoteResultToLocalCache(
+          updatedQuotation,
+          response['movements'],
+        );
+      } catch (error) {
+        // The server transaction is authoritative. A realtime/sync refresh can
+        // repair a local cache failure without risking a duplicate deduction.
+        debugPrint('Stock-out local cache refresh failed: $error');
+      }
+
+      if (response['already_processed'] == true) {
+        return StockOutByQuotationResult(
+          success: false,
+          message: 'This quotation has already been processed for stock out.',
+          quotation: updatedQuotation,
+        );
+      }
+
+      final deductedCount = (response['deducted_count'] as num?)?.toInt() ?? 0;
+      return StockOutByQuotationResult(
+        success: true,
+        message: 'Successfully processed $deductedCount items for stock out.',
+        quotation: updatedQuotation,
+        deductedCount: deductedCount,
+      );
+    } catch (error) {
+      return StockOutByQuotationResult(
+        success: false,
+        message: _remoteFailureMessage(error),
+        quotation: quotation,
+      );
+    }
+  }
+
+  Future<void> _applyRemoteResultToLocalCache(
+    Quotation updatedQuotation,
+    Object? rawMovements,
+  ) async {
+    final movements = <StockMovement>[];
+    if (rawMovements is List) {
+      for (final rawMovement in rawMovements) {
+        if (rawMovement is! Map) continue;
+        final movement = Map<String, dynamic>.from(rawMovement);
+        movements.add(
+          StockMovement(
+            id: movement['id'].toString(),
+            productId: movement['product_id'].toString(),
+            type: StockMovementType.stockOut,
+            quantity: (movement['quantity'] as num).toInt(),
+            reference: movement['reference'].toString(),
+            movementDate:
+                _parseDateTime(movement['movement_date']) ?? DateTime.now(),
+            createdAt: _parseDateTime(movement['created_at']) ?? DateTime.now(),
+            createdBy: movement['created_by']?.toString() ?? 'Admin',
+          ),
+        );
+      }
+    }
+
+    final productIds = updatedQuotation.lineItems
+        .where(
+          (item) =>
+              !item.isCustom &&
+              item.productId != null &&
+              item.productId!.trim().isNotEmpty &&
+              item.quantity > 0,
+        )
+        .map((item) => item.productId!)
+        .toSet();
+
+    final db = await DatabaseService().database;
+    await db.transaction((txn) async {
+      for (final movement in movements) {
+        await _movementsStore.record(movement.id).put(txn, movement.toJson());
+      }
+
+      await _quotationsStore
+          .record(updatedQuotation.id)
+          .put(txn, updatedQuotation.toJson());
+
+      final activeReservations = await _reservationsStore.find(
+        txn,
+        finder: Finder(filter: Filter.equals('status', 'ACTIVE')),
+      );
+      for (final record in activeReservations) {
+        if (!productIds.contains(record.value['productId'])) continue;
+        final updated = Map<String, dynamic>.from(record.value)
+          ..['status'] = 'COMPLETED'
+          ..['updatedAt'] = updatedQuotation.modifiedDate.toIso8601String();
+        await _reservationsStore.record(record.key).put(txn, updated);
+      }
+    });
+  }
+
+  Future<StockOutByQuotationResult> _processLocally(
+    String quotationNumber,
+    Quotation quotation,
+  ) async {
+    final eligibleItems = quotation.lineItems
+        .where(
+          (item) =>
+              !item.isCustom &&
+              item.productId != null &&
+              item.productId!.trim().isNotEmpty &&
+              item.quantity > 0,
+        )
+        .toList();
     final db = await DatabaseService().database;
 
     try {
-      List<StockMovement> savedMovements = [];
-
       final updatedQuotation = await db.transaction((txn) async {
-        // Re-verify quotation state inside transaction
         final qtRecord = await _quotationsStore.record(quotation.id).get(txn);
         if (qtRecord == null) {
           throw Exception('Quotation not found during transaction.');
@@ -107,10 +260,8 @@ class StockOutByQuotationService {
 
         final movementsToSave = <StockMovement>[];
 
-        // 4. Validate stock for all eligible items before any write
-        for (var item in eligibleItems) {
+        for (final item in eligibleItems) {
           final productId = item.productId!;
-
           final productRecord = await _productsStore.record(productId).get(txn);
           if (productRecord == null) {
             throw Exception('Product "${item.name}" not found in database.');
@@ -123,13 +274,13 @@ class StockOutByQuotationService {
             finder: finder,
           );
 
-          int currentStock = openingStock;
-          for (var record in existingMovements) {
-            final m = StockMovement.fromJson(record.value);
-            if (m.type == StockMovementType.stockIn) {
-              currentStock += m.quantity;
+          var currentStock = openingStock;
+          for (final record in existingMovements) {
+            final movement = StockMovement.fromJson(record.value);
+            if (movement.type == StockMovementType.stockIn) {
+              currentStock += movement.quantity;
             } else {
-              currentStock -= m.quantity;
+              currentStock -= movement.quantity;
             }
           }
 
@@ -139,26 +290,26 @@ class StockOutByQuotationService {
             );
           }
 
-          // Create the movement
-          final movement = StockMovement(
-            id: _uuid.v4(),
-            productId: productId,
-            type: StockMovementType.stockOut,
-            quantity: item.quantity,
-            reference: 'Reason: Quotation Stock Out | Quotation: $cleanNumber',
-            movementDate: DateTime.now().toUtc(),
-            createdAt: DateTime.now().toUtc(),
-            createdBy: 'Admin',
+          final now = DateTime.now().toUtc();
+          movementsToSave.add(
+            StockMovement(
+              id: _uuid.v4(),
+              productId: productId,
+              type: StockMovementType.stockOut,
+              quantity: item.quantity,
+              reference:
+                  'Reason: Quotation Stock Out | Quotation: $quotationNumber',
+              movementDate: now,
+              createdAt: now,
+              createdBy: 'Admin',
+            ),
           );
-          movementsToSave.add(movement);
         }
 
-        // 5. Atomic save - Write all movements
-        for (var movement in movementsToSave) {
+        for (final movement in movementsToSave) {
           await _movementsStore.record(movement.id).put(txn, movement.toJson());
         }
 
-        // Update quotation
         final modifiedQt = currentQt.copyWith(
           isStockOutProcessed: true,
           modifiedDate: DateTime.now(),
@@ -167,35 +318,13 @@ class StockOutByQuotationService {
             .record(modifiedQt.id)
             .put(txn, modifiedQt.toJson());
 
-        savedMovements = movementsToSave;
         return modifiedQt;
       });
 
-      // Complete reservations for all deducted products
-      for (var item in eligibleItems) {
-        if (item.productId != null) {
-          await ServiceLocator().reservationCompletionService.completeReservation(item.productId!);
-        }
-      }
-
-      // Sync to Supabase
-      final client = SupabaseService().client;
-      if (client != null && savedMovements.isNotEmpty) {
-        try {
-          final inserts = savedMovements.map((m) => {
-            'id': m.id,
-            'product_id': m.productId,
-            'type': m.type.name,
-            'quantity': m.quantity,
-            'reference': m.reference,
-            'movement_date': m.movementDate.toUtc().toIso8601String(),
-            'created_at': m.createdAt.toUtc().toIso8601String(),
-            'created_by': m.createdBy,
-          }).toList();
-          await client.from('stock_movements').insert(inserts);
-        } catch (e) {
-          // Fire and forget, allow local operation to succeed even if remote fails
-        }
+      for (final item in eligibleItems) {
+        await ServiceLocator().reservationCompletionService.completeReservation(
+          item.productId!,
+        );
       }
 
       return StockOutByQuotationResult(
@@ -205,12 +334,22 @@ class StockOutByQuotationService {
         quotation: updatedQuotation,
         deductedCount: eligibleItems.length,
       );
-    } catch (e) {
+    } catch (error) {
       return StockOutByQuotationResult(
         success: false,
-        message: e.toString().replaceFirst('Exception: ', ''),
+        message: error.toString().replaceFirst('Exception: ', ''),
         quotation: quotation,
       );
     }
+  }
+
+  DateTime? _parseDateTime(Object? value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString())?.toLocal();
+  }
+
+  String _remoteFailureMessage(Object error) {
+    if (error is PostgrestException) return error.message;
+    return error.toString().replaceFirst('Exception: ', '');
   }
 }

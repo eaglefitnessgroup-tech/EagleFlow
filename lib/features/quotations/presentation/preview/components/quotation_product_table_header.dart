@@ -3,57 +3,49 @@ import '../quotation_document_theme.dart';
 import '../quotation_layout_spec.dart';
 
 class QuotationProductTableHeader extends StatelessWidget {
-  const QuotationProductTableHeader({super.key});
+  final QuotationTableLayout tableLayout;
+
+  const QuotationProductTableHeader({
+    super.key,
+    this.tableLayout = QuotationLayoutSpec.productTableLayout,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          top: QuotationDocumentTheme.dividerBorderSide,
-          bottom: QuotationDocumentTheme.dividerBorderSide,
+    return SizedBox(
+      height: QuotationLayoutSpec.tableHeaderHeight,
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border(
+            top: QuotationDocumentTheme.dividerBorderSide,
+            bottom: QuotationDocumentTheme.dividerBorderSide,
+          ),
         ),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-      child: Row(
-        children: [
-          _buildCell(
-            'S No.',
-            QuotationLayoutSpec.columnFlex['sno']!,
-            center: true,
-            scaleDown: false,
-          ),
-          _buildCell(
-            'Photo',
-            QuotationLayoutSpec.columnFlex['photo']!,
-            center: true,
-          ),
-          _buildCell(
-            'Product',
-            QuotationLayoutSpec.columnFlex['product']!,
-            horizontalPadding: 12,
-          ),
-          _buildCell(
-            'Qty',
-            QuotationLayoutSpec.columnFlex['qty']!,
-            center: true,
-          ),
-          _buildCell(
-            'Price',
-            QuotationLayoutSpec.columnFlex['unitPrice']!,
-            center: true,
-          ),
-          _buildCell(
-            'Disc.',
-            QuotationLayoutSpec.columnFlex['discount']!,
-            center: true,
-          ),
-          _buildCell(
-            'Amount',
-            QuotationLayoutSpec.columnFlex['amount']!,
-            center: true,
-          ),
-        ],
+        padding: const EdgeInsets.symmetric(
+          vertical: QuotationLayoutSpec.tableHeaderVerticalPadding,
+          horizontal: QuotationLayoutSpec.tableHorizontalPadding,
+        ),
+        child: Row(
+          children: [
+            _buildCell(
+              'S No.',
+              tableLayout.flexFor('sno'),
+              center: true,
+              scaleDown: false,
+            ),
+            _buildCell('Photo', tableLayout.flexFor('photo'), center: true),
+            _buildCell(
+              'Product',
+              tableLayout.flexFor('product'),
+              horizontalPadding:
+                  QuotationLayoutSpec.productCellHorizontalPadding,
+            ),
+            _buildCell('Qty', tableLayout.flexFor('qty'), center: true),
+            _buildCell('Price', tableLayout.flexFor('unitPrice'), center: true),
+            _buildCell('Disc.', tableLayout.flexFor('discount'), center: true),
+            _buildCell('Amount', tableLayout.flexFor('amount'), center: true),
+          ],
+        ),
       ),
     );
   }
@@ -64,7 +56,7 @@ class QuotationProductTableHeader extends StatelessWidget {
     bool center = false,
     bool right = false,
     bool scaleDown = true,
-    double horizontalPadding = 4,
+    double horizontalPadding = QuotationLayoutSpec.tableCellHorizontalPadding,
   }) {
     final alignment = center
         ? Alignment.center

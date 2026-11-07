@@ -61,15 +61,16 @@ void main() {
     );
   }
 
-  testWidgets('Admin name appears and Stock Management card is visible', (
+  testWidgets('Admin name appears and inventory actions stay hidden', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    
+
     await tester.runAsync(() async {
-      await ServiceLocator().authController.login(email: 'anshad@eagleflow.com',
+      await ServiceLocator().authController.login(
+        email: 'anshad@eagleflow.com',
         password: 'anshad123',
         rememberMe: true,
       );
@@ -81,8 +82,8 @@ void main() {
     // Greeting should contain user name
     expect(find.textContaining('Anshad'), findsOneWidget);
 
-    // Admin specific card
-    expect(find.textContaining('Stock Management'), findsWidgets);
+    expect(find.textContaining('Stock Management'), findsNothing);
+    expect(find.text('Stock'), findsNothing);
 
     // Shared actions (Products appears in Grid and BottomNav so findsWidgets is correct)
     expect(find.text('Products'), findsWidgets);
@@ -98,7 +99,8 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.runAsync(() async {
-      await ServiceLocator().authController.login(email: 'ajmal@eagleflow.com',
+      await ServiceLocator().authController.login(
+        email: 'ajmal@eagleflow.com',
         password: 'ajmal123',
         rememberMe: true,
       );
@@ -146,7 +148,7 @@ void main() {
     },
   );
 
-  testWidgets('Stock quick action shows coming-soon dialog without navigating', (
+  testWidgets('Stock quick action is absent in quotation-only mode', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -156,17 +158,8 @@ void main() {
     await tester.pumpWidget(buildTestableWidget());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Stock'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Stock module coming soon.'), findsOneWidget);
-    expect(find.text('OK'), findsOneWidget);
-    expect(find.text('Products Screen'), findsNothing);
-
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Stock module coming soon.'), findsNothing);
+    expect(find.text('Stock'), findsNothing);
+    expect(find.textContaining('Stock Management'), findsNothing);
     expect(find.byType(DashboardScreen), findsOneWidget);
   });
 
@@ -245,11 +238,16 @@ void main() {
     await tester.pumpWidget(buildTestableWidget());
     await tester.pumpAndSettle();
 
-    final totalCard = find.ancestor(
-      of: find.text('Total Quotations'),
-      matching: find.byType(Container),
-    ).first;
-    expect(find.descendant(of: totalCard, matching: find.text('3')), findsOneWidget);
+    final totalCard = find
+        .ancestor(
+          of: find.text('Total Quotations'),
+          matching: find.byType(Container),
+        )
+        .first;
+    expect(
+      find.descendant(of: totalCard, matching: find.text('3')),
+      findsOneWidget,
+    );
     expect(find.text('Pending Quotations'), findsNothing);
   });
 
@@ -275,10 +273,9 @@ void main() {
     expect(find.text('Draft'), findsNothing);
 
     final badge = tester.widget<Container>(
-      find.ancestor(
-        of: find.text('Saved'),
-        matching: find.byType(Container),
-      ).first,
+      find
+          .ancestor(of: find.text('Saved'), matching: find.byType(Container))
+          .first,
     );
     final decoration = badge.decoration! as BoxDecoration;
     expect(decoration.color, AppColors.statusDraftBg);

@@ -5,6 +5,7 @@ import '../../../../products/domain/product.dart';
 import '../../../../products/presentation/add_edit_product_screen.dart';
 import '../../../../products/presentation/widgets/product_image.dart';
 import '../../../../../../core/di/service_locator.dart';
+import '../../../../../../core/config/app_features.dart';
 import '../../../../reservations/domain/reservation.dart';
 import 'package:intl/intl.dart';
 import 'product_series.dart';
@@ -81,20 +82,22 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
   }
 
   Future<void> _loadProducts() async {
-    final reservations = await ServiceLocator().reservationRepository
-        .getActiveReservations();
+    final reservations = AppFeatures.inventoryEnabled
+        ? await ServiceLocator().reservationRepository.getActiveReservations()
+        : <Reservation>[];
 
     final allActiveProducts = ServiceLocator().productMasterController.products
         .where((p) => p.isActive)
         .toList();
 
-    final stockFutures = allActiveProducts.map((p) async {
-      final stock = await ServiceLocator().stockController.getCurrentStock(p);
-      return MapEntry(p.id, stock);
-    });
-
-    final stockEntries = await Future.wait(stockFutures);
-    final stockMap = Map.fromEntries(stockEntries);
+    final stockMap = <String, int>{};
+    if (AppFeatures.inventoryEnabled) {
+      final stockFutures = allActiveProducts.map((p) async {
+        final stock = await ServiceLocator().stockController.getCurrentStock(p);
+        return MapEntry(p.id, stock);
+      });
+      stockMap.addEntries(await Future.wait(stockFutures));
+    }
 
     if (mounted) {
       setState(() {
@@ -255,6 +258,10 @@ class _ProductPickerContentState extends State<_ProductPickerContent> {
 
   List<Product> _sortProducts(List<Product> products) {
     final List<Product> sorted = List.from(products);
+    if (!AppFeatures.inventoryEnabled) {
+      sorted.sort((a, b) => a.name.compareTo(b.name));
+      return sorted;
+    }
     sorted.sort((a, b) {
       final aStock = _currentStockMap[a.id] ?? a.openingStock;
       final bStock = _currentStockMap[b.id] ?? b.openingStock;

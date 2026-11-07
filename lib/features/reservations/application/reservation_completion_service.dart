@@ -1,16 +1,20 @@
 import '../../../core/di/service_locator.dart';
+import '../domain/reservation_repository.dart';
 
 class ReservationCompletionService {
+  ReservationCompletionService([this._repository]);
+
+  final ReservationRepository? _repository;
+
   Future<void> completeReservation(String productId) async {
-    final activeReservations = await ServiceLocator()
-        .reservationRepository
-        .getActiveReservations();
-    
-    final matchingReservations = activeReservations.where((r) => r.productId == productId);
-    
+    final repository = _repository ?? ServiceLocator().reservationRepository;
+    final activeReservations = await repository.getActiveReservations();
+    final matchingReservations = activeReservations.where(
+      (reservation) => reservation.productId == productId,
+    );
+
     for (final res in matchingReservations) {
-      final completed = res.copyWith(status: 'COMPLETED');
-      await ServiceLocator().reservationRepository.saveReservation(completed);
+      await repository.completeReservation(res.id);
     }
   }
 }

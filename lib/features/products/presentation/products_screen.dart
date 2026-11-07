@@ -4,6 +4,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/widgets/eagle_bottom_nav.dart';
 import '../domain/product.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/config/app_features.dart';
 import '../application/product_master_controller.dart';
 import 'widgets/product_search_field.dart';
 import 'widgets/product_category_chips.dart';
@@ -34,6 +35,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     final namePrefix = n.startsWith(q);
     final namePartial = n.contains(q) && !namePrefix;
+
+    if (!AppFeatures.inventoryEnabled) {
+      if (namePrefix) return 1;
+      if (namePartial) return 2;
+      if (b.contains(q)) return 3;
+      if (c.contains(q)) return 4;
+      return 99;
+    }
 
     final inStock = p.openingStock > 5;
     final lowStock =
@@ -69,10 +78,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
       }
 
       // Stock filters
-      if (_inStockOnly && product.openingStock <= 0) {
+      if (AppFeatures.inventoryEnabled &&
+          _inStockOnly &&
+          product.openingStock <= 0) {
         return false;
       }
-      if (_lowStockOnly &&
+      if (AppFeatures.inventoryEnabled &&
+          _lowStockOnly &&
           (product.openingStock <= 0 ||
               product.openingStock >
                   (product.minStockLevel > 0 ? product.minStockLevel : 5))) {
@@ -147,23 +159,25 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             },
                           ),
                           const SizedBox(height: 20),
-                          ProductFilterRow(
-                            inStockOnly: _inStockOnly,
-                            lowStockOnly: _lowStockOnly,
-                            onInStockToggled: (val) {
-                              setState(() {
-                                _inStockOnly = val;
-                                if (val) _lowStockOnly = false;
-                              });
-                            },
-                            onLowStockToggled: (val) {
-                              setState(() {
-                                _lowStockOnly = val;
-                                if (val) _inStockOnly = false;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 24),
+                          if (AppFeatures.inventoryEnabled) ...[
+                            ProductFilterRow(
+                              inStockOnly: _inStockOnly,
+                              lowStockOnly: _lowStockOnly,
+                              onInStockToggled: (val) {
+                                setState(() {
+                                  _inStockOnly = val;
+                                  if (val) _lowStockOnly = false;
+                                });
+                              },
+                              onLowStockToggled: (val) {
+                                setState(() {
+                                  _lowStockOnly = val;
+                                  if (val) _inStockOnly = false;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 24),
+                          ],
                           if (!isLoading && loadError == null) ...[
                             _buildListHeader(filteredProducts.length),
                             const SizedBox(height: 16),

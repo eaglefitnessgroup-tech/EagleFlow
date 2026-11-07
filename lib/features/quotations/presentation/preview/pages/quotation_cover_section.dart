@@ -4,6 +4,7 @@ import '../quotation_document_theme.dart';
 import '../quotation_document_formatters.dart';
 import '../../../../../core/models/company_profile.dart';
 import '../components/quotation_document_header.dart';
+import '../quotation_layout_spec.dart';
 
 class QuotationCoverSection extends StatelessWidget {
   final Quotation quotation;
@@ -49,7 +50,9 @@ class QuotationCoverSection extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 32),
+        const SizedBox(
+          height: QuotationLayoutSpec.coverCompanyToCustomerSpacing,
+        ),
 
         // CUSTOMER & DOCUMENT INFO
         Row(
@@ -60,10 +63,12 @@ class QuotationCoverSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('QUOTATION TO', style: QuotationDocumentTheme.smallBold),
-                  const SizedBox(height: 4),
+                  const SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerHeadingSpacing,
+                  ),
                   Container(
                     width: 130,
-                    height: 1.5,
+                    height: QuotationLayoutSpec.coverCustomerDividerHeight,
                     alignment: Alignment.center,
                     child: Container(
                       width: 130,
@@ -71,7 +76,9 @@ class QuotationCoverSection extends StatelessWidget {
                       color: QuotationDocumentTheme.dividerColor,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerDividerSpacing,
+                  ),
                   _buildCustomerRow(
                     'CUSTOMER',
                     quotation.customerInfo.name.isNotEmpty
@@ -93,18 +100,26 @@ class QuotationCoverSection extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 32),
+            const SizedBox(
+              width: QuotationLayoutSpec.coverCustomerColumnSpacing,
+            ),
             SizedBox(
-              width: 170,
+              width: QuotationLayoutSpec.coverDocumentColumnWidth,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('', style: QuotationDocumentTheme.smallBold),
-                  const SizedBox(height: 4),
                   const SizedBox(
-                    height: 1.5,
+                    height: QuotationLayoutSpec.coverCustomerHeadingHeight,
+                  ),
+                  const SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerHeadingSpacing,
+                  ),
+                  const SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerDividerHeight,
                   ), // Matches the 1.5px container on the left
-                  const SizedBox(height: 8),
+                  const SizedBox(
+                    height: QuotationLayoutSpec.coverCustomerDividerSpacing,
+                  ),
                   _buildCustomerRow(
                     'DATE',
                     QuotationDocumentFormatters.formatDate(
@@ -137,32 +152,40 @@ class QuotationCoverSection extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: QuotationLayoutSpec.coverBottomSpacing),
       ],
     );
   }
 
   Widget _buildCompanyRow(String label, String value, {int maxLines = 1}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 0.0),
+      padding: const EdgeInsets.only(
+        bottom: QuotationLayoutSpec.coverCompanyRowBottomPadding,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: QuotationLayoutSpec.coverCompanyLabelWidth,
             child: Text(
               label,
-              style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0),
+              style: QuotationDocumentTheme.small.copyWith(
+                fontSize: QuotationLayoutSpec.coverCompanyFontSize,
+              ),
             ),
           ),
           Text(
             ' : ',
-            style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0),
+            style: QuotationDocumentTheme.small.copyWith(
+              fontSize: QuotationLayoutSpec.coverCompanyFontSize,
+            ),
           ),
           Expanded(
             child: Text(
               value,
-              style: QuotationDocumentTheme.small.copyWith(fontSize: 8.0),
+              style: QuotationDocumentTheme.small.copyWith(
+                fontSize: QuotationLayoutSpec.coverCompanyFontSize,
+              ),
               maxLines: maxLines,
               overflow: TextOverflow.ellipsis,
             ),
@@ -174,12 +197,14 @@ class QuotationCoverSection extends StatelessWidget {
 
   Widget _buildCustomerRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2.0),
+      padding: const EdgeInsets.only(
+        bottom: QuotationLayoutSpec.coverCustomerRowBottomPadding,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 70,
+            width: QuotationLayoutSpec.coverCustomerLabelWidth,
             child: Text(label, style: QuotationDocumentTheme.small),
           ),
           const Text(' : ', style: QuotationDocumentTheme.small),

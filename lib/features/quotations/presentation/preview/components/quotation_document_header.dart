@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/models/company_profile.dart';
 import '../quotation_document_theme.dart';
+import '../quotation_layout_spec.dart';
 
 class QuotationDocumentHeader extends StatelessWidget {
   const QuotationDocumentHeader({super.key});
@@ -19,17 +20,22 @@ class QuotationDocumentHeader extends StatelessWidget {
           children: [
             Image.asset(
               'assets/logos/logo_head_cropped.png',
-              width: 180,
-              height: 42,
+              width: QuotationLayoutSpec.documentHeaderLogoWidth,
+              height: QuotationLayoutSpec.documentHeaderLogoHeight,
               fit: BoxFit.contain,
               alignment: Alignment.centerLeft,
               filterQuality: FilterQuality.high,
               errorBuilder: (_, error, stackTrace) {
                 debugPrint('Header logo failed: $error');
-                return const SizedBox(width: 180, height: 42);
+                return const SizedBox(
+                  width: QuotationLayoutSpec.documentHeaderLogoWidth,
+                  height: QuotationLayoutSpec.documentHeaderLogoHeight,
+                );
               },
             ),
-            const SizedBox(width: 16),
+            const SizedBox(
+              width: QuotationLayoutSpec.documentHeaderHorizontalSpacing,
+            ),
             Text(
               profile.website,
               style: QuotationDocumentTheme.small.copyWith(
@@ -39,13 +45,17 @@ class QuotationDocumentHeader extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(
+          height: QuotationLayoutSpec.documentHeaderVerticalSpacing,
+        ),
         const Divider(
           color: QuotationDocumentTheme.dividerColor,
           thickness: QuotationDocumentTheme.dividerThickness,
           height: QuotationDocumentTheme.dividerThickness,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(
+          height: QuotationLayoutSpec.documentHeaderVerticalSpacing,
+        ),
       ],
     );
   }

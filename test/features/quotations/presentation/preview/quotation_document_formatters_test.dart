@@ -3,6 +3,15 @@ import 'package:eagleflow/features/quotations/presentation/preview/quotation_doc
 import 'package:eagleflow/features/products/domain/product_condition.dart';
 
 void main() {
+  group('QuotationDocumentFormatters.formatDiscount', () {
+    test('formats line discounts compactly', () {
+      expect(QuotationDocumentFormatters.formatDiscount(0), '—');
+      expect(QuotationDocumentFormatters.formatDiscount(5), '5%');
+      expect(QuotationDocumentFormatters.formatDiscount(7.5), '7.5%');
+      expect(QuotationDocumentFormatters.formatDiscount(7.25), '7.25%');
+    });
+  });
+
   group('QuotationDocumentFormatters.formatProductCondition', () {
     test('renders every display label in uppercase and hides null', () {
       expect(
@@ -40,6 +49,44 @@ void main() {
       expect(
         QuotationDocumentFormatters.formatProductMetadata(null, ''),
         'CODE: — | BRAND: —',
+      );
+    });
+  });
+
+  group('compact quotation product formatting', () {
+    test('renders CODE and BRAND on one unlabeled compact line', () {
+      expect(
+        QuotationDocumentFormatters.formatCompactProductMetadata(
+          'pxn-025',
+          'Premier',
+        ),
+        'PXN-025 • PREMIER',
+      );
+      expect(
+        QuotationDocumentFormatters.formatCompactProductMetadata(null, ''),
+        '—',
+      );
+    });
+
+    test('renders the dedicated condition value without a repeated label', () {
+      expect(
+        ProductCondition.values.map(
+          QuotationDocumentFormatters.formatProductConditionValue,
+        ),
+        ['NEW', 'USED', 'REFURBISHED', 'DISPLAY'],
+      );
+      expect(
+        QuotationDocumentFormatters.formatProductConditionValue(null),
+        '—',
+      );
+    });
+
+    test('keeps all specification and warranty content inline', () {
+      const input =
+          '1290×1160×1600 | Stack 100kg\nNW 255kg | Frame Warranty 10Y';
+      expect(
+        QuotationDocumentFormatters.formatCompactSpecification(input),
+        '1290×1160×1600 • Stack 100kg • NW 255kg • Frame Warranty 10Y',
       );
     });
   });

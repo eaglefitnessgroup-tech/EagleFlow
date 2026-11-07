@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/config/app_features.dart';
 import '../../quotations/application/quotation_controller.dart';
 import '../../quotations/domain/quotation_defaults.dart';
 import '../domain/product.dart';
@@ -23,7 +24,7 @@ class ProductDetailsScreen extends StatefulWidget {
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   int _quantity = 1;
   Product? _product;
-  bool _isLoadingStock = true;
+  bool _isLoadingStock = AppFeatures.inventoryEnabled;
   bool _hasStockError = false;
   int _currentStock = 0;
   bool _isInit = false;
@@ -35,7 +36,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       _product =
           widget.testProduct ??
           ModalRoute.of(context)?.settings.arguments as Product?;
-      if (_product != null) {
+      if (_product != null && AppFeatures.inventoryEnabled) {
         _fetchStock();
       }
       _isInit = true;
@@ -43,7 +44,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Future<void> _fetchStock() async {
-    if (_product == null) return;
+    if (_product == null || !AppFeatures.inventoryEnabled) return;
     setState(() {
       _isLoadingStock = true;
       _hasStockError = false;
@@ -137,16 +138,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     currentStock: _currentStock,
                     isLoading: _isLoadingStock,
                     hasError: _hasStockError,
+                    showStock: AppFeatures.inventoryEnabled,
                   ),
-                  const SizedBox(height: 32),
-                  ProductStockSection(
-                    product: product,
-                    currentStock: _currentStock,
-                    isLoading: _isLoadingStock,
-                    hasError: _hasStockError,
-                    onRetry: _fetchStock,
-                    onStockAdjusted: _fetchStock,
-                  ),
+                  if (AppFeatures.inventoryEnabled) ...[
+                    const SizedBox(height: 32),
+                    ProductStockSection(
+                      product: product,
+                      currentStock: _currentStock,
+                      isLoading: _isLoadingStock,
+                      hasError: _hasStockError,
+                      onRetry: _fetchStock,
+                      onStockAdjusted: _fetchStock,
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   ProductDescriptionSection(description: product.description),
                   if (product.description.isNotEmpty)

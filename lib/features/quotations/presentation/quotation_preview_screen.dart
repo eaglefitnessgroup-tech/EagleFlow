@@ -87,19 +87,19 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       _controller = args;
       _returnsToOriginatingEditor = true;
       _readOnly = false;
-      _pages = QuotationPaginator.paginate(_controller!.quotation);
+      _pages = _paginate(_controller!.quotation);
     } else if (args is QuotationPreviewArguments) {
       _controller = QuotationController(QuotationDefaults.createEmptyDraft());
       _controller!.loadQuotation(args.quotation);
       _returnsToOriginatingEditor = false;
       _readOnly = args.readOnly || args.quotation.revisionNo > 0;
-      _pages = QuotationPaginator.paginate(_controller!.quotation);
+      _pages = _paginate(_controller!.quotation);
     } else if (args is Quotation) {
       _controller = QuotationController(QuotationDefaults.createEmptyDraft());
       _controller!.loadQuotation(args);
       _returnsToOriginatingEditor = false;
       _readOnly = args.revisionNo > 0;
-      _pages = QuotationPaginator.paginate(_controller!.quotation);
+      _pages = _paginate(_controller!.quotation);
     } else {
       _isError = true;
       _errorMsg = 'Invalid quotation data provided.';
@@ -123,6 +123,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
         salespersonId: salespersonId,
         currentUser: currentUser,
       );
+      _pages = _paginate(quotation);
       return;
     }
 
@@ -149,6 +150,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
             currentUser: latestCurrentUser,
             profiles: users,
           );
+          _pages = _paginate(currentQuotation!);
         });
       }
     } catch (_) {}
@@ -233,7 +235,7 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       );
       if (mounted) {
         setState(() {
-          _pages = QuotationPaginator.paginate(savedQuotation);
+          _pages = _paginate(savedQuotation);
           if (isRevisionSave) _readOnly = true;
         });
         ScaffoldMessenger.of(
@@ -393,6 +395,13 @@ class _QuotationPreviewScreenState extends State<QuotationPreviewScreen> {
       );
     }
     return const SizedBox.shrink();
+  }
+
+  List<QuotationPreviewPage> _paginate(Quotation quotation) {
+    return QuotationPaginator.paginate(
+      quotation,
+      salespersonName: _resolvedSalespersonName,
+    );
   }
 
   Widget _buildZoomControls() {
