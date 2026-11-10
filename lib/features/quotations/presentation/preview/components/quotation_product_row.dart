@@ -71,7 +71,7 @@ class QuotationProductRow extends StatelessWidget {
                     item.name,
                     style: QuotationDocumentTheme.bodyBold.copyWith(
                       fontSize: QuotationLayoutSpec.productNameFontSize,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       height: QuotationLayoutSpec.productNameLineHeight,
                     ),
                     softWrap: true,

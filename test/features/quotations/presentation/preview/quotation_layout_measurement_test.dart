@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:eagleflow/features/quotations/application/quotation_pdf_service.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_defaults.dart';
 import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
+import 'package:eagleflow/features/quotations/presentation/preview/components/quotation_a4_page.dart';
+import 'package:eagleflow/features/quotations/presentation/preview/components/quotation_document_footer.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/components/quotation_product_row.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/components/quotation_product_table_header.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/components/quotation_totals_block.dart';
@@ -16,8 +18,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import 'quotation_test_font_loader.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadQuotationTestFonts);
 
   const item = QuotationLineItem(
     id: 'row-1',
@@ -241,43 +246,91 @@ void main() {
       );
     });
 
-    testWidgets('totals follow the final product row without a flexible gap', (
+    testWidgets(
+      'multi-page totals follow the final product row without a flexible gap',
+      (tester) async {
+        final quotation = QuotationDefaults.createEmptyDraft().copyWith(
+          lineItems: const [item],
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: QuotationLayoutSpec.pageContentWidth,
+                height: QuotationLayoutSpec.productPageAvailableHeight,
+                child: QuotationProductsPage(
+                  quotation: quotation,
+                  model: const QuotationProductsPageModel(
+                    items: [item],
+                    hasCover: false,
+                    hasTotals: true,
+                    isLastPage: true,
+                  ),
+                  startIndex: 0,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final pageColumn = tester.widget<Column>(
+          find
+              .descendant(
+                of: find.byType(QuotationProductsPage),
+                matching: find.byType(Column),
+              )
+              .first,
+        );
+        expect(find.byType(Spacer), findsNothing);
+        expect(pageColumn.children.last, isA<QuotationTotalsBlock>());
+      },
+    );
+
+    testWidgets('single-page totals sit safely just above the footer', (
       tester,
     ) async {
+      tester.view.physicalSize = const Size(
+        QuotationLayoutSpec.a4LogicalWidth,
+        QuotationLayoutSpec.a4LogicalHeight,
+      );
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       final quotation = QuotationDefaults.createEmptyDraft().copyWith(
         lineItems: const [item],
       );
+      final page = QuotationPaginator.paginate(
+        quotation,
+      ).whereType<QuotationProductsPageModel>().single;
+
+      expect(page.pinTotalsToBottom, isTrue);
+
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: QuotationLayoutSpec.pageContentWidth,
-              height: QuotationLayoutSpec.productPageAvailableHeight,
-              child: QuotationProductsPage(
-                quotation: quotation,
-                model: const QuotationProductsPageModel(
-                  items: [item],
-                  hasCover: false,
-                  hasTotals: true,
-                  isLastPage: true,
-                ),
-                startIndex: 0,
-              ),
+          home: QuotationA4Page(
+            child: QuotationProductsPage(
+              quotation: quotation,
+              model: page,
+              startIndex: 0,
             ),
           ),
         ),
       );
+      await tester.pump();
 
-      final pageColumn = tester.widget<Column>(
-        find
-            .descendant(
-              of: find.byType(QuotationProductsPage),
-              matching: find.byType(Column),
-            )
-            .first,
+      final productsPage = find.byType(QuotationProductsPage);
+      expect(
+        find.descendant(of: productsPage, matching: find.byType(Spacer)),
+        findsOneWidget,
       );
-      expect(find.byType(Spacer), findsNothing);
-      expect(pageColumn.children.last, isA<QuotationTotalsBlock>());
+      final totalsRect = tester.getRect(find.byType(QuotationTotalsBlock));
+      final footerRect = tester.getRect(find.byType(QuotationDocumentFooter));
+      expect(
+        footerRect.top - totalsRect.bottom,
+        closeTo(QuotationLayoutSpec.paginationSafetySpacing, 0.1),
+      );
+      expect(tester.takeException(), isNull);
     });
 
     test('PDF row uses shared vertical padding', () async {

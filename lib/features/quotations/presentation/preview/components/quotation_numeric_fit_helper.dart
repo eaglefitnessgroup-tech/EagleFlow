@@ -14,10 +14,12 @@ class QuotationNumericFitHelper {
 
   /// Returns single-line text style for preview numeric cells.
   static TextStyle previewStyle({bool bold = false}) {
-    return (bold
-            ? QuotationDocumentTheme.bodyBold
-            : QuotationDocumentTheme.body)
-        .copyWith(fontSize: previewNumericFontSize);
+    return QuotationDocumentTheme.bodyBold.copyWith(
+      fontSize: previewNumericFontSize,
+      color: bold
+          ? QuotationDocumentTheme.navy
+          : QuotationDocumentTheme.textMain,
+    );
   }
 
   /// Builds a numeric cell for Flutter UI preview with single-line enforcement.
@@ -57,8 +59,7 @@ class QuotationNumericFitHelper {
   static pw.Widget buildPdfCell(
     String text,
     int flex,
-    pw.Font fontRegular,
-    pw.Font fontSemiBold, {
+    pw.Font fontMedium, {
     bool center = false,
     bool right = false,
     bool bold = false,
@@ -93,7 +94,7 @@ class QuotationNumericFitHelper {
               maxLines: 1,
               tightBounds: true,
               style: pw.TextStyle(
-                font: bold ? fontSemiBold : fontRegular,
+                font: fontMedium,
                 fontSize: pdfNumericFontSize,
                 color: textColor,
                 height: 1.6,

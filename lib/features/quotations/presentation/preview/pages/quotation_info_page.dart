@@ -26,7 +26,7 @@ class QuotationInfoPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'BANK ACCOUNT DETAILS',
+                'Bank Account Details',
                 style: QuotationDocumentTheme.smallBold.copyWith(
                   color: QuotationDocumentTheme.navy,
                   fontSize: 10.5,
@@ -59,27 +59,27 @@ class QuotationInfoPage extends StatelessWidget {
                 ),
                 children: [
                   _buildTableRow(
-                    'BANK NAME',
+                    'Bank Name',
                     'MASHREQ BANK',
                     'FAB [FIRST ABU DHABI BANK]',
                   ),
                   _buildTableRow(
-                    'ACCOUNT NAME',
+                    'Account Name',
                     CompanyProfile.defaultProfile.legalName,
                     'MAX EAGLE FITNESS SPORT EQUIPMENT TRADING L L C',
                   ),
                   _buildTableRow(
-                    'ACCOUNT NUMBER',
+                    'Account Number',
                     '019100814712',
                     '1001326712876001',
                   ),
                   _buildTableRow(
-                    'IBAN NUMBER',
+                    'IBAN Number',
                     'AE270330000019100814712',
                     'AE590351001326712876001',
                   ),
-                  _buildTableRow('SWIFT CODE', 'BOMLAEAD', 'NBADAEAA'),
-                  _buildTableRow('CURRENCY', 'AED', 'AED'),
+                  _buildTableRow('SWIFT Code', 'BOMLAEAD', 'NBADAEAA'),
+                  _buildTableRow('Currency', 'AED', 'AED'),
                 ],
               ),
 

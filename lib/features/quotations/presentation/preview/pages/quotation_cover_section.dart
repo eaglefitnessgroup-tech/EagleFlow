@@ -34,15 +34,15 @@ class QuotationCoverSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildCompanyRow('LICENSE NO', profile.licenseNumber),
-                  _buildCompanyRow('LICENSE NAME', profile.legalName),
+                  _buildCompanyRow('License No', profile.licenseNumber),
+                  _buildCompanyRow('License Name', profile.legalName),
                   _buildCompanyRow(
-                    'ADDRESS',
+                    'Address',
                     '${profile.addressLine1}\n${profile.addressLine2}',
                     maxLines: 2,
                   ),
-                  _buildCompanyRow('MOBILE', profile.mobile),
-                  _buildCompanyRow('TELEPHONE', profile.telephone),
+                  _buildCompanyRow('Mobile', profile.mobile),
+                  _buildCompanyRow('Telephone', profile.telephone),
                   _buildCompanyRow('TRN', profile.trn),
                 ],
               ),
@@ -62,7 +62,7 @@ class QuotationCoverSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('QUOTATION TO', style: QuotationDocumentTheme.smallBold),
+                  Text('Quotation To', style: QuotationDocumentTheme.smallBold),
                   const SizedBox(
                     height: QuotationLayoutSpec.coverCustomerHeadingSpacing,
                   ),
@@ -80,19 +80,19 @@ class QuotationCoverSection extends StatelessWidget {
                     height: QuotationLayoutSpec.coverCustomerDividerSpacing,
                   ),
                   _buildCustomerRow(
-                    'CUSTOMER',
+                    'Customer',
                     quotation.customerInfo.name.isNotEmpty
                         ? quotation.customerInfo.name
                         : '—',
                   ),
                   _buildCustomerRow(
-                    'LOCATION',
+                    'Location',
                     quotation.customerInfo.projectLocation.isNotEmpty
                         ? quotation.customerInfo.projectLocation
                         : '—',
                   ),
                   _buildCustomerRow(
-                    'CONTACT',
+                    'Contact',
                     quotation.customerInfo.phone.isNotEmpty
                         ? quotation.customerInfo.phone
                         : '—',
@@ -121,25 +121,25 @@ class QuotationCoverSection extends StatelessWidget {
                     height: QuotationLayoutSpec.coverCustomerDividerSpacing,
                   ),
                   _buildCustomerRow(
-                    'DATE',
+                    'Date',
                     QuotationDocumentFormatters.formatDate(
                       quotation.createdDate,
                     ),
                   ),
                   _buildCustomerRow(
-                    'QT NO',
+                    'QT No',
                     quotation.displayQuotationNumber.isNotEmpty
                         ? quotation.displayQuotationNumber
                         : '—',
                   ),
                   _buildCustomerRow(
-                    'EXPIRED',
+                    'Expired',
                     QuotationDocumentFormatters.formatDate(
                       quotation.validUntil,
                     ),
                   ),
                   _buildCustomerRow(
-                    'SALESMAN',
+                    'Salesman',
                     (salespersonName != null && salespersonName!.isNotEmpty)
                         ? salespersonName!
                         : (quotation.salespersonId.isNotEmpty

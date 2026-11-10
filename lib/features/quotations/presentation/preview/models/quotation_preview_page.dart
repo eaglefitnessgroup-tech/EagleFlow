@@ -8,12 +8,14 @@ class QuotationProductsPageModel extends QuotationPreviewPage {
   final List<QuotationLineItem> items;
   final bool hasCover;
   final bool hasTotals;
+  final bool pinTotalsToBottom;
   final bool isLastPage;
 
   const QuotationProductsPageModel({
     required this.items,
     this.hasCover = false,
     this.hasTotals = false,
+    this.pinTotalsToBottom = false,
     this.isLastPage = false,
   });
 }

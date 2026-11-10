@@ -15,21 +15,14 @@ import 'package:eagleflow/features/quotations/presentation/preview/quotation_lay
 import 'package:eagleflow/features/quotations/presentation/preview/utils/quotation_paginator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
+
+import 'quotation_test_font_loader.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(() async {
-    final fontLoader = FontLoader('IBM Plex Sans Condensed')
-      ..addFont(
-        rootBundle.load(
-          'assets/fonts/ibm_plex_sans_condensed/IBMPlexSansCondensed-Regular.ttf',
-        ),
-      );
-    await fontLoader.load();
-  });
+  setUpAll(loadQuotationTestFonts);
 
   test(
     'actual exported PDF renders all 17 items once with safe pagination and totals',
@@ -73,6 +66,7 @@ void main() {
       expect(trace.productPageItemCounts.first, inInclusiveRange(7, 9));
       expect(trace.productPageItemCounts, everyElement(greaterThan(0)));
       expect(trace.totalsPageNumbers, hasLength(1));
+      expect(trace.totalsPinnedToBottomPageNumbers, isEmpty);
       expect(
         trace.totalsPageNumbers.single,
         trace.productPageItemCounts.length,
@@ -83,6 +77,36 @@ void main() {
       );
     },
   );
+
+  test('single-page PDF pins totals above the footer', () async {
+    final quotation = QuotationDefaults.createEmptyDraft().copyWith(
+      lineItems: const [
+        QuotationLineItem(
+          id: 'single-page-item',
+          productId: 'single-page-product',
+          name: 'Compact product',
+          brand: 'Eagle',
+          unitPrice: 100,
+          quantity: 1,
+        ),
+      ],
+    );
+    final trace = QuotationPdfRenderTrace();
+
+    final bytes = await QuotationPdfService().generatePdf(
+      quotation,
+      renderTrace: trace,
+    );
+
+    expect(bytes, isNotEmpty);
+    expect(trace.productPageItemCounts, [1]);
+    expect(trace.totalsPageNumbers, [1]);
+    expect(trace.totalsPinnedToBottomPageNumbers, [1]);
+    expect(
+      trace.productPageUsedHeights.single,
+      lessThanOrEqualTo(trace.availablePageHeight + 0.1),
+    );
+  });
 
   testWidgets('native A4 preview renders all 17 products across safe pages', (
     tester,

@@ -28,6 +28,7 @@ class QuotationPaginator {
           items: [],
           hasCover: true,
           hasTotals: true,
+          pinTotalsToBottom: true,
           isLastPage: true,
         ),
       );
@@ -54,19 +55,8 @@ class QuotationPaginator {
           salespersonName: salespersonName,
         );
 
-    int chargeRows = 2; // Subtotal + VAT
-    if (quotation.charges.deliveryCharges > 0) chargeRows++;
-    if (quotation.charges.installationCharges > 0) chargeRows++;
-    if (quotation.charges.otherCharges > 0) chargeRows++;
-    if (quotation.charges.overallDiscount > 0) chargeRows++;
-    // Explicit totals height: padding + rows + Grand Total + Amount in Words.
     final double totalsHeight =
-        measuredTotalsHeight ??
-        16.0 +
-            (chargeRows * 20.0) +
-            40.0 +
-            2.0 +
-            QuotationLayoutSpec.amountInWordsHeight;
+        measuredTotalsHeight ?? estimateTotalsHeight(quotation);
 
     List<QuotationProductsPageModel> productPages = [];
     List<QuotationLineItem> currentChunk = [];
@@ -114,6 +104,7 @@ class QuotationPaginator {
           items: List.from(currentChunk),
           hasCover: isFirstPage,
           hasTotals: true,
+          pinTotalsToBottom: isFirstPage,
           isLastPage: true,
         ),
       );
@@ -171,6 +162,21 @@ class QuotationPaginator {
     return pages;
   }
 
+  static double estimateTotalsHeight(Quotation quotation) {
+    int chargeRows = 2; // Subtotal + VAT
+    if (quotation.charges.deliveryCharges > 0) chargeRows++;
+    if (quotation.charges.installationCharges > 0) chargeRows++;
+    if (quotation.charges.otherCharges > 0) chargeRows++;
+    if (quotation.charges.overallDiscount > 0) chargeRows++;
+
+    // Padding + charge rows + Grand Total + Amount in Words.
+    return 16.0 +
+        (chargeRows * 20.0) +
+        40.0 +
+        2.0 +
+        QuotationLayoutSpec.amountInWordsHeight;
+  }
+
   static double estimateProductRowHeight(
     QuotationLineItem item, {
     double? productTextWidth,
@@ -185,7 +191,7 @@ class QuotationPaginator {
         text: item.name,
         style: QuotationDocumentTheme.bodyBold.copyWith(
           fontSize: QuotationLayoutSpec.productNameFontSize,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
           height: QuotationLayoutSpec.productNameLineHeight,
         ),
       ),

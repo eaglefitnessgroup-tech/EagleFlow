@@ -46,7 +46,10 @@ class QuotationProductsPage extends StatelessWidget {
             tableLayout: tableLayout,
           );
         }),
+        if (model.hasTotals && model.pinTotalsToBottom) const Spacer(),
         if (model.hasTotals) QuotationTotalsBlock(quotation: quotation),
+        if (model.hasTotals && model.pinTotalsToBottom)
+          const SizedBox(height: QuotationLayoutSpec.paginationSafetySpacing),
       ],
     );
   }

@@ -9,7 +9,12 @@ import 'package:eagleflow/features/quotations/presentation/preview/models/quotat
 import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/utils/quotation_paginator.dart';
 
+import 'quotation_test_font_loader.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadQuotationTestFonts);
+
   group('Quotation Preview Layout Stabilization', () {
     late Quotation filledQuotation;
 
@@ -63,7 +68,7 @@ void main() {
       expect(find.textContaining('100456705100003'), findsOneWidget);
 
       // Customer Info labels
-      expect(find.text('QUOTATION TO'), findsOneWidget);
+      expect(find.text('Quotation To'), findsOneWidget);
       expect(find.text('John Doe'), findsOneWidget);
       expect(find.text('Dubai Marina'), findsOneWidget);
       expect(find.text('123-456-7890'), findsOneWidget);
@@ -101,6 +106,7 @@ void main() {
       final page = docPages[0] as QuotationProductsPageModel;
       expect(page.hasCover, isTrue);
       expect(page.hasTotals, isTrue);
+      expect(page.pinTotalsToBottom, isTrue);
       expect(page.items.length, 1);
     });
 
@@ -179,7 +185,7 @@ void main() {
       expect(productPages.first.hasTotals, isTrue);
     });
 
-    testWidgets('6 products keep the final row with totals on page 2', (
+    testWidgets('6 products and totals fit safely with IBM Plex metrics', (
       WidgetTester tester,
     ) async {
       final List<QuotationLineItem> items = List.generate(
@@ -200,11 +206,10 @@ void main() {
       final productPages = pages
           .whereType<QuotationProductsPageModel>()
           .toList();
-      expect(productPages.length, 2);
-      expect(productPages.first.items, hasLength(5));
-      expect(productPages.first.hasTotals, isFalse);
-      expect(productPages.last.items, hasLength(1));
-      expect(productPages.last.hasTotals, isTrue);
+      expect(productPages, hasLength(1));
+      expect(productPages.single.items, hasLength(6));
+      expect(productPages.single.hasTotals, isTrue);
+      expect(productPages.single.pinTotalsToBottom, isTrue);
       expect(productPages.expand((page) => page.items), orderedEquals(items));
     });
 
@@ -258,11 +263,10 @@ void main() {
       final productPages = pages
           .whereType<QuotationProductsPageModel>()
           .toList();
-      expect(productPages, hasLength(2));
-      expect(productPages.first.items, hasLength(2));
-      expect(productPages.first.hasTotals, isFalse);
-      expect(productPages.last.items, hasLength(1));
-      expect(productPages.last.hasTotals, isTrue);
+      expect(productPages, hasLength(1));
+      expect(productPages.single.items, hasLength(3));
+      expect(productPages.single.hasTotals, isTrue);
+      expect(productPages.single.pinTotalsToBottom, isTrue);
       expect(productPages.expand((page) => page.items), orderedEquals(items));
     });
 

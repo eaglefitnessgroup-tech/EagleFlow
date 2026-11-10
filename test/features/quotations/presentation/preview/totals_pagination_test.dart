@@ -6,7 +6,12 @@ import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/models/quotation_preview_page.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/utils/quotation_paginator.dart';
 
+import 'quotation_test_font_loader.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadQuotationTestFonts);
+
   group('Totals Pagination Algorithm', () {
     late Quotation filledQuotation;
 
@@ -66,28 +71,31 @@ void main() {
       },
     );
 
-    test('Totals block remains together on the final product page or dedicated totals page', () {
-      final List<QuotationLineItem> items = List.generate(
-        22,
-        (i) => QuotationLineItem(
-          id: 'id_$i',
-          productId: 'p_$i',
-          name: 'Item $i',
-          brand: 'B',
-          quantity: 1,
-          unitPrice: 100,
-        ),
-      );
-      final quotation = filledQuotation.copyWith(lineItems: items);
-      final pages = QuotationPaginator.paginate(quotation);
+    test(
+      'Totals block remains together on the final product page or dedicated totals page',
+      () {
+        final List<QuotationLineItem> items = List.generate(
+          22,
+          (i) => QuotationLineItem(
+            id: 'id_$i',
+            productId: 'p_$i',
+            name: 'Item $i',
+            brand: 'B',
+            quantity: 1,
+            unitPrice: 100,
+          ),
+        );
+        final quotation = filledQuotation.copyWith(lineItems: items);
+        final pages = QuotationPaginator.paginate(quotation);
 
-      final productPages = pages
-          .take(pages.length - 1)
-          .toList()
-          .cast<QuotationProductsPageModel>();
+        final productPages = pages
+            .take(pages.length - 1)
+            .toList()
+            .cast<QuotationProductsPageModel>();
 
-      final pagesWithTotals = productPages.where((p) => p.hasTotals).toList();
-      expect(pagesWithTotals.length, 1);
-    });
+        final pagesWithTotals = productPages.where((p) => p.hasTotals).toList();
+        expect(pagesWithTotals.length, 1);
+      },
+    );
   });
 }

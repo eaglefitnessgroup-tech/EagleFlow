@@ -16,8 +16,11 @@ import 'package:eagleflow/features/products/domain/product_condition.dart';
 import 'package:eagleflow/features/quotations/application/quotation_pdf_service.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import 'quotation_test_font_loader.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadQuotationTestFonts);
 
   Iterable<pw.Widget> pdfDescendants(pw.Widget widget) sync* {
     yield widget;
@@ -123,7 +126,7 @@ void main() {
       final amountText = amountFit.child as Text;
       expect(unitPriceFit.alignment, Alignment.center);
       expect(amountFit.alignment, Alignment.center);
-      expect(amountText.style?.fontWeight, FontWeight.w600);
+      expect(amountText.style?.fontWeight, FontWeight.w500);
     });
 
     testWidgets('Preview displays the production discount column', (
@@ -343,7 +346,7 @@ void main() {
       },
     );
 
-    test('2. Production photo columns paginate six products safely', () {
+    test('2. IBM Plex metrics paginate six products safely', () {
       final lineItems = List.generate(
         6,
         (index) => createItem(idNum: index + 1, unitPrice: 10000.0),
@@ -357,10 +360,10 @@ void main() {
           .whereType<QuotationProductsPageModel>()
           .toList();
 
-      expect(productPages.first.items, hasLength(5));
-      expect(productPages.first.hasTotals, isFalse);
-      expect(productPages.last.items, hasLength(1));
-      expect(productPages.last.hasTotals, isTrue);
+      expect(productPages, hasLength(1));
+      expect(productPages.single.items, hasLength(6));
+      expect(productPages.single.hasTotals, isTrue);
+      expect(productPages.single.pinTotalsToBottom, isTrue);
       expect(
         productPages.expand((page) => page.items),
         orderedEquals(lineItems),
@@ -523,7 +526,7 @@ void main() {
           find.text('Existing description'),
         );
 
-        expect(name.style?.fontWeight, FontWeight.w600);
+        expect(name.style?.fontWeight, FontWeight.w500);
         expect(name.textAlign, isNull);
         expect(metadata.style?.fontSize, description.style?.fontSize);
         expect(
@@ -935,10 +938,10 @@ void main() {
           quantity: 1,
           discount: index == 0 ? 5 : 0,
           description:
-              'Frame: commercial-grade steel\n'
-              'Stack: 100 kg precision plates\n'
-              'Upholstery: high-density foam\n'
-              'Warranty: 5 years structural',
+              'Frame: commercial-grade steel construction with reinforced joints and corrosion-resistant finish\n'
+              'Stack: 100 kg precision-machined plates with magnetic selector and protective shroud\n'
+              'Upholstery: high-density foam with double-stitched commercial vinyl and ergonomic support\n'
+              'Warranty: 5 years structural coverage with 2 years parts and labour',
         ),
       );
       final quotation = QuotationDefaults.createEmptyDraft().copyWith(

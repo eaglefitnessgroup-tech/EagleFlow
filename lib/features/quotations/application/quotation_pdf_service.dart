@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
@@ -10,6 +12,7 @@ import '../domain/quotation.dart';
 import '../domain/quotation_line_item.dart';
 import '../presentation/preview/models/quotation_preview_page.dart';
 import '../presentation/preview/quotation_document_formatters.dart';
+import '../presentation/preview/utils/quotation_cover_section_measurer.dart';
 import '../presentation/preview/utils/quotation_paginator.dart';
 import '../presentation/preview/quotation_layout_spec.dart';
 import 'quotation_calculator.dart';
@@ -22,6 +25,7 @@ class QuotationPdfRenderTrace {
   final List<String> exportedItemIds = [];
   final List<int> productPageItemCounts = [];
   final List<int> totalsPageNumbers = [];
+  final List<int> totalsPinnedToBottomPageNumbers = [];
   final List<double> productPageUsedHeights = [];
   final List<double> measuredRowHeights = [];
   int pageCount = 0;
@@ -34,6 +38,7 @@ class QuotationPdfRenderTrace {
     exportedItemIds.clear();
     productPageItemCounts.clear();
     totalsPageNumbers.clear();
+    totalsPinnedToBottomPageNumbers.clear();
     productPageUsedHeights.clear();
     measuredRowHeights.clear();
     pageCount = 0;
@@ -47,8 +52,6 @@ class QuotationPdfRenderTrace {
 class QuotationPdfService {
   late pw.Font _fontRegular;
   late pw.Font _fontMedium;
-  late pw.Font _fontSemiBold;
-  late pw.Font _fontBold;
 
   final PdfColor _navy = const PdfColor.fromInt(0xFF0F172A);
   final PdfColor _textMain = const PdfColor.fromInt(0xFF334155);
@@ -113,16 +116,6 @@ class QuotationPdfService {
         'assets/fonts/ibm_plex_sans_condensed/IBMPlexSansCondensed-Medium.ttf',
       ),
     );
-    _fontSemiBold = pw.Font.ttf(
-      await rootBundle.load(
-        'assets/fonts/ibm_plex_sans_condensed/IBMPlexSansCondensed-SemiBold.ttf',
-      ),
-    );
-    _fontBold = pw.Font.ttf(
-      await rootBundle.load(
-        'assets/fonts/ibm_plex_sans_condensed/IBMPlexSansCondensed-Bold.ttf',
-      ),
-    );
 
     // 3. Measure with the same PDF widgets and fonts that will be exported,
     // then paginate from those rendered dimensions.
@@ -161,21 +154,45 @@ class QuotationPdfService {
     final measuredHeaderHeight = measureWidget(_buildTableHeader(tableLayout));
     final measuredTotalsHeight = measureWidget(_buildTotalsBlock(quotation));
     final measuredRowHeights = Map<QuotationLineItem, double>.identity();
+    final paginationRowHeights = Map<QuotationLineItem, double>.identity();
     for (int i = 0; i < quotation.lineItems.length; i++) {
       final item = quotation.lineItems[i];
       measuredRowHeights[item] = measureWidget(
         _buildProductRow(i + 1, item, tableLayout),
       );
+      paginationRowHeights[item] = math.max(
+        measuredRowHeights[item]!,
+        QuotationPaginator.estimateProductRowHeight(
+          item,
+          tableLayout: tableLayout,
+        ),
+      );
     }
+
+    final paginationCoverHeight = math.max(
+      measuredCoverHeight,
+      QuotationCoverSectionMeasurer.measureHeight(
+        quotation,
+        salespersonName: resolvedSalesmanName,
+      ),
+    );
+    final paginationHeaderHeight = math.max(
+      measuredHeaderHeight,
+      QuotationLayoutSpec.tableHeaderHeight,
+    );
+    final paginationTotalsHeight = math.max(
+      measuredTotalsHeight,
+      QuotationPaginator.estimateTotalsHeight(quotation),
+    );
 
     final pages = QuotationPaginator.paginate(
       quotation,
       salespersonName: resolvedSalesmanName,
-      measuredCoverSectionHeight: measuredCoverHeight,
-      measuredTableHeaderHeight: measuredHeaderHeight,
-      measuredTotalsHeight: measuredTotalsHeight,
+      measuredCoverSectionHeight: paginationCoverHeight,
+      measuredTableHeaderHeight: paginationHeaderHeight,
+      measuredTotalsHeight: paginationTotalsHeight,
       measuredAvailablePageHeight: availablePdfHeight,
-      measuredRowHeight: (item, _) => measuredRowHeights[item]!,
+      measuredRowHeight: (item, _) => paginationRowHeights[item]!,
     );
 
     final exportedItems = pages
@@ -253,7 +270,13 @@ class QuotationPdfService {
                             tableLayout,
                           );
                         }),
+                        if (pageModel.hasTotals && pageModel.pinTotalsToBottom)
+                          pw.Spacer(),
                         if (pageModel.hasTotals) _buildTotalsBlock(quotation),
+                        if (pageModel.hasTotals && pageModel.pinTotalsToBottom)
+                          pw.SizedBox(
+                            height: QuotationLayoutSpec.paginationSafetySpacing,
+                          ),
                       ] else if (pageModel is QuotationInfoPageModel) ...[
                         _buildHeader(),
                         _buildInfoPageContent(quotation),
@@ -282,6 +305,9 @@ class QuotationPdfService {
         final page = pages[i];
         if (page is QuotationProductsPageModel && page.hasTotals) {
           renderTrace.totalsPageNumbers.add(i + 1);
+          if (page.pinTotalsToBottom) {
+            renderTrace.totalsPinnedToBottomPageNumbers.add(i + 1);
+          }
         }
       }
       renderTrace.productPageUsedHeights.addAll(productPageUsedHeights);
@@ -332,7 +358,7 @@ class QuotationPdfService {
             pw.Text(
               profile.website,
               style: pw.TextStyle(
-                font: _fontMedium,
+                font: _fontRegular,
                 fontSize: 10,
                 color: _textMuted,
                 height: 1.5,
@@ -409,15 +435,15 @@ class QuotationPdfService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  _buildCompanyRow('LICENSE NO', profile.licenseNumber),
-                  _buildCompanyRow('LICENSE NAME', profile.legalName),
+                  _buildCompanyRow('License No', profile.licenseNumber),
+                  _buildCompanyRow('License Name', profile.legalName),
                   _buildCompanyRow(
-                    'ADDRESS',
+                    'Address',
                     '${profile.addressLine1}\n${profile.addressLine2}',
                     maxLines: 2,
                   ),
-                  _buildCompanyRow('MOBILE', profile.mobile),
-                  _buildCompanyRow('TELEPHONE', profile.telephone),
+                  _buildCompanyRow('Mobile', profile.mobile),
+                  _buildCompanyRow('Telephone', profile.telephone),
                   _buildCompanyRow('TRN', profile.trn),
                 ],
               ),
@@ -434,7 +460,7 @@ class QuotationPdfService {
                 children: [
                   pw.SizedBox(
                     height: QuotationLayoutSpec.coverCustomerHeadingHeight,
-                    child: pw.Text('QUOTATION TO', style: _smallBoldStyle()),
+                    child: pw.Text('Quotation To', style: _smallBoldStyle()),
                   ),
                   pw.SizedBox(
                     height: QuotationLayoutSpec.coverCustomerHeadingSpacing,
@@ -444,19 +470,19 @@ class QuotationPdfService {
                     height: QuotationLayoutSpec.coverCustomerDividerSpacing,
                   ),
                   _buildCustomerRow(
-                    'CUSTOMER',
+                    'Customer',
                     quotation.customerInfo.name.isNotEmpty
                         ? quotation.customerInfo.name
                         : '—',
                   ),
                   _buildCustomerRow(
-                    'LOCATION',
+                    'Location',
                     quotation.customerInfo.projectLocation.isNotEmpty
                         ? quotation.customerInfo.projectLocation
                         : '—',
                   ),
                   _buildCustomerRow(
-                    'CONTACT',
+                    'Contact',
                     quotation.customerInfo.phone.isNotEmpty
                         ? quotation.customerInfo.phone
                         : '—',
@@ -483,25 +509,25 @@ class QuotationPdfService {
                     height: QuotationLayoutSpec.coverCustomerDividerSpacing,
                   ),
                   _buildCustomerRow(
-                    'DATE',
+                    'Date',
                     QuotationDocumentFormatters.formatDate(
                       quotation.createdDate,
                     ),
                   ),
                   _buildCustomerRow(
-                    'QT NO',
+                    'QT No',
                     quotation.displayQuotationNumber.isNotEmpty
                         ? quotation.displayQuotationNumber
                         : '—',
                   ),
                   _buildCustomerRow(
-                    'EXPIRED',
+                    'Expired',
                     QuotationDocumentFormatters.formatDate(
                       quotation.validUntil,
                     ),
                   ),
                   _buildCustomerRow(
-                    'SALESMAN',
+                    'Salesman',
                     salesmanName.isNotEmpty ? salesmanName : '—',
                   ),
                 ],
@@ -801,29 +827,25 @@ class QuotationPdfService {
           QuotationNumericFitHelper.buildPdfCell(
             item.quantity.toString(),
             tableLayout.flexFor('qty'),
-            _fontRegular,
-            _fontSemiBold,
+            _fontMedium,
             center: true,
           ),
           QuotationNumericFitHelper.buildPdfCell(
             QuotationDocumentFormatters.formatCurrency(item.unitPrice),
             tableLayout.flexFor('unitPrice'),
-            _fontRegular,
-            _fontSemiBold,
+            _fontMedium,
             center: true,
           ),
           QuotationNumericFitHelper.buildPdfCell(
             QuotationDocumentFormatters.formatDiscount(item.discount),
             tableLayout.flexFor('discount'),
-            _fontRegular,
-            _fontSemiBold,
+            _fontMedium,
             center: true,
           ),
           QuotationNumericFitHelper.buildPdfCell(
             QuotationDocumentFormatters.formatCurrency(lineTotal),
             tableLayout.flexFor('amount'),
-            _fontRegular,
-            _fontSemiBold,
+            _fontMedium,
             center: true,
             bold: true,
           ),
@@ -861,7 +883,7 @@ class QuotationPdfService {
           child: pw.Text(
             text,
             style: pw.TextStyle(
-              font: bold ? _fontSemiBold : _fontRegular,
+              font: _fontMedium,
               fontSize: 12,
               color: bold ? _navy : _textMain,
               height: 1.6,
@@ -923,10 +945,10 @@ class QuotationPdfService {
                 pw.Text(
                   'Grand Total',
                   style: pw.TextStyle(
-                    font: _fontBold,
+                    font: _fontMedium,
                     fontSize: 14,
                     color: _navy,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0,
                     height: 1.4,
                   ),
                 ),
@@ -940,7 +962,7 @@ class QuotationPdfService {
                     child: pw.Text(
                       QuotationDocumentFormatters.formatCurrency(grandTotal),
                       style: pw.TextStyle(
-                        font: _fontBold,
+                        font: _fontMedium,
                         fontSize: 16,
                         color: _navy,
                         height: 1.3,
@@ -960,9 +982,9 @@ class QuotationPdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'AMOUNT IN WORDS',
+                  'Amount in Words',
                   style: pw.TextStyle(
-                    font: _fontBold,
+                    font: _fontMedium,
                     fontSize: 7.5,
                     color: _textMuted,
                     letterSpacing: 0.4,
@@ -988,6 +1010,11 @@ class QuotationPdfService {
     );
   }
 
+  @visibleForTesting
+  pw.Widget buildTotalsBlockForTesting(Quotation quotation) {
+    return _buildTotalsBlock(quotation);
+  }
+
   pw.Widget _buildTotalRow(
     String label,
     double amount, {
@@ -1008,7 +1035,7 @@ class QuotationPdfService {
                   ? '- ${QuotationDocumentFormatters.formatCurrency(amount.abs())}'
                   : QuotationDocumentFormatters.formatCurrency(amount),
               style: pw.TextStyle(
-                font: isDiscount ? _fontRegular : _fontSemiBold,
+                font: _fontMedium,
                 fontSize: 12,
                 color: isDiscount ? _red : _navy,
                 height: 1.6,
@@ -1025,7 +1052,7 @@ class QuotationPdfService {
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
-          'BANK ACCOUNT DETAILS',
+          'Bank Account Details',
           style: _smallBoldStyle(fontSize: 10.5).copyWith(letterSpacing: 0.6),
         ),
         pw.SizedBox(height: 2),
@@ -1042,27 +1069,27 @@ class QuotationPdfService {
           },
           children: [
             _buildBankTableRow(
-              'BANK NAME',
+              'Bank Name',
               'MASHREQ BANK',
               'FAB [FIRST ABU DHABI BANK]',
             ),
             _buildBankTableRow(
-              'ACCOUNT NAME',
+              'Account Name',
               CompanyProfile.defaultProfile.legalName,
               'MAX EAGLE FITNESS SPORT EQUIPMENT TRADING L L C',
             ),
             _buildBankTableRow(
-              'ACCOUNT NUMBER',
+              'Account Number',
               '019100814712',
               '1001326712876001',
             ),
             _buildBankTableRow(
-              'IBAN NUMBER',
+              'IBAN Number',
               'AE270330000019100814712',
               'AE590351001326712876001',
             ),
-            _buildBankTableRow('SWIFT CODE', 'BOMLAEAD', 'NBADAEAA'),
-            _buildBankTableRow('CURRENCY', 'AED', 'AED'),
+            _buildBankTableRow('SWIFT Code', 'BOMLAEAD', 'NBADAEAA'),
+            _buildBankTableRow('Currency', 'AED', 'AED'),
           ],
         ),
 
@@ -1070,9 +1097,10 @@ class QuotationPdfService {
         pw.Text(
           'Terms & Conditions',
           style: pw.TextStyle(
-            font: _fontBold,
-            fontSize: 22,
+            font: _fontMedium,
+            fontSize: 18,
             color: _navy,
+            letterSpacing: -0.2,
             height: 1.3,
           ),
         ),
@@ -1112,9 +1140,10 @@ class QuotationPdfService {
           pw.Text(
             'Customer Notes',
             style: pw.TextStyle(
-              font: _fontBold,
-              fontSize: 22,
+              font: _fontMedium,
+              fontSize: 18,
               color: _navy,
+              letterSpacing: -0.2,
               height: 1.3,
             ),
           ),
@@ -1242,7 +1271,7 @@ class QuotationPdfService {
     double height = 1.5,
   }) {
     return pw.TextStyle(
-      font: _fontMedium,
+      font: _fontRegular,
       fontSize: fontSize,
       color: color ?? _textMuted,
       height: height,
@@ -1255,7 +1284,7 @@ class QuotationPdfService {
     double height = 1.5,
   }) {
     return pw.TextStyle(
-      font: _fontBold,
+      font: _fontMedium,
       fontSize: fontSize,
       color: color ?? _navy,
       height: height,
@@ -1264,7 +1293,7 @@ class QuotationPdfService {
 
   pw.TextStyle _bodyStyle({bool bold = false}) {
     return pw.TextStyle(
-      font: bold ? _fontSemiBold : _fontRegular,
+      font: bold ? _fontMedium : _fontRegular,
       fontSize: 12,
       color: bold ? _navy : _textMain,
       height: 1.6,

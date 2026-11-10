@@ -18,61 +18,68 @@ class QuotationDocumentTheme {
   static const Color background = Colors.white;
 
   // Typography
+  static const String fontFamily = 'IBM Plex Sans Condensed';
+
   static const TextStyle h1 = TextStyle(
-    fontFamily: 'IBM Plex Sans Condensed',
-    fontSize: 28,
-    fontWeight: FontWeight.w800,
+    fontFamily: fontFamily,
+    fontSize: 24,
+    fontWeight: FontWeight.w500,
     color: navy,
-    letterSpacing: 1.5,
+    letterSpacing: -0.3,
     height: 1.2,
   );
 
   static const TextStyle h2 = TextStyle(
-    fontFamily: 'IBM Plex Sans Condensed',
-    fontSize: 22,
-    fontWeight: FontWeight.bold,
+    fontFamily: fontFamily,
+    fontSize: 18,
+    fontWeight: FontWeight.w500,
     color: navy,
+    letterSpacing: -0.2,
     height: 1.3,
   );
 
   static const TextStyle h3 = TextStyle(
-    fontFamily: 'IBM Plex Sans Condensed',
+    fontFamily: fontFamily,
     fontSize: 14,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w500,
     color: navy,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
     height: 1.4,
   );
 
   static const TextStyle body = TextStyle(
-    fontFamily: 'IBM Plex Sans Condensed',
+    fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: textMain,
+    letterSpacing: 0,
     height: 1.6,
   );
 
   static const TextStyle bodyBold = TextStyle(
-    fontFamily: 'IBM Plex Sans Condensed',
+    fontFamily: fontFamily,
     fontSize: 12,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w500,
     color: navy,
+    letterSpacing: 0,
     height: 1.6,
   );
 
   static const TextStyle small = TextStyle(
-    fontFamily: 'IBM Plex Sans Condensed',
+    fontFamily: fontFamily,
     fontSize: 10,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w400,
     color: textMuted,
+    letterSpacing: 0,
     height: 1.5,
   );
 
   static const TextStyle smallBold = TextStyle(
-    fontFamily: 'IBM Plex Sans Condensed',
+    fontFamily: fontFamily,
     fontSize: 10,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w500,
     color: navy,
+    letterSpacing: 0,
     height: 1.5,
   );
 }

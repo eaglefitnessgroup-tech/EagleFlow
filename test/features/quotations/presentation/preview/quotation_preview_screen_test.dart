@@ -5,7 +5,12 @@ import 'package:eagleflow/features/quotations/domain/quotation_line_item.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/models/quotation_preview_page.dart';
 import 'package:eagleflow/features/quotations/presentation/preview/utils/quotation_paginator.dart';
 
+import 'quotation_test_font_loader.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadQuotationTestFonts);
+
   group('Quotation Paginator - Unified Flow', () {
     late Quotation baseQuotation;
 

@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import 'quotation_test_font_loader.dart';
+
 Iterable<pw.Widget> _pdfDescendants(pw.Widget widget) sync* {
   yield widget;
   if (widget is pw.SizedBox && widget.child != null) {
@@ -28,6 +30,9 @@ Iterable<pw.Widget> _pdfDescendants(pw.Widget widget) sync* {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadQuotationTestFonts);
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   QuotationLineItem item(String id, String name) => QuotationLineItem(

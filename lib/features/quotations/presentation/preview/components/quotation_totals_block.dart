@@ -93,7 +93,7 @@ class QuotationTotalsBlock extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AMOUNT IN WORDS',
+                  'Amount in Words',
                   style: QuotationDocumentTheme.smallBold.copyWith(
                     color: QuotationDocumentTheme.textMuted,
                     fontSize: 7.5,
@@ -139,7 +139,7 @@ class QuotationTotalsBlock extends StatelessWidget {
                   ? '- ${QuotationDocumentFormatters.formatCurrency(amount.abs())}'
                   : QuotationDocumentFormatters.formatCurrency(amount),
               style: isDiscount
-                  ? QuotationDocumentTheme.body.copyWith(color: Colors.red)
+                  ? QuotationDocumentTheme.bodyBold.copyWith(color: Colors.red)
                   : QuotationDocumentTheme.bodyBold,
               textAlign: TextAlign.right,
             ),
